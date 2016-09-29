@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.brutusin</groupId>
+        <artifactId>brutusin</artifactId>
+        <version>1.0.4</version>
+    </parent>
+    <groupId>org.brutusin</groupId>
+    <artifactId>linux-scheduler</artifactId>
+    <packaging>jar</packaging>   
+    <version>1.4.2-SNAPSHOT</version>
+    <name>${project.groupId}:${project.artifactId}</name>
+    <description>A RSS-memory-aware scheduler for Linux batch processes</description>
+    
+    <url>https://github.com/brutusin/linux-scheduler</url>
+    
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/brutusin/linux-scheduler/issues</url>
+    </issueManagement>
+    
+    <ciManagement>
+        <system>travis-ci</system>
+        <url>https://travis-ci.org/brutusin/linux-scheduler</url>
+    </ciManagement>
+    
+    <scm>
+        <url>https://github.com/brutusin/linux-scheduler</url>
+        <connection>scm:git:https://github.com/brutusin/linux-scheduler.git</connection>
+        <developerConnection>scm:git:https://github.com/brutusin/linux-scheduler.git</developerConnection>
+        <tag>v1.0.2</tag>
+    </scm>
+    
+    <properties>
+        <!--   <maven.test.skip>true</maven.test.skip>-->
+    </properties>
+    
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>   
+        </dependency>
+        <dependency>
+            <groupId>org.brutusin</groupId>
+            <artifactId>commons</artifactId>
+            <version>1.4.0</version>
+        </dependency>
+    </dependencies>
+    
+</project>
