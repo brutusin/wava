@@ -95,14 +95,18 @@ public class RequestHandler {
         this.scheduler.submit(user, ri);
     }
 
-    public static void main(String[] args) throws Exception{
+    public static void main(String[] args) throws Exception {
         RequestInfo ri = new RequestInfo();
         ri.setCommand(new String[]{"ls"});
         ri.setWorkingDirectory(new File("/tmp"));
         ri.setMaxRSS(500000);
         System.out.println(JsonCodec.getInstance().transform(ri));
-        
-        System.out.println(JsonCodec.getInstance().parse("/tmp", File.class).getAbsolutePath());
+
+        String s = JsonCodec.getInstance().transform(new File("/tmp"));
+        System.out.println(s);
+        System.out.println(JsonCodec.getInstance().parse(s, File.class).getAbsolutePath());
+        System.out.println(JsonCodec.getInstance().parse(s, File.class).getAbsolutePath());
+        System.out.println(ri.getWorkingDirectory().getAbsolutePath());
     }
 
 }

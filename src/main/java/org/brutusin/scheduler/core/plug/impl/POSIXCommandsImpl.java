@@ -66,7 +66,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
     public String[] getRunAsCommand(String user, String[] cmd) {
         String[] ret = new String[cmd.length + 4];
         ret[0] = "runuser";
-        ret[1] = "-l";
+        ret[1] = "-p";
         ret[2] = user;
         ret[3] = "-c";
         for (int i = 0; i < cmd.length; i++) {

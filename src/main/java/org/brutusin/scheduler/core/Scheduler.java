@@ -109,7 +109,7 @@ public class Scheduler {
         checkPromises(availableMemory);
         synchronized (jobQueue) {
             while (jobQueue.size() > 0) {
-                final Key key = jobQueue.first();
+                final Key key = jobQueue.pollFirst();
                 JobInfo ji = jobMap.get(key.getGlobalId());
                 if (ji.getRequestInfo().getMaxRSS() > availableMemory) {
                     break;
@@ -222,8 +222,8 @@ public class Scheduler {
                     cmd = ji.getRequestInfo().getCommand();
                 }
                 ProcessBuilder pb = new ProcessBuilder(cmd);
+                //pb.environment().clear();
                 pb.directory(ji.getRequestInfo().getWorkingDirectory());
-                pb.environment().clear();
                 if (ji.getRequestInfo().getEnvironment() != null) {
                     pb.environment().putAll(ji.getRequestInfo().getEnvironment());
                 }
