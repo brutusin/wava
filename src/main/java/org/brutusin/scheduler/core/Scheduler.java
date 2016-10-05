@@ -164,14 +164,16 @@ public class Scheduler {
     }
 
     private GroupInfo getGroup(int groupId) {
-        GroupInfo gi = groupMap.get(groupId);
-        if (gi == null) {
-            gi = new GroupInfo();
-            gi.setGroupId(groupId);
-            gi.setJobs(new HashSet<Integer>());
-            groupMap.put(groupId, gi);
+        synchronized (groupMap) {
+            GroupInfo gi = groupMap.get(groupId);
+            if (gi == null) {
+                gi = new GroupInfo();
+                gi.setGroupId(groupId);
+                gi.setJobs(Collections.synchronizedSet(new HashSet<Integer>()));
+                groupMap.put(groupId, gi);
+            }
+            return gi;
         }
-        return gi;
     }
 
     public void setPriority(Integer groupId, Integer newPriority) {
@@ -212,7 +214,8 @@ public class Scheduler {
         if (ji == null) {
             throw new IllegalArgumentException("Id is required");
         }
-        Thread t = new Thread(this.threadGroup, "scheduled process " + ji.getId()) {
+        Thread t;
+        t = new Thread(this.threadGroup, "scheduled process " + ji.getId()) {
             @Override
             public void run() {
                 String[] cmd;
@@ -231,6 +234,10 @@ public class Scheduler {
                 writeSilently(ji.getLifeCycleOs(), "started");
                 try {
                     process = pb.start();
+                    String pId = String.valueOf(Miscellaneous.getUnixId(process));
+                    writeSilently(ji.getLifeCycleOs(), "Job started with pId " + pId);
+                    ProcessInfo pi = new ProcessInfo(pId, process, ji);
+                    processMap.put(ji.getId(), pi);
                 } catch (IOException ex) {
                     writeSilently(ji.getLifeCycleOs(), "scheduler-error: " + Miscellaneous.getStrackTrace(ex));
                     return;
@@ -246,11 +253,18 @@ public class Scheduler {
                     process.destroy();
                 } finally {
                     try {
-                        ji.getLifeCycleOs().close();
-                        ji.getStdoutOs().close();
-                        ji.getStderrOs().close();
                         stoutReaderThread.join();
                         sterrReaderThread.join();
+                        ji.close();
+                        jobMap.remove(ji.getId());
+                        processMap.remove(ji.getId());
+                        GroupInfo group = groupMap.get(ji.getRequestInfo().getGroupId());
+                        group.getJobs().remove(ji.getId());
+                        synchronized (groupMap) {
+                            if (group.getJobs().isEmpty()) {
+                                groupMap.remove(ji.getRequestInfo().getGroupId());
+                            }
+                        }
                     } catch (Throwable th) {
                         LOGGER.log(Level.SEVERE, th.getMessage());
                     }
@@ -372,14 +386,16 @@ public class Scheduler {
 
         private final RequestInfo requestInfo;
 
+        private final File rootFolder;
+
         public JobInfo(int id, String user, RequestInfo requestInfo) throws IOException, InterruptedException {
             this.id = id;
             this.user = user;
             this.requestInfo = requestInfo;
-            this.lifeCycleNamedPipe = new File(Environment.ROOT, "streams/" + id + "/lifecycle");
-            this.stdoutNamedPipe = new File(Environment.ROOT, "streams/" + id + "/stdout");
-            this.stderrNamedPipe = new File(Environment.ROOT, "streams/" + id + "/stderr");
-            LinuxCommands.getInstance().createNamedPipes(lifeCycleNamedPipe, stderrNamedPipe, stdoutNamedPipe);
+            this.rootFolder = new File(Environment.ROOT, "streams/" + id);
+            this.lifeCycleNamedPipe = new File(rootFolder, "lifecycle");
+            this.stdoutNamedPipe = new File(rootFolder, "stdout");
+            this.stderrNamedPipe = new File(rootFolder, "stderr");
             this.lifeCycleOs = new FileOutputStream(lifeCycleNamedPipe);
             this.stdoutOs = new FileOutputStream(stdoutNamedPipe);
             this.stderrOs = new FileOutputStream(stderrNamedPipe);
@@ -408,38 +424,38 @@ public class Scheduler {
         public OutputStream getStderrOs() {
             return stderrOs;
         }
+
+        public void close() throws IOException {
+            this.lifeCycleOs.close();
+            this.stdoutOs.close();
+            this.stderrOs.close();
+            Miscellaneous.deleteDirectory(this.rootFolder);
+        }
     }
 
     public class ProcessInfo {
 
-        private String pid;
-        private Process process;
-        private JobInfo jobInfo;
+        private final String pid;
+        private final Process process;
+        private final JobInfo jobInfo;
+
+        public ProcessInfo(String pid, Process process, JobInfo jobInfo) {
+            this.pid = pid;
+            this.process = process;
+            this.jobInfo = jobInfo;
+        }
 
         public JobInfo getJobInfo() {
             return jobInfo;
-        }
-
-        public void setJobInfo(JobInfo jobInfo) {
-            this.jobInfo = jobInfo;
         }
 
         public Process getProcess() {
             return process;
         }
 
-        public void setProcess(Process process) {
-            this.process = process;
-        }
-
         public String getPid() {
             return pid;
         }
-
-        public void setPid(String pid) {
-            this.pid = pid;
-        }
-
     }
 
     public static class Config {
