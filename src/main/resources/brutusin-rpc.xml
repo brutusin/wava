@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	   					   http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- <bean id="${serviceId}" class="${ActionClass}"/> -->
+    <!-- <bean id="${topicId}" class="${TopicClass}"/> -->
+    
+    <bean id="topic.scheduler" class="org.brutusin.scheduler.core.topics.SchedulerTopic"/>
+    
+    <bean id="scheduler" class="org.brutusin.scheduler.core.Scheduler" destroy-method="close"> 
+        <constructor-arg value="8000000"></constructor-arg>
+        <constructor-arg value="10"></constructor-arg>
+        <constructor-arg value="120"></constructor-arg>
+    </bean>
+    
+    <bean id="srv.execute" class="org.brutusin.scheduler.core.actions.ExecuteAction">
+        <property name="scheduler" ref="scheduler"/>
+        <property name="topic" ref="topic.scheduler"/>
+    </bean>
+    <bean id="srv.removeGroup" class="org.brutusin.scheduler.core.actions.RemoveGroupAction">
+        <property name="scheduler" ref="scheduler"/>
+    </bean>
+    <bean id="srv.remove" class="org.brutusin.scheduler.core.actions.RemoveAction">
+        <property name="scheduler" ref="scheduler"/>
+    </bean>
+    <bean id="srv.getStatus" class="org.brutusin.scheduler.core.actions.GetStatusAction">
+        <property name="scheduler" ref="scheduler"/>
+    </bean>
+    <bean id="srv.setPriority" class="org.brutusin.scheduler.core.actions.SetPriorityAction">
+        <property name="scheduler" ref="scheduler"/>
+    </bean>
+    <bean id="srv.getQueue" class="org.brutusin.scheduler.core.actions.GetQueueAction">
+        <property name="scheduler" ref="scheduler"/>
+    </bean>
+    <bean id="srv.getMemory" class="org.brutusin.scheduler.core.actions.GetMemoryAction">
+        <property name="scheduler" ref="scheduler"/>
+    </bean>
+    <!--
+     <bean id="srv.setMemory" class="org.brutusin.scheduler.core.actions.SetMemoryAction">
+        <property name="scheduler" ref="scheduler"/>
+    </bean>-->
+ 
+</beans>

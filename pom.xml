@@ -33,7 +33,13 @@
     </scm>
     
     <properties>
-        <!--   <maven.test.skip>true</maven.test.skip>-->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.build.timestamp.format>dd/MM/yyyy HH:mm:ss</maven.build.timestamp.format>
+        <buildNumber>${maven.build.times|tamp}</buildNumber>
+        
+        <brutusin-commons-version>1.5.3-SNAPSHOT</brutusin-commons-version>
+        <brutusin-json-version>1.4.1</brutusin-json-version>
+        <brutusin-json-provider-version>2.5.3</brutusin-json-provider-version>
     </properties>
     
     <dependencies>
@@ -45,8 +51,58 @@
         <dependency>
             <groupId>org.brutusin</groupId>
             <artifactId>commons</artifactId>
-            <version>1.4.0</version>
+            <version>${brutusin-commons-version}</version>
+        </dependency>
+         <dependency>
+            <groupId>org.brutusin</groupId>
+            <artifactId>json</artifactId>
+            <version>${brutusin-json-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.brutusin</groupId>
+            <artifactId>json-provider</artifactId>
+            <version>${brutusin-json-provider-version}</version>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
-    
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>brutusin-rpc.version</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>brutusin-rpc.version</exclude>
+                </excludes>
+            </resource>
+        </resources>
+        <plugins> 
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.4.3</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                            </transformers>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>executable</shadedClassifierName>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

@@ -1,0 +1,1 @@
+RSS-memory-aware scheduler and process manager. More info at [https://github.com/brutusin/linux-scheduler](https://github.com/brutusin/linux-scheduler)
