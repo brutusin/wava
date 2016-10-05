@@ -86,13 +86,18 @@ public class RequestHandler {
     }
 
     private void handleRequest(File requestFile) throws IOException, InterruptedException, ParseException {
-        String user = LinuxCommands.getInstance().getFileOwner(requestFile);
-        FileInputStream fis = new FileInputStream(requestFile);
-        String contents = Miscellaneous.toString(fis, "UTF-8");
-        RequestInfo ri = JsonCodec.getInstance().parse(contents, RequestInfo.class);
-        fis.close();
-        requestFile.delete();
-        this.scheduler.submit(user, ri);
+        String name = requestFile.getName();
+        int index = name.indexOf("-schedule.json");
+        if (index > 0) {
+            Integer id = Integer.valueOf(name.substring(0, index));
+            String user = LinuxCommands.getInstance().getFileOwner(requestFile);
+            FileInputStream fis = new FileInputStream(requestFile);
+            String contents = Miscellaneous.toString(fis, "UTF-8");
+            RequestInfo ri = JsonCodec.getInstance().parse(contents, RequestInfo.class);
+            fis.close();
+            requestFile.delete();
+            this.scheduler.submit(id, user, ri);
+        }
     }
 
     public static void main(String[] args) throws Exception {

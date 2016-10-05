@@ -19,6 +19,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -116,26 +117,56 @@ public class PeerProcess {
             File requestFile = new File(Environment.ROOT, "request/" + id + "-schedule.json");
             File streamRoot = new File(Environment.ROOT, "streams/" + id);
             Miscellaneous.createDirectory(streamRoot);
-            File lifeCycleNamedPipe = new File(streamRoot, "lifecycle");
-            File stdoutNamedPipe = new File(streamRoot, "stdout");
-            File stderrNamedPipe = new File(streamRoot, "stderr");
+            final File lifeCycleNamedPipe = new File(streamRoot, "lifecycle");
+            final File stdoutNamedPipe = new File(streamRoot, "stdout");
+            final File stderrNamedPipe = new File(streamRoot, "stderr");
             LinuxCommands.getInstance().createNamedPipes(lifeCycleNamedPipe, stderrNamedPipe, stdoutNamedPipe);
 
+            Thread lcThread = new Thread() {
+                @Override
+                public void run() {
+                    try {
+                        InputStream lcIs = new FileInputStream(lifeCycleNamedPipe);
+                        BufferedReader br = new BufferedReader(new InputStreamReader(lcIs));
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            System.err.println(ANSI_GREEN + line + ANSI_RESET);
+                        }
+                    } catch (Throwable th) {
+                        th.printStackTrace();
+                    }
+                }
+            };
+            Thread outThread = new Thread() {
+                @Override
+                public void run() {
+                    try {
+                        InputStream outIs = new FileInputStream(stdoutNamedPipe);
+                        Miscellaneous.pipeAsynchronously(outIs, System.out);
+                    } catch (Throwable th) {
+                        th.printStackTrace();
+                    }
+                }
+            };
+            Thread errThread = new Thread() {
+                @Override
+                public void run() {
+                    try {
+                        InputStream errIs = new FileInputStream(stderrNamedPipe);
+                        BufferedReader br = new BufferedReader(new InputStreamReader(errIs));
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            System.err.println(line);
+                        }
+                    } catch (Throwable th) {
+                        th.printStackTrace();
+                    }
+                }
+            };
+            lcThread.start();
+            outThread.start();
+            errThread.start();
             Miscellaneous.writeStringToFile(requestFile, json, "UTF-8");
-            
-            InputStream lcIs = new FileInputStream(lifeCycleNamedPipe);
-            InputStream outIs = new FileInputStream(stdoutNamedPipe);
-            InputStream errIs = new FileInputStream(stderrNamedPipe);
-             
-            Miscellaneous.pipeAsynchronously(outIs, System.out);
-            Miscellaneous.pipeAsynchronously(errIs, System.err);
-
-            BufferedReader br = new BufferedReader(new InputStreamReader(lcIs));
-            String line;
-            while ((line = br.readLine()) != null) {
-                System.err.println(ANSI_GREEN + line + ANSI_RESET);
-            }
         }
-
     }
 }

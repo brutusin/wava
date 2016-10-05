@@ -28,7 +28,6 @@ public class Scheduler {
     private final Map<Integer, ProcessInfo> processMap = Collections.synchronizedMap(new HashMap<Integer, ProcessInfo>());
     private final NavigableSet<Key> jobQueue = Collections.synchronizedNavigableSet(new TreeSet());
     private final Map<Integer, GroupInfo> groupMap = Collections.synchronizedMap(new HashMap());
-    private final AtomicInteger counter = new AtomicInteger();
     private final ThreadGroup threadGroup = new ThreadGroup(Scheduler.class.getName());
     private final Thread processingThread;
     private final Config cfg;
@@ -139,7 +138,7 @@ public class Scheduler {
         }
     }
 
-    public Integer submit(String user, RequestInfo ri) throws IOException, InterruptedException {
+    public Integer submit(Integer id, String user, RequestInfo ri) throws IOException, InterruptedException {
         synchronized (jobQueue) {
             if (closed) {
                 throw new IllegalStateException("Instance is closed");
@@ -147,7 +146,7 @@ public class Scheduler {
             if (ri == null) {
                 throw new IllegalArgumentException("Request info is required");
             }
-            JobInfo ji = createJobInfo(user, ri);
+            JobInfo ji = createJobInfo(id, user, ri);
             GroupInfo gi = getGroup(ri.getGroupId());
             gi.getJobs().add(ji.getId());
             Key key = new Key(gi.getPriority(), ri.getGroupId(), ji.getId());
@@ -156,10 +155,9 @@ public class Scheduler {
         }
     }
 
-    private JobInfo createJobInfo(String user, RequestInfo ri) throws IOException, InterruptedException {
-        int globalId = counter.getAndIncrement();
-        JobInfo ji = new JobInfo(globalId, user, ri);
-        jobMap.put(globalId, ji);
+    private JobInfo createJobInfo(Integer id, String user, RequestInfo ri) throws IOException, InterruptedException {
+        JobInfo ji = new JobInfo(id, user, ri);
+        jobMap.put(id, ji);
         return ji;
     }
 
