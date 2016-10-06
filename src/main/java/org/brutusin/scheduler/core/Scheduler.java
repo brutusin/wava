@@ -46,8 +46,10 @@ public class Scheduler {
         this.cfg = cfg;
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
 
-        File f = new File(Environment.ROOT, "streams/");
-        Miscellaneous.deleteDirectory(f);
+        remakeFolder(new File(Environment.ROOT, "streams/"));
+        remakeFolder(new File(Environment.ROOT, "state/"));
+        remakeFolder(new File(Environment.ROOT, "request/"));
+
         this.processingThread = new Thread(this.threadGroup, "processingThread") {
             @Override
             public void run() {
@@ -70,6 +72,11 @@ public class Scheduler {
         };
         this.processingThread.setDaemon(true);
         this.processingThread.start();
+    }
+
+    private static void remakeFolder(File f) throws IOException {
+        Miscellaneous.deleteDirectory(f);
+        Miscellaneous.createDirectory(f);
     }
 
     private String[] getPIds() {

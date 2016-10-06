@@ -126,7 +126,6 @@ public class PeerProcess {
     }
 
     public static void main(String[] args) throws Exception {
-        System.out.println(EVENT_PATTERN);
         File counterFile = new File(Environment.ROOT, "state/.seq");
         RequestInfo ri = getRequest(args);
         if (ri != null) {
@@ -148,19 +147,21 @@ public class PeerProcess {
                         BufferedReader br = new BufferedReader(new InputStreamReader(lcIs));
                         String line;
                         while ((line = br.readLine()) != null) {
-                            Matcher matcher = EVENT_PATTERN.matcher(line);
-                            Event evt = Event.valueOf(matcher.group(1));
                             String color = ANSI_RESET;
-                            if (evt == Event.warn) {
-                                color = ANSI_YELLOW;
-                            } else if (evt == Event.error || evt == Event.interrupted) {
-                                color = ANSI_RED;
-                            } else if (evt == Event.start || evt == Event.retcode) {
-                                color = ANSI_BLUE;
-                            } else if (evt == Event.info) {
-                                color = ANSI_GREEN;
+                            Matcher matcher = EVENT_PATTERN.matcher(line);
+                            if (matcher.matches()) {
+                                Event evt = Event.valueOf(matcher.group(1));
+                                if (evt == Event.warn) {
+                                    color = ANSI_YELLOW;
+                                } else if (evt == Event.error || evt == Event.interrupted) {
+                                    color = ANSI_RED;
+                                } else if (evt == Event.start || evt == Event.retcode) {
+                                    color = ANSI_BLUE;
+                                } else if (evt == Event.info) {
+                                    color = ANSI_GREEN;
+                                }
+                                System.err.println(color + line + ANSI_RESET);
                             }
-                            System.err.println(color + line + ANSI_RESET);
                         }
                     } catch (Throwable th) {
                         th.printStackTrace();

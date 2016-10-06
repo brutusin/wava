@@ -81,16 +81,22 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     public void createNamedPipes(File... files) throws IOException, InterruptedException {
-        String[] command = new String[files.length + 1];
-        command[0] = "mkfifo";
+        String[] mkfifo = new String[files.length + 1];
+        String[] chmod = new String[files.length + 2];
+        mkfifo[0] = "mkfifo";
+        chmod[0] = "chmod";
+        chmod[1] = "777";
         for (int i = 0; i < files.length; i++) {
             File f = files[i];
             if (!f.getParentFile().exists()) {
                 Miscellaneous.createDirectory(f.getParentFile());
             }
-            command[i + 1] = f.getAbsolutePath();
+            mkfifo[i + 1] = f.getAbsolutePath();
+            chmod[i + 2] = f.getAbsolutePath();
         }
-        Process p = Runtime.getRuntime().exec(command);
+        Process p = Runtime.getRuntime().exec(mkfifo);
+        ProcessUtils.execute(p);
+        p = Runtime.getRuntime().exec(chmod);
         ProcessUtils.execute(p);
     }
 
