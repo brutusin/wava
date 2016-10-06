@@ -58,14 +58,13 @@ public class Scheduler {
                         break;
                     }
                     try {
-                        try {
-                            refresh();
-                        } catch (IOException ex) {
-                            LOGGER.log(Level.SEVERE, null, ex);
-                        }
                         Thread.sleep(Scheduler.this.cfg.getPollingSecs() * 1000);
-                    } catch (InterruptedException ex) {
-                        break;
+                        refresh();
+                    } catch (Throwable th) {
+                        LOGGER.log(Level.SEVERE, null, th);
+                        if (th instanceof InterruptedException) {
+                            break;
+                        }
                     }
                 }
             }
@@ -94,7 +93,7 @@ public class Scheduler {
         synchronized (processMap) {
             long sum = 0;
             for (Integer id : processMap.keySet()) {
-                JobInfo ji = jobMap.get(id);
+                JobInfo ji = processMap.get(id).getJobInfo();
                 sum += ji.getRequestInfo().getMaxRSS();
             }
             return sum;
@@ -112,11 +111,12 @@ public class Scheduler {
         checkPromises(availableMemory);
         synchronized (jobQueue) {
             while (jobQueue.size() > 0) {
-                final Key key = jobQueue.pollFirst();
+                final Key key = jobQueue.first();
                 JobInfo ji = jobMap.get(key.getGlobalId());
                 if (ji.getRequestInfo().getMaxRSS() > availableMemory) {
                     break;
                 }
+                jobQueue.pollFirst();
                 jobMap.remove(key.getGlobalId());
                 execute(ji);
                 availableMemory -= ji.getRequestInfo().getMaxRSS();
@@ -136,11 +136,10 @@ public class Scheduler {
             Map<String, Stats> statMap = LinuxCommands.getInstance().getStats(pIds);
             synchronized (processMap) {
                 for (Map.Entry<Integer, ProcessInfo> entry : processMap.entrySet()) {
-                    Integer globalId = entry.getKey();
                     ProcessInfo pi = entry.getValue();
                     Stats stats = statMap.get(pi.getPid());
                     if (stats != null) {
-                        JobInfo ji = jobMap.get(globalId);
+                        JobInfo ji = pi.getJobInfo();
                         if (ji.getRequestInfo().getMaxRSS() < stats.getRssBytes()) {
                             PromiseHandler.getInstance().promiseFailed(availableMemory, pi, stats);
                         }
@@ -242,30 +241,41 @@ public class Scheduler {
                     pb.environment().putAll(ji.getRequestInfo().getEnvironment());
                 }
                 Process process;
+                String pId;
                 try {
-                    process = pb.start();
-                    String pId = String.valueOf(Miscellaneous.getUnixId(process));
-                    ji.sendLogToPeer(Event.start, pId);
-                    ProcessInfo pi = new ProcessInfo(pId, process, ji);
-                    processMap.put(ji.getId(), pi);
-                } catch (IOException ex) {
-                    ji.sendLogToPeer(Event.error, Miscellaneous.getStrackTrace(ex));
-                    return;
-                }
-                Thread stoutReaderThread = Miscellaneous.pipeAsynchronously(process.getInputStream(), ji.getStdoutOs());
-                Thread sterrReaderThread = Miscellaneous.pipeAsynchronously(process.getErrorStream(), ji.getStderrOs());
-                try {
-                    int code = process.waitFor();
-                    ji.sendLogToPeer(Event.retcode, code);
-                } catch (InterruptedException ex) {
-                    stoutReaderThread.interrupt();
-                    sterrReaderThread.interrupt();
-                    process.destroy();
-                    ji.sendLogToPeer(Event.interrupted, ex.getMessage());
+                    try {
+                        process = pb.start();
+                        pId = String.valueOf(Miscellaneous.getUnixId(process));
+                        ji.sendLogToPeer(Event.start, pId);
+                        ProcessInfo pi = new ProcessInfo(pId, process, ji);
+                        processMap.put(ji.getId(), pi);
+                    } catch (IOException ex) {
+                        ji.sendLogToPeer(Event.error, Miscellaneous.getStrackTrace(ex));
+                        return;
+                    }
+                    Thread stoutReaderThread = Miscellaneous.pipeAsynchronously(process.getInputStream(), ji.getStdoutOs());
+                    stoutReaderThread.setName("stdout-pid-" + pId);
+                    Thread sterrReaderThread = Miscellaneous.pipeAsynchronously(process.getErrorStream(), ji.getStderrOs());
+                    sterrReaderThread.setName("stderr-pid-" + pId);
+                    try {
+                        int code = process.waitFor();
+                        ji.sendLogToPeer(Event.retcode, code);
+                    } catch (InterruptedException ex) {
+                        stoutReaderThread.interrupt();
+                        sterrReaderThread.interrupt();
+                        process.destroy();
+                        ji.sendLogToPeer(Event.interrupted, ex.getMessage());
+                        return;
+                    } finally {
+                        try {
+                            stoutReaderThread.join();
+                            sterrReaderThread.join();
+                        } catch (Throwable th) {
+                            LOGGER.log(Level.SEVERE, th.getMessage());
+                        }
+                    }
                 } finally {
                     try {
-                        stoutReaderThread.join();
-                        sterrReaderThread.join();
                         ji.close();
                         jobMap.remove(ji.getId());
                         processMap.remove(ji.getId());

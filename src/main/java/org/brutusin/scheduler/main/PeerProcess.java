@@ -21,6 +21,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.cli.CommandLine;
@@ -30,8 +31,10 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.brutusin.commons.Pair;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
+import org.brutusin.json.spi.JsonNode;
 import org.brutusin.scheduler.core.Environment;
 import org.brutusin.scheduler.core.Event;
 import org.brutusin.scheduler.core.plug.LinuxCommands;
@@ -68,6 +71,15 @@ public class PeerProcess {
         EVENT_PATTERN = Pattern.compile(sb.toString());
     }
 
+    private static int getCommandStart(String[] args) {
+        for (int i = 0; i < args.length; i = i + 2) {
+            if (!args[i].startsWith("-")) {
+                return i;
+            }
+        }
+        return args.length;
+    }
+
     private static RequestInfo getRequest(String[] args) {
         Options options = new Options();
         Option hOpt = new Option("h", "print this message");
@@ -84,9 +96,17 @@ public class PeerProcess {
         options.addOption(mOpt);
         options.addOption(gOpt);
 
+        int commandStart = getCommandStart(args);
+
         try {
             CommandLineParser parser = new DefaultParser();
-            CommandLine cl = parser.parse(options, args);
+            CommandLine cl = parser.parse(options, Arrays.copyOfRange(args, 0, commandStart));
+            if (commandStart == args.length) {
+                System.err.println("A command is required");
+                showHelp(options);
+                return null;
+            }
+
             if (cl.hasOption("h")) {
                 showHelp(options);
                 return null;
@@ -98,7 +118,7 @@ public class PeerProcess {
                 throw new ParseException("Invalid memory (-m) value");
             }
             RequestInfo ri = new RequestInfo();
-            ri.setCommand(cl.getArgs());
+            ri.setCommand(Arrays.copyOfRange(args, commandStart, args.length));
             ri.setMaxRSS(memory);
             ri.setWorkingDirectory(new File(""));
             ri.setEnvironment(System.getenv());
@@ -126,9 +146,9 @@ public class PeerProcess {
     }
 
     public static void main(String[] args) throws Exception {
-        File counterFile = new File(Environment.ROOT, "state/.seq");
         RequestInfo ri = getRequest(args);
         if (ri != null) {
+            File counterFile = new File(Environment.ROOT, "state/.seq");
             long id = Miscellaneous.getGlobalAutoIncremental(counterFile);
             String json = JsonCodec.getInstance().transform(ri);
             File requestFile = new File(Environment.ROOT, "request/" + id + "-schedule.json");
@@ -148,6 +168,7 @@ public class PeerProcess {
                         String line;
                         while ((line = br.readLine()) != null) {
                             String color = ANSI_RESET;
+                            String value = line;
                             Matcher matcher = EVENT_PATTERN.matcher(line);
                             if (matcher.matches()) {
                                 Event evt = Event.valueOf(matcher.group(1));
@@ -156,11 +177,18 @@ public class PeerProcess {
                                 } else if (evt == Event.error || evt == Event.interrupted) {
                                     color = ANSI_RED;
                                 } else if (evt == Event.start || evt == Event.retcode) {
-                                    color = ANSI_BLUE;
+                                    color = ANSI_GREEN;
                                 } else if (evt == Event.info) {
                                     color = ANSI_GREEN;
                                 }
-                                System.err.println(color + line + ANSI_RESET);
+                                String json = matcher.group(2);
+                                if (json != null) {
+                                    JsonNode node = JsonCodec.getInstance().parse(json);
+                                    if (node.getNodeType() == JsonNode.Type.STRING) {
+                                        value = node.asString();
+                                    }
+                                }
+                                System.err.println(color + value + ANSI_RESET);
                             }
                         }
                     } catch (Throwable th) {

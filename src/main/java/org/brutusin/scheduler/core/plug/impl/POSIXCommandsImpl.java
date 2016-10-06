@@ -31,13 +31,24 @@ import org.brutusin.scheduler.data.Stats;
  */
 public class POSIXCommandsImpl extends LinuxCommands {
 
+    private static String getPOSIXList(String[] elements) {
+        StringBuilder sb = new StringBuilder("");
+        for (int i = 0; i < elements.length; i++) {
+            if (i > 0) {
+                sb.append(",");
+            }
+            sb.append(elements[i]);
+        }
+        return sb.toString();
+    }
+
     public long getSystemRSSUsedMemory() throws IOException, InterruptedException {
         return getSystemRSSMemory() - getSystemRSSFreeMemory();
     }
 
     public Map<String, Stats> getStats(String[] pids) throws IOException, InterruptedException {
         Map<String, Stats> ret = new HashMap<String, Stats>();
-        String[] cmd = {"ps", "-p " + Arrays.toString(pids) + " -o pid,rss,pcpu --no-headers"};
+        String[] cmd = {"ps", "-p", getPOSIXList(pids), "-o", "pid,rss,pcpu", "--no-headers"};
         Process p = Runtime.getRuntime().exec(cmd);
         String stdout = ProcessUtils.execute(p)[0];
         if (stdout != null) {
@@ -64,12 +75,12 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     public String[] getRunAsCommand(String user, String[] cmd) {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder("");
         for (int i = 0; i < cmd.length; i++) {
             if (i > 0) {
                 sb.append(" ");
             }
-            sb.append(cmd[i]);
+            sb.append("\"").append(cmd[i]).append("\"");
         }
         return new String[]{"runuser", "-p", user, "-c", sb.toString()};
     }
