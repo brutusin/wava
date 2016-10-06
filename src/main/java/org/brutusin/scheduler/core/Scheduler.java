@@ -13,10 +13,10 @@ import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.brutusin.commons.utils.Miscellaneous;
+import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.scheduler.data.RequestInfo;
 import org.brutusin.scheduler.data.Stats;
 
@@ -56,12 +56,10 @@ public class Scheduler {
                         break;
                     }
                     try {
-                        synchronized (jobQueue) {
-                            try {
-                                refresh();
-                            } catch (IOException ex) {
-                                LOGGER.log(Level.SEVERE, null, ex);
-                            }
+                        try {
+                            refresh();
+                        } catch (IOException ex) {
+                            LOGGER.log(Level.SEVERE, null, ex);
                         }
                         Thread.sleep(Scheduler.this.cfg.getPollingSecs() * 1000);
                     } catch (InterruptedException ex) {
@@ -97,7 +95,6 @@ public class Scheduler {
     }
 
     private void refresh() throws IOException, InterruptedException {
-
         long maxPromisedMemory = getMaxPromisedMemory();
         long availableMemory;
         if (cfg.getMaxTotalRSSBytes() > 0) {
@@ -117,6 +114,12 @@ public class Scheduler {
                 execute(ji);
                 availableMemory -= ji.getRequestInfo().getMaxRSS();
             }
+            int position = 0;
+            for (Key key : jobQueue) {
+                position++;
+                JobInfo ji = jobMap.get(key.getGlobalId());
+                ji.sendLogToPeer(Event.info, "job enqueded at position " + position + " ...");
+            }
         }
     }
 
@@ -124,14 +127,16 @@ public class Scheduler {
         String[] pIds = getPIds();
         if (pIds.length > 0) {
             Map<String, Stats> statMap = LinuxCommands.getInstance().getStats(pIds);
-            for (Map.Entry<Integer, ProcessInfo> entry : processMap.entrySet()) {
-                Integer globalId = entry.getKey();
-                ProcessInfo pi = entry.getValue();
-                Stats stats = statMap.get(pi.getPid());
-                if (stats != null) {
-                    JobInfo ji = jobMap.get(globalId);
-                    if (ji.getRequestInfo().getMaxRSS() < stats.getRssBytes()) {
-                        PromiseHandler.getInstance().promiseFailed(availableMemory, pi, stats);
+            synchronized (processMap) {
+                for (Map.Entry<Integer, ProcessInfo> entry : processMap.entrySet()) {
+                    Integer globalId = entry.getKey();
+                    ProcessInfo pi = entry.getValue();
+                    Stats stats = statMap.get(pi.getPid());
+                    if (stats != null) {
+                        JobInfo ji = jobMap.get(globalId);
+                        if (ji.getRequestInfo().getMaxRSS() < stats.getRssBytes()) {
+                            PromiseHandler.getInstance().promiseFailed(availableMemory, pi, stats);
+                        }
                     }
                 }
             }
@@ -151,6 +156,7 @@ public class Scheduler {
             gi.getJobs().add(ji.getId());
             Key key = new Key(gi.getPriority(), ri.getGroupId(), ji.getId());
             jobQueue.add(key);
+            refresh();
             return ji.getId();
         }
     }
@@ -229,26 +235,26 @@ public class Scheduler {
                     pb.environment().putAll(ji.getRequestInfo().getEnvironment());
                 }
                 Process process;
-                writeSilently(ji.getLifeCycleOs(), "started");
                 try {
                     process = pb.start();
                     String pId = String.valueOf(Miscellaneous.getUnixId(process));
-                    writeSilently(ji.getLifeCycleOs(), "Job started with pId " + pId);
+                    ji.sendLogToPeer(Event.start, pId);
                     ProcessInfo pi = new ProcessInfo(pId, process, ji);
                     processMap.put(ji.getId(), pi);
                 } catch (IOException ex) {
-                    writeSilently(ji.getLifeCycleOs(), "scheduler-error: " + Miscellaneous.getStrackTrace(ex));
+                    ji.sendLogToPeer(Event.error, Miscellaneous.getStrackTrace(ex));
                     return;
                 }
                 Thread stoutReaderThread = Miscellaneous.pipeAsynchronously(process.getInputStream(), ji.getStdoutOs());
                 Thread sterrReaderThread = Miscellaneous.pipeAsynchronously(process.getErrorStream(), ji.getStderrOs());
                 try {
                     int code = process.waitFor();
-                    writeSilently(ji.getLifeCycleOs(), "retcode: " + code);
+                    ji.sendLogToPeer(Event.retcode, code);
                 } catch (InterruptedException ex) {
                     stoutReaderThread.interrupt();
                     sterrReaderThread.interrupt();
                     process.destroy();
+                    ji.sendLogToPeer(Event.interrupted, ex.getMessage());
                 } finally {
                     try {
                         stoutReaderThread.join();
@@ -263,6 +269,7 @@ public class Scheduler {
                                 groupMap.remove(ji.getRequestInfo().getGroupId());
                             }
                         }
+                        refresh();
                     } catch (Throwable th) {
                         LOGGER.log(Level.SEVERE, th.getMessage());
                     }
@@ -421,6 +428,10 @@ public class Scheduler {
 
         public OutputStream getStderrOs() {
             return stderrOs;
+        }
+
+        public void sendLogToPeer(Event event, Object value) {
+            writeSilently(lifeCycleOs, event + ":" + JsonCodec.getInstance().transform(value));
         }
 
         public void close() throws IOException {

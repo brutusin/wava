@@ -13,21 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.scheduler.core.plug.impl;
-
-import org.brutusin.scheduler.core.Event;
-import org.brutusin.scheduler.core.plug.PromiseHandler;
-import org.brutusin.scheduler.core.Scheduler;
-import org.brutusin.scheduler.data.Stats;
+package org.brutusin.scheduler.core;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class StrictPromiseHandler extends PromiseHandler {
+public enum Event {
 
-    public void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, Stats processStats) {
-        pi.getJobInfo().sendLogToPeer(Event.warn, "memory promise excedeed");
-        pi.getProcess().destroy();
-    }
+    start,
+    retcode,
+    interrupted,
+    info,
+    warn,
+    error
 }

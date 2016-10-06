@@ -18,11 +18,11 @@ package org.brutusin.scheduler.main;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -33,6 +33,7 @@ import org.apache.commons.cli.ParseException;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.scheduler.core.Environment;
+import org.brutusin.scheduler.core.Event;
 import org.brutusin.scheduler.core.plug.LinuxCommands;
 import org.brutusin.scheduler.data.RequestInfo;
 
@@ -51,6 +52,21 @@ public class PeerProcess {
     public static final String ANSI_PURPLE = "\u001B[35m";
     public static final String ANSI_CYAN = "\u001B[36m";
     public static final String ANSI_WHITE = "\u001B[37m";
+
+    private static final Pattern EVENT_PATTERN;
+
+    static {
+        StringBuilder sb = new StringBuilder("(");
+        Event[] values = Event.values();
+        for (int i = 0; i < values.length; i++) {
+            if (i > 0) {
+                sb.append("|");
+            }
+            sb.append(values[i]);
+        }
+        sb.append("):(.*)");
+        EVENT_PATTERN = Pattern.compile(sb.toString());
+    }
 
     private static RequestInfo getRequest(String[] args) {
         Options options = new Options();
@@ -84,7 +100,8 @@ public class PeerProcess {
             RequestInfo ri = new RequestInfo();
             ri.setCommand(cl.getArgs());
             ri.setMaxRSS(memory);
-
+            ri.setWorkingDirectory(new File(""));
+            ri.setEnvironment(System.getenv());
             if (cl.hasOption("g")) {
                 try {
                     int groupId = Integer.valueOf(cl.getOptionValue("g"));
@@ -109,6 +126,7 @@ public class PeerProcess {
     }
 
     public static void main(String[] args) throws Exception {
+        System.out.println(EVENT_PATTERN);
         File counterFile = new File(Environment.ROOT, "state/.seq");
         RequestInfo ri = getRequest(args);
         if (ri != null) {
@@ -130,7 +148,19 @@ public class PeerProcess {
                         BufferedReader br = new BufferedReader(new InputStreamReader(lcIs));
                         String line;
                         while ((line = br.readLine()) != null) {
-                            System.err.println(ANSI_GREEN + line + ANSI_RESET);
+                            Matcher matcher = EVENT_PATTERN.matcher(line);
+                            Event evt = Event.valueOf(matcher.group(1));
+                            String color = ANSI_RESET;
+                            if (evt == Event.warn) {
+                                color = ANSI_YELLOW;
+                            } else if (evt == Event.error || evt == Event.interrupted) {
+                                color = ANSI_RED;
+                            } else if (evt == Event.start || evt == Event.retcode) {
+                                color = ANSI_BLUE;
+                            } else if (evt == Event.info) {
+                                color = ANSI_GREEN;
+                            }
+                            System.err.println(color + line + ANSI_RESET);
                         }
                     } catch (Throwable th) {
                         th.printStackTrace();

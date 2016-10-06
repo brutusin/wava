@@ -64,15 +64,14 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     public String[] getRunAsCommand(String user, String[] cmd) {
-        String[] ret = new String[cmd.length + 4];
-        ret[0] = "runuser";
-        ret[1] = "-p";
-        ret[2] = user;
-        ret[3] = "-c";
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < cmd.length; i++) {
-            ret[i + 4] = cmd[i];
+            if (i > 0) {
+                sb.append(" ");
+            }
+            sb.append(cmd[i]);
         }
-        return ret;
+        return new String[]{"runuser", "-p", user, "-c", sb.toString()};
     }
 
     public String getRunningUser() throws IOException, InterruptedException {

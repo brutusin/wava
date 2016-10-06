@@ -18,6 +18,7 @@ package org.brutusin.scheduler.core.plug;
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
+import org.brutusin.scheduler.core.plug.impl.CachingLinuxCommands;
 import org.brutusin.scheduler.core.plug.impl.POSIXCommandsImpl;
 import org.brutusin.scheduler.data.Stats;
 
@@ -27,12 +28,12 @@ import org.brutusin.scheduler.data.Stats;
  */
 public abstract class LinuxCommands {
 
-    private static final LinuxCommands INSTANCE = new POSIXCommandsImpl();
-    
-    public static LinuxCommands getInstance(){
+    private static final LinuxCommands INSTANCE = new CachingLinuxCommands(new POSIXCommandsImpl(), 2);
+
+    public static LinuxCommands getInstance() {
         return INSTANCE;
     }
-    
+
     public abstract Map<String, Stats> getStats(String[] pids) throws IOException, InterruptedException;
 
     public abstract long getSystemRSSUsedMemory() throws IOException, InterruptedException;
@@ -46,7 +47,7 @@ public abstract class LinuxCommands {
     public abstract void createNamedPipes(File... files) throws IOException, InterruptedException;
 
     public abstract String getFileOwner(File f) throws IOException, InterruptedException;
-    
+
     public abstract String getRunningUser() throws IOException, InterruptedException;
-    
+
 }

@@ -69,6 +69,11 @@
             <version>${brutusin-json-provider-version}</version>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>net.sf.ehcache</groupId>
+            <artifactId>ehcache</artifactId>
+            <version>2.10.2.2.21</version>
+        </dependency>
     </dependencies>
     <build>
         <resources>
