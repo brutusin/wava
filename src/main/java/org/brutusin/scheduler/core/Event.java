@@ -26,5 +26,6 @@ public enum Event {
     interrupted,
     info,
     warn,
-    error
+    error,
+    ping
 }

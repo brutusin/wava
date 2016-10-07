@@ -21,7 +21,10 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.cli.CommandLine;
@@ -31,7 +34,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.brutusin.commons.Pair;
+import org.brutusin.commons.Bean;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.json.spi.JsonNode;
@@ -45,6 +48,8 @@ import org.brutusin.scheduler.data.RequestInfo;
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class PeerProcess {
+
+    private final static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 
     public static final String ANSI_RESET = "\u001B[0m";
     public static final String ANSI_BLACK = "\u001B[30m";
@@ -67,7 +72,7 @@ public class PeerProcess {
             }
             sb.append(values[i]);
         }
-        sb.append("):(.*)");
+        sb.append("):(\\d+):(.+)");
         EVENT_PATTERN = Pattern.compile(sb.toString());
     }
 
@@ -158,8 +163,10 @@ public class PeerProcess {
             final File stdoutNamedPipe = new File(streamRoot, "stdout");
             final File stderrNamedPipe = new File(streamRoot, "stderr");
             LinuxCommands.getInstance().createNamedPipes(lifeCycleNamedPipe, stderrNamedPipe, stdoutNamedPipe);
-
-            Thread lcThread = new Thread() {
+            final Bean<Integer> retCode = new Bean<>();
+            retCode.setValue(-1);
+            Thread lcThread;
+            lcThread = new Thread() {
                 @Override
                 public void run() {
                     try {
@@ -172,23 +179,31 @@ public class PeerProcess {
                             Matcher matcher = EVENT_PATTERN.matcher(line);
                             if (matcher.matches()) {
                                 Event evt = Event.valueOf(matcher.group(1));
-                                if (evt == Event.warn) {
+                                String date = DATE_FORMAT.format(new Date(Long.valueOf(matcher.group(2))));
+                                String json = matcher.group(3);
+                                JsonNode node = JsonCodec.getInstance().parse(json);
+                                if (node.getNodeType() == JsonNode.Type.STRING) {
+                                    value = node.asString();
+                                }
+                                if (evt == Event.ping) {
+                                    return;
+                                } else if (evt == Event.warn) {
                                     color = ANSI_YELLOW;
                                 } else if (evt == Event.error || evt == Event.interrupted) {
                                     color = ANSI_RED;
-                                } else if (evt == Event.start || evt == Event.retcode) {
+                                } else if (evt == Event.start) {
                                     color = ANSI_GREEN;
+                                } else if (evt == Event.retcode) {
+                                    retCode.setValue(node.asInteger());
+                                    if (retCode.getValue() == 0) {
+                                        color = ANSI_GREEN;
+                                    } else {
+                                        color = ANSI_RED;
+                                    }
                                 } else if (evt == Event.info) {
                                     color = ANSI_GREEN;
                                 }
-                                String json = matcher.group(2);
-                                if (json != null) {
-                                    JsonNode node = JsonCodec.getInstance().parse(json);
-                                    if (node.getNodeType() == JsonNode.Type.STRING) {
-                                        value = node.asString();
-                                    }
-                                }
-                                System.err.println(color + value + ANSI_RESET);
+                                System.err.println(color + "[" + date + "][scheduler:" + evt + "] " + value + ANSI_RESET);
                             }
                         }
                     } catch (Throwable th) {
@@ -226,6 +241,10 @@ public class PeerProcess {
             outThread.start();
             errThread.start();
             Miscellaneous.writeStringToFile(requestFile, json, "UTF-8");
+            lcThread.join();
+            outThread.join();
+            errThread.join();
+            System.exit(retCode.getValue());
         }
     }
 }

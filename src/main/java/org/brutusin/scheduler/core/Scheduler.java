@@ -23,7 +23,6 @@ import org.brutusin.scheduler.data.Stats;
 public class Scheduler {
 
     private final static Logger LOGGER = Logger.getLogger(Scheduler.class.getName());
-
     private final Map<Integer, JobInfo> jobMap = Collections.synchronizedMap(new HashMap<Integer, JobInfo>());
     private final Map<Integer, ProcessInfo> processMap = Collections.synchronizedMap(new HashMap<Integer, ProcessInfo>());
     private final NavigableSet<Key> jobQueue = Collections.synchronizedNavigableSet(new TreeSet());
@@ -125,7 +124,10 @@ public class Scheduler {
             for (Key key : jobQueue) {
                 position++;
                 JobInfo ji = jobMap.get(key.getGlobalId());
-                ji.sendLogToPeer(Event.info, "job enqueded at position " + position + " ...");
+                if (position != ji.getCurrentPosition()) {
+                    ji.sendLogToPeer(Event.info, "job enqueded at position " + position + " ...");
+                    ji.setCurrentPosition(position);
+                }
             }
         }
     }
@@ -158,6 +160,7 @@ public class Scheduler {
                 throw new IllegalArgumentException("Request info is required");
             }
             JobInfo ji = createJobInfo(id, user, ri);
+            ji.sendLogToPeer(Event.info, "command successfully received");
             GroupInfo gi = getGroup(ri.getGroupId());
             gi.getJobs().add(ji.getId());
             Key key = new Key(gi.getPriority(), ri.getGroupId(), ji.getId());
@@ -259,8 +262,9 @@ public class Scheduler {
                     sterrReaderThread.setName("stderr-pid-" + pId);
                     try {
                         int code = process.waitFor();
-                        ji.sendLogToPeer(Event.retcode, code);
+                        ji.sendLogToPeer(Event.retcode, String.valueOf(code));
                     } catch (InterruptedException ex) {
+                        //kill();
                         stoutReaderThread.interrupt();
                         sterrReaderThread.interrupt();
                         process.destroy();
@@ -398,9 +402,6 @@ public class Scheduler {
 
         private final int id;
         private final String user;
-        private final File lifeCycleNamedPipe;
-        private final File stdoutNamedPipe;
-        private final File stderrNamedPipe;
 
         private final FileOutputStream lifeCycleOs;
         private final FileOutputStream stdoutOs;
@@ -410,17 +411,30 @@ public class Scheduler {
 
         private final File rootFolder;
 
+        private int currentPosition = -1;
+
         public JobInfo(int id, String user, RequestInfo requestInfo) throws IOException, InterruptedException {
             this.id = id;
             this.user = user;
             this.requestInfo = requestInfo;
             this.rootFolder = new File(Environment.ROOT, "streams/" + id);
-            this.lifeCycleNamedPipe = new File(rootFolder, "lifecycle");
-            this.stdoutNamedPipe = new File(rootFolder, "stdout");
-            this.stderrNamedPipe = new File(rootFolder, "stderr");
+            File lifeCycleNamedPipe = new File(rootFolder, "lifecycle");
+            File stdoutNamedPipe = new File(rootFolder, "stdout");
+            File stderrNamedPipe = new File(rootFolder, "stderr");
             this.lifeCycleOs = new FileOutputStream(lifeCycleNamedPipe);
             this.stdoutOs = new FileOutputStream(stdoutNamedPipe);
             this.stderrOs = new FileOutputStream(stderrNamedPipe);
+            lifeCycleNamedPipe.delete();
+            stdoutNamedPipe.delete();
+            stderrNamedPipe.delete();
+        }
+
+        public int getCurrentPosition() {
+            return currentPosition;
+        }
+
+        public void setCurrentPosition(int currentPosition) {
+            this.currentPosition = currentPosition;
         }
 
         public int getId() {
@@ -447,8 +461,8 @@ public class Scheduler {
             return stderrOs;
         }
 
-        public void sendLogToPeer(Event event, Object value) {
-            writeSilently(lifeCycleOs, event + ":" + JsonCodec.getInstance().transform(value));
+        public void sendLogToPeer(Event event, String value) {
+            writeSilently(lifeCycleOs, event + ":" + System.currentTimeMillis() + ":" + JsonCodec.getInstance().transform(value));
         }
 
         public void close() throws IOException {
