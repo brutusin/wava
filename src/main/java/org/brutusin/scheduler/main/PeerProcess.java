@@ -187,14 +187,12 @@ public class PeerProcess {
                                 }
                                 if (evt == Event.ping) {
                                     return;
-                                } else if (evt == Event.id) {
+                                } else if (evt == Event.id || evt == Event.start) {
                                     color = ANSI_CYAN;
                                 } else if (evt == Event.warn) {
                                     color = ANSI_YELLOW;
                                 } else if (evt == Event.error || evt == Event.interrupted) {
                                     color = ANSI_RED;
-                                } else if (evt == Event.start) {
-                                    color = ANSI_GREEN;
                                 } else if (evt == Event.retcode) {
                                     retCode.setValue(node.asInteger());
                                     if (retCode.getValue() == 0) {

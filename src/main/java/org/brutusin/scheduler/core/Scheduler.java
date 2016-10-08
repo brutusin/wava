@@ -3,9 +3,7 @@ package org.brutusin.scheduler.core;
 import org.brutusin.scheduler.core.plug.PromiseHandler;
 import org.brutusin.scheduler.core.plug.LinuxCommands;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,7 +16,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.brutusin.commons.utils.Miscellaneous;
-import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.scheduler.data.CancelInfo;
 import org.brutusin.scheduler.data.SubmitInfo;
 import org.brutusin.scheduler.data.Stats;
@@ -156,7 +153,7 @@ public class Scheduler {
                 position++;
                 PeerChannel channel = jobMap.get(key.getId());
                 Integer prevPosition = previousPositionMap.get(key.getId());
-                if (prevPosition != null || position != prevPosition) {
+                if (prevPosition == null || position != prevPosition) {
                     channel.sendLogToPeer(Event.info, "job enqueded at position " + position + " ...");
                     previousPositionMap.put(key.getId(), position);
                 }
