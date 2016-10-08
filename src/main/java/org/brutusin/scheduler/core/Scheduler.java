@@ -9,25 +9,30 @@ import java.io.OutputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
-import org.brutusin.scheduler.data.RequestInfo;
+import org.brutusin.scheduler.data.CancelInfo;
+import org.brutusin.scheduler.data.SubmitInfo;
 import org.brutusin.scheduler.data.Stats;
 
 public class Scheduler {
 
     private final static Logger LOGGER = Logger.getLogger(Scheduler.class.getName());
-    private final Map<Integer, JobInfo> jobMap = Collections.synchronizedMap(new HashMap<Integer, JobInfo>());
+    private final Map<Integer, PeerChannel<SubmitInfo>> jobMap = Collections.synchronizedMap(new HashMap<Integer, PeerChannel<SubmitInfo>>());
     private final Map<Integer, ProcessInfo> processMap = Collections.synchronizedMap(new HashMap<Integer, ProcessInfo>());
+    private final Map<Integer, Integer> previousPositionMap = Collections.synchronizedMap(new HashMap<Integer, Integer>());
     private final NavigableSet<Key> jobQueue = Collections.synchronizedNavigableSet(new TreeSet());
     private final Map<Integer, GroupInfo> groupMap = Collections.synchronizedMap(new HashMap());
     private final ThreadGroup threadGroup = new ThreadGroup(Scheduler.class.getName());
+    private final AtomicInteger counter = new AtomicInteger();
     private final Thread processingThread;
     private final Config cfg;
 
@@ -77,9 +82,9 @@ public class Scheduler {
         Miscellaneous.createDirectory(f);
     }
 
-    private String[] getPIds() {
+    private int[] getPIds() {
         synchronized (processMap) {
-            String[] ret = new String[processMap.size()];
+            int[] ret = new int[processMap.size()];
             int i = 0;
             for (ProcessInfo pi : processMap.values()) {
                 ret[i++] = pi.getPid();
@@ -92,14 +97,40 @@ public class Scheduler {
         synchronized (processMap) {
             long sum = 0;
             for (Integer id : processMap.keySet()) {
-                JobInfo ji = processMap.get(id).getJobInfo();
-                sum += ji.getRequestInfo().getMaxRSS();
+                PeerChannel<SubmitInfo> channel = processMap.get(id).getChannel();
+                sum += channel.getRequest().getMaxRSS();
             }
             return sum;
         }
     }
 
+    private void cleanStalePeers() throws InterruptedException {
+        synchronized (jobQueue) {
+            Iterator<Key> iterator = jobQueue.iterator();
+            while (iterator.hasNext()) {
+                Key key = iterator.next();
+                PeerChannel<SubmitInfo> channel = jobMap.get(key.getId());
+                if (!channel.sendLogToPeer(Event.ping, null)) {
+                    iterator.remove();
+                    jobMap.remove(key.getId());
+                }
+            }
+        }
+        synchronized (processMap) {
+            for (ProcessInfo pi : processMap.values()) {
+                if (!pi.getChannel().sendLogToPeer(Event.ping, null)) {
+                    try {
+                        LinuxCommands.getInstance().killTree(pi.getPid());
+                    } catch (IOException ex) {
+                        LOGGER.log(Level.SEVERE, null, ex);
+                    }
+                }
+            }
+        }
+    }
+
     private void refresh() throws IOException, InterruptedException {
+        cleanStalePeers();
         long maxPromisedMemory = getMaxPromisedMemory();
         long availableMemory;
         if (cfg.getMaxTotalRSSBytes() > 0) {
@@ -111,29 +142,30 @@ public class Scheduler {
         synchronized (jobQueue) {
             while (jobQueue.size() > 0) {
                 final Key key = jobQueue.first();
-                JobInfo ji = jobMap.get(key.getGlobalId());
-                if (ji.getRequestInfo().getMaxRSS() > availableMemory) {
+                PeerChannel<SubmitInfo> channel = jobMap.get(key.getId());
+                if (channel.getRequest().getMaxRSS() > availableMemory) {
                     break;
                 }
                 jobQueue.pollFirst();
-                jobMap.remove(key.getGlobalId());
-                execute(ji);
-                availableMemory -= ji.getRequestInfo().getMaxRSS();
+                jobMap.remove(key.getId());
+                execute(key.getId(), channel);
+                availableMemory -= channel.getRequest().getMaxRSS();
             }
             int position = 0;
             for (Key key : jobQueue) {
                 position++;
-                JobInfo ji = jobMap.get(key.getGlobalId());
-                if (position != ji.getCurrentPosition()) {
-                    ji.sendLogToPeer(Event.info, "job enqueded at position " + position + " ...");
-                    ji.setCurrentPosition(position);
+                PeerChannel channel = jobMap.get(key.getId());
+                Integer prevPosition = previousPositionMap.get(key.getId());
+                if (prevPosition != null || position != prevPosition) {
+                    channel.sendLogToPeer(Event.info, "job enqueded at position " + position + " ...");
+                    previousPositionMap.put(key.getId(), position);
                 }
             }
         }
     }
 
     private void checkPromises(long availableMemory) throws IOException, InterruptedException {
-        String[] pIds = getPIds();
+        int[] pIds = getPIds();
         if (pIds.length > 0) {
             Map<String, Stats> statMap = LinuxCommands.getInstance().getStats(pIds);
             synchronized (processMap) {
@@ -141,8 +173,8 @@ public class Scheduler {
                     ProcessInfo pi = entry.getValue();
                     Stats stats = statMap.get(pi.getPid());
                     if (stats != null) {
-                        JobInfo ji = pi.getJobInfo();
-                        if (ji.getRequestInfo().getMaxRSS() < stats.getRssBytes()) {
+                        PeerChannel<SubmitInfo> channel = pi.getChannel();
+                        if (channel.getRequest().getMaxRSS() < stats.getRssBytes()) {
                             PromiseHandler.getInstance().promiseFailed(availableMemory, pi, stats);
                         }
                     }
@@ -151,29 +183,58 @@ public class Scheduler {
         }
     }
 
-    public Integer submit(Integer id, String user, RequestInfo ri) throws IOException, InterruptedException {
+    public void submit(PeerChannel<SubmitInfo> submitChannel) throws IOException, InterruptedException {
         synchronized (jobQueue) {
             if (closed) {
                 throw new IllegalStateException("Instance is closed");
             }
-            if (ri == null) {
+            if (submitChannel == null) {
                 throw new IllegalArgumentException("Request info is required");
             }
-            JobInfo ji = createJobInfo(id, user, ri);
-            ji.sendLogToPeer(Event.info, "command successfully received");
-            GroupInfo gi = getGroup(ri.getGroupId());
-            gi.getJobs().add(ji.getId());
-            Key key = new Key(gi.getPriority(), ri.getGroupId(), ji.getId());
+            int id = counter.incrementAndGet();
+            jobMap.put(id, submitChannel);
+            submitChannel.sendLogToPeer(Event.id, String.valueOf(id));
+            submitChannel.sendLogToPeer(Event.info, "command successfully received");
+            GroupInfo gi = getGroup(submitChannel.getRequest().getGroupId());
+            gi.getJobs().add(id);
+            Key key = new Key(gi.getPriority(), submitChannel.getRequest().getGroupId(), id);
             jobQueue.add(key);
             refresh();
-            return ji.getId();
         }
     }
 
-    private JobInfo createJobInfo(Integer id, String user, RequestInfo ri) throws IOException, InterruptedException {
-        JobInfo ji = new JobInfo(id, user, ri);
-        jobMap.put(id, ji);
-        return ji;
+    public void cancel(PeerChannel<CancelInfo> cancelChannel) throws IOException, InterruptedException {
+        synchronized (jobQueue) {
+            if (closed) {
+                throw new IllegalStateException("Instance is closed");
+            }
+            PeerChannel<SubmitInfo> submitChannel = jobMap.remove(cancelChannel.getRequest().getId());
+            if (submitChannel != null) {
+                if (!cancelChannel.getUser().equals("root") && !cancelChannel.getUser().equals(submitChannel.getUser())) {
+                    cancelChannel.sendLogToPeer(Event.error, "user '" + cancelChannel.getUser() + "' is not allowed to cancel a job from user '" + submitChannel.getUser() + "'");
+                    cancelChannel.close();
+                    return;
+                }
+                GroupInfo gi = groupMap.get(submitChannel.getRequest().getGroupId());
+                Key key = new Key(gi.getPriority(), gi.groupId, cancelChannel.getRequest().getId());
+                jobQueue.remove(key);
+                submitChannel.sendLogToPeer(Event.interrupted, "Interrupted by user " + cancelChannel.getUser());
+                submitChannel.sendLogToPeer(Event.retcode, "-1");
+                submitChannel.close();
+                cancelChannel.sendLogToPeer(Event.info, "enqueued job sucessfully cancelled");
+                cancelChannel.close();
+                return;
+            }
+        }
+        ProcessInfo pi = processMap.get(cancelChannel.getRequest().getId());
+        if (pi == null) {
+            cancelChannel.sendLogToPeer(Event.error, "job #" + cancelChannel.getRequest().getId() + " not found");
+            cancelChannel.close();
+        } else {
+            LinuxCommands.getInstance().killTree(pi.getPid());
+            cancelChannel.sendLogToPeer(Event.info, "running job sucessfully cancelled");
+            cancelChannel.close();
+        }
     }
 
     private GroupInfo getGroup(int groupId) {
@@ -214,62 +275,57 @@ public class Scheduler {
         }
     }
 
-    private static void writeSilently(OutputStream os, String message) {
-        try {
-            os.write(message.getBytes());
-            os.write("\n".getBytes());
-        } catch (IOException ex) {
-            // Peer closed
-        }
-    }
-
-    private void execute(final JobInfo ji) {
-        if (ji == null) {
+    private void execute(final int id, final PeerChannel<SubmitInfo> channel) {
+        if (channel == null) {
             throw new IllegalArgumentException("Id is required");
         }
         Thread t;
-        t = new Thread(this.threadGroup, "scheduled process " + ji.getId()) {
+        t = new Thread(this.threadGroup, "scheduled process " + id) {
             @Override
             public void run() {
                 String[] cmd;
                 if (Scheduler.this.runningUser.equals("root")) {
-                    cmd = LinuxCommands.getInstance().getRunAsCommand(ji.getUser(), ji.getRequestInfo().getCommand());
+                    cmd = LinuxCommands.getInstance().getRunAsCommand(channel.getUser(), channel.getRequest().getCommand());
                 } else {
-                    cmd = ji.getRequestInfo().getCommand();
+                    cmd = channel.getRequest().getCommand();
                 }
                 ProcessBuilder pb = new ProcessBuilder(cmd);
                 //pb.environment().clear();
-                pb.directory(ji.getRequestInfo().getWorkingDirectory());
-                if (ji.getRequestInfo().getEnvironment() != null) {
-                    pb.environment().putAll(ji.getRequestInfo().getEnvironment());
+                pb.directory(channel.getRequest().getWorkingDirectory());
+                if (channel.getRequest().getEnvironment() != null) {
+                    pb.environment().putAll(channel.getRequest().getEnvironment());
                 }
                 Process process;
-                String pId;
+                int pId;
                 try {
                     try {
                         process = pb.start();
-                        pId = String.valueOf(Miscellaneous.getUnixId(process));
-                        ji.sendLogToPeer(Event.start, pId);
-                        ProcessInfo pi = new ProcessInfo(pId, process, ji);
-                        processMap.put(ji.getId(), pi);
+                        pId = Miscellaneous.getUnixId(process);
+                        channel.sendLogToPeer(Event.start, String.valueOf(pId));
+                        ProcessInfo pi = new ProcessInfo(pId, channel);
+                        processMap.put(id, pi);
                     } catch (IOException ex) {
-                        ji.sendLogToPeer(Event.error, Miscellaneous.getStrackTrace(ex));
+                        channel.sendLogToPeer(Event.error, Miscellaneous.getStrackTrace(ex));
                         return;
                     }
-                    Thread stoutReaderThread = Miscellaneous.pipeAsynchronously(process.getInputStream(), ji.getStdoutOs());
+                    Thread stoutReaderThread = Miscellaneous.pipeAsynchronously(process.getInputStream(), channel.getStdoutOs());
                     stoutReaderThread.setName("stdout-pid-" + pId);
-                    Thread sterrReaderThread = Miscellaneous.pipeAsynchronously(process.getErrorStream(), ji.getStderrOs());
+                    Thread sterrReaderThread = Miscellaneous.pipeAsynchronously(process.getErrorStream(), channel.getStderrOs());
                     sterrReaderThread.setName("stderr-pid-" + pId);
                     try {
                         int code = process.waitFor();
-                        ji.sendLogToPeer(Event.retcode, String.valueOf(code));
+                        channel.sendLogToPeer(Event.retcode, String.valueOf(code));
                     } catch (InterruptedException ex) {
-                        //kill();
-                        stoutReaderThread.interrupt();
-                        sterrReaderThread.interrupt();
-                        process.destroy();
-                        ji.sendLogToPeer(Event.interrupted, ex.getMessage());
-                        return;
+                        try {
+                            LinuxCommands.getInstance().killTree(pId);
+                        } catch (Throwable th) {
+                            LOGGER.log(Level.SEVERE, th.getMessage());
+                        }
+//                        stoutReaderThread.interrupt();
+//                        sterrReaderThread.interrupt();
+//                        process.destroy();
+//                        channel.sendLogToPeer(Event.interrupted, ex.getMessage());
+//                        return;
                     } finally {
                         try {
                             stoutReaderThread.join();
@@ -280,14 +336,14 @@ public class Scheduler {
                     }
                 } finally {
                     try {
-                        ji.close();
-                        jobMap.remove(ji.getId());
-                        processMap.remove(ji.getId());
-                        GroupInfo group = groupMap.get(ji.getRequestInfo().getGroupId());
-                        group.getJobs().remove(ji.getId());
+                        channel.close();
+                        jobMap.remove(id);
+                        processMap.remove(id);
+                        GroupInfo group = groupMap.get(channel.getRequest().getGroupId());
+                        group.getJobs().remove(id);
                         synchronized (groupMap) {
                             if (group.getJobs().isEmpty()) {
-                                groupMap.remove(ji.getRequestInfo().getGroupId());
+                                groupMap.remove(channel.getRequest().getGroupId());
                             }
                         }
                         refresh();
@@ -311,12 +367,12 @@ public class Scheduler {
 
         private final int priority;
         private final int groupId;
-        private final int globalId;
+        private final int id;
 
-        public Key(int priority, int groupId, int globalId) {
+        public Key(int priority, int groupId, int id) {
             this.priority = priority;
             this.groupId = groupId;
-            this.globalId = globalId;
+            this.id = id;
         }
 
         public int getPriority() {
@@ -327,8 +383,8 @@ public class Scheduler {
             return groupId;
         }
 
-        public int getGlobalId() {
-            return globalId;
+        public int getId() {
+            return id;
         }
 
         @Override
@@ -337,7 +393,7 @@ public class Scheduler {
             if (ret == 0) {
                 ret = Integer.compare(groupId, o.groupId);
                 if (ret == 0) {
-                    ret = Integer.compare(globalId, o.globalId);
+                    ret = Integer.compare(id, o.id);
                 }
             }
             return ret;
@@ -349,12 +405,12 @@ public class Scheduler {
                 return false;
             }
             Key other = (Key) obj;
-            return globalId == other.globalId;
+            return id == other.id;
         }
 
         @Override
         public int hashCode() {
-            return globalId;
+            return id;
         }
     }
 
@@ -398,103 +454,22 @@ public class Scheduler {
         }
     }
 
-    public class JobInfo {
-
-        private final int id;
-        private final String user;
-
-        private final FileOutputStream lifeCycleOs;
-        private final FileOutputStream stdoutOs;
-        private final FileOutputStream stderrOs;
-
-        private final RequestInfo requestInfo;
-
-        private final File rootFolder;
-
-        private int currentPosition = -1;
-
-        public JobInfo(int id, String user, RequestInfo requestInfo) throws IOException, InterruptedException {
-            this.id = id;
-            this.user = user;
-            this.requestInfo = requestInfo;
-            this.rootFolder = new File(Environment.ROOT, "streams/" + id);
-            File lifeCycleNamedPipe = new File(rootFolder, "lifecycle");
-            File stdoutNamedPipe = new File(rootFolder, "stdout");
-            File stderrNamedPipe = new File(rootFolder, "stderr");
-            this.lifeCycleOs = new FileOutputStream(lifeCycleNamedPipe);
-            this.stdoutOs = new FileOutputStream(stdoutNamedPipe);
-            this.stderrOs = new FileOutputStream(stderrNamedPipe);
-            lifeCycleNamedPipe.delete();
-            stdoutNamedPipe.delete();
-            stderrNamedPipe.delete();
-        }
-
-        public int getCurrentPosition() {
-            return currentPosition;
-        }
-
-        public void setCurrentPosition(int currentPosition) {
-            this.currentPosition = currentPosition;
-        }
-
-        public int getId() {
-            return id;
-        }
-
-        public String getUser() {
-            return user;
-        }
-
-        public RequestInfo getRequestInfo() {
-            return requestInfo;
-        }
-
-        public OutputStream getLifeCycleOs() {
-            return lifeCycleOs;
-        }
-
-        public OutputStream getStdoutOs() {
-            return stdoutOs;
-        }
-
-        public OutputStream getStderrOs() {
-            return stderrOs;
-        }
-
-        public void sendLogToPeer(Event event, String value) {
-            writeSilently(lifeCycleOs, event + ":" + System.currentTimeMillis() + ":" + JsonCodec.getInstance().transform(value));
-        }
-
-        public void close() throws IOException {
-            this.lifeCycleOs.close();
-            this.stdoutOs.close();
-            this.stderrOs.close();
-            Miscellaneous.deleteDirectory(this.rootFolder);
-        }
-    }
-
     public class ProcessInfo {
 
-        private final String pid;
-        private final Process process;
-        private final JobInfo jobInfo;
+        private final int pId;
+        private final PeerChannel<SubmitInfo> channel;
 
-        public ProcessInfo(String pid, Process process, JobInfo jobInfo) {
-            this.pid = pid;
-            this.process = process;
-            this.jobInfo = jobInfo;
+        public ProcessInfo(int pId, PeerChannel<SubmitInfo> channel) {
+            this.pId = pId;
+            this.channel = channel;
         }
 
-        public JobInfo getJobInfo() {
-            return jobInfo;
+        public PeerChannel getChannel() {
+            return channel;
         }
 
-        public Process getProcess() {
-            return process;
-        }
-
-        public String getPid() {
-            return pid;
+        public int getPid() {
+            return pId;
         }
     }
 

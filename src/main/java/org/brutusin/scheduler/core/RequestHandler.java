@@ -15,6 +15,7 @@
  */
 package org.brutusin.scheduler.core;
 
+import com.sun.jmx.remote.util.EnvHelp;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -32,7 +33,7 @@ import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.ParseException;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.scheduler.core.plug.LinuxCommands;
-import org.brutusin.scheduler.data.RequestInfo;
+import org.brutusin.scheduler.data.SubmitInfo;
 
 /**
  *
@@ -93,15 +94,16 @@ public class RequestHandler {
             String user = LinuxCommands.getInstance().getFileOwner(requestFile);
             FileInputStream fis = new FileInputStream(requestFile);
             String contents = Miscellaneous.toString(fis, "UTF-8");
-            RequestInfo ri = JsonCodec.getInstance().parse(contents, RequestInfo.class);
+            SubmitInfo ri = JsonCodec.getInstance().parse(contents, SubmitInfo.class);
             fis.close();
             requestFile.delete();
-            this.scheduler.submit(id, user, ri);
+            PeerChannel<SubmitInfo> channel = new PeerChannel(user, ri, new File(Environment.ROOT, "/streams/" + id));
+            this.scheduler.submit(channel);
         }
     }
 
     public static void main(String[] args) throws Exception {
-        RequestInfo ri = new RequestInfo();
+        SubmitInfo ri = new SubmitInfo();
         ri.setCommand(new String[]{"ls"});
         ri.setWorkingDirectory(new File("/tmp"));
         ri.setMaxRSS(500000);

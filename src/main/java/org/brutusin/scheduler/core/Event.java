@@ -21,6 +21,7 @@ package org.brutusin.scheduler.core;
  */
 public enum Event {
 
+    id,
     start,
     retcode,
     interrupted,

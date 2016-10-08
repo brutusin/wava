@@ -2,23 +2,17 @@ package org.brutusin.scheduler.data;
 
 import java.io.File;
 import java.util.Map;
-import org.brutusin.json.annotations.JsonProperty;
 
-public class RequestInfo {
+public class SubmitInfo {
 
-    @JsonProperty(description = "Group id of the request. Requests of the same group are scheduled in a FIFO way", required = true)
     private int groupId;
 
-    @JsonProperty(description = "Command and parameters to execute")
     private String[] command;
 
-    @JsonProperty(description = "Maximum [RSS](https://en.wikipedia.org/wiki/Resident_set_size) that the execution will require")
     private long maxRSS;
     
-    @JsonProperty(description = "Environment properties")
     private Map<String,String> environment;
     
-    @JsonProperty(description = "Working directory")
     private File workingDirectory;
 
     public Map<String, String> getEnvironment() {

@@ -15,6 +15,7 @@
  */
 package org.brutusin.scheduler.core.plug;
 
+import java.io.IOException;
 import org.brutusin.scheduler.core.Scheduler;
 import org.brutusin.scheduler.core.plug.impl.StrictPromiseHandler;
 import org.brutusin.scheduler.data.Stats;
@@ -31,5 +32,5 @@ public abstract class PromiseHandler {
         return INSTANCE;
     }
 
-    public abstract void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, Stats processStats);
+    public abstract void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, Stats processStats) throws IOException, InterruptedException;
 }

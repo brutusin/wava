@@ -41,7 +41,7 @@ import org.brutusin.json.spi.JsonNode;
 import org.brutusin.scheduler.core.Environment;
 import org.brutusin.scheduler.core.Event;
 import org.brutusin.scheduler.core.plug.LinuxCommands;
-import org.brutusin.scheduler.data.RequestInfo;
+import org.brutusin.scheduler.data.SubmitInfo;
 
 /**
  *
@@ -85,7 +85,7 @@ public class PeerProcess {
         return args.length;
     }
 
-    private static RequestInfo getRequest(String[] args) {
+    private static SubmitInfo getRequest(String[] args) {
         Options options = new Options();
         Option hOpt = new Option("h", "print this message");
         Option mOpt = Option.builder("m").argName("bytes number")
@@ -122,7 +122,7 @@ public class PeerProcess {
             } catch (NumberFormatException ex) {
                 throw new ParseException("Invalid memory (-m) value");
             }
-            RequestInfo ri = new RequestInfo();
+            SubmitInfo ri = new SubmitInfo();
             ri.setCommand(Arrays.copyOfRange(args, commandStart, args.length));
             ri.setMaxRSS(memory);
             ri.setWorkingDirectory(new File(""));
@@ -151,7 +151,7 @@ public class PeerProcess {
     }
 
     public static void main(String[] args) throws Exception {
-        RequestInfo ri = getRequest(args);
+        SubmitInfo ri = getRequest(args);
         if (ri != null) {
             File counterFile = new File(Environment.ROOT, "state/.seq");
             long id = Miscellaneous.getGlobalAutoIncremental(counterFile);
@@ -187,6 +187,8 @@ public class PeerProcess {
                                 }
                                 if (evt == Event.ping) {
                                     return;
+                                } else if (evt == Event.id) {
+                                    color = ANSI_CYAN;
                                 } else if (evt == Event.warn) {
                                     color = ANSI_YELLOW;
                                 } else if (evt == Event.error || evt == Event.interrupted) {

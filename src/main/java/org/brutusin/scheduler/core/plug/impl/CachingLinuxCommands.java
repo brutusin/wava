@@ -32,10 +32,10 @@ import org.brutusin.scheduler.data.Stats;
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class CachingLinuxCommands extends LinuxCommands {
-
+    
     private final LinuxCommands commands;
     private final Cache cache;
-
+    
     public CachingLinuxCommands(LinuxCommands commands, int timeToLiveSeconds) {
         this.commands = commands;
         CacheManager cm = CacheManager.create();
@@ -45,9 +45,14 @@ public class CachingLinuxCommands extends LinuxCommands {
                 .persistence(new PersistenceConfiguration().strategy(PersistenceConfiguration.Strategy.NONE)));
         cm.addCache(cache);
     }
-
+    
     @Override
-    public Map<String, Stats> getStats(String[] pIds) throws IOException, InterruptedException {
+    public void killTree(int pid) throws IOException, InterruptedException {
+        this.commands.killTree(pid);
+    }
+    
+    @Override
+    public Map<String, Stats> getStats(int[] pIds) throws IOException, InterruptedException {
         String key = Arrays.toString(pIds);
         Element element = cache.get(key);
         if (element == null) {
@@ -62,7 +67,7 @@ public class CachingLinuxCommands extends LinuxCommands {
         }
         return (Map<String, Stats>) element.getObjectValue();
     }
-
+    
     @Override
     public long getSystemRSSUsedMemory() throws IOException, InterruptedException {
         String key = "getSystemRSSUsedMemory";
@@ -79,7 +84,7 @@ public class CachingLinuxCommands extends LinuxCommands {
         }
         return (Long) element.getObjectValue();
     }
-
+    
     @Override
     public long getSystemRSSFreeMemory() throws IOException, InterruptedException {
         String key = "getSystemRSSFreeMemory";
@@ -96,7 +101,7 @@ public class CachingLinuxCommands extends LinuxCommands {
         }
         return (Long) element.getObjectValue();
     }
-
+    
     @Override
     public long getSystemRSSMemory() throws IOException, InterruptedException {
         String key = "getSystemRSSMemory";
@@ -113,7 +118,7 @@ public class CachingLinuxCommands extends LinuxCommands {
         }
         return (Long) element.getObjectValue();
     }
-
+    
     @Override
     public String getFileOwner(File f) throws IOException, InterruptedException {
         String key = f.getAbsolutePath();
@@ -130,7 +135,7 @@ public class CachingLinuxCommands extends LinuxCommands {
         }
         return (String) element.getObjectValue();
     }
-
+    
     @Override
     public String getRunningUser() throws IOException, InterruptedException {
         String key = "getRunningUser";
@@ -147,12 +152,12 @@ public class CachingLinuxCommands extends LinuxCommands {
         }
         return (String) element.getObjectValue();
     }
-
+    
     @Override
     public String[] getRunAsCommand(String user, String[] cmd) {
         return commands.getRunAsCommand(user, cmd);
     }
-
+    
     @Override
     public void createNamedPipes(File... files) throws IOException, InterruptedException {
         commands.createNamedPipes(files);

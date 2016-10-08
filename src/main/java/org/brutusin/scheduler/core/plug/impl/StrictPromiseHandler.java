@@ -15,9 +15,11 @@
  */
 package org.brutusin.scheduler.core.plug.impl;
 
+import java.io.IOException;
 import org.brutusin.scheduler.core.Event;
 import org.brutusin.scheduler.core.plug.PromiseHandler;
 import org.brutusin.scheduler.core.Scheduler;
+import org.brutusin.scheduler.core.plug.LinuxCommands;
 import org.brutusin.scheduler.data.Stats;
 
 /**
@@ -26,8 +28,9 @@ import org.brutusin.scheduler.data.Stats;
  */
 public class StrictPromiseHandler extends PromiseHandler {
 
-    public void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, Stats processStats) {
-        pi.getJobInfo().sendLogToPeer(Event.warn, "memory promise excedeed");
-        pi.getProcess().destroy();
+    @Override
+    public void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, Stats processStats) throws IOException, InterruptedException {
+        pi.getChannel().sendLogToPeer(Event.warn, "memory promise excedeed");
+        LinuxCommands.getInstance().killTree(pi.getPid());
     }
 }
