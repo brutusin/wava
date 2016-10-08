@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
@@ -43,17 +44,6 @@ public class POSIXCommandsImpl extends LinuxCommands {
                 sb.append(",");
             }
             sb.append(pIds[i]);
-        }
-        return sb.toString();
-    }
-
-    private static String getPIdList(Set<Integer> pIds) {
-        StringBuilder sb = new StringBuilder("");
-        for (Integer pId : pIds) {
-            if (sb.length() > 0) {
-                sb.append(",");
-            }
-            sb.append(pId);
         }
         return sb.toString();
     }
@@ -126,7 +116,15 @@ public class POSIXCommandsImpl extends LinuxCommands {
 
     private void kill(Set<Integer> pIds, int signal) throws InterruptedException {
         try {
-            Process p = Runtime.getRuntime().exec(new String[]{"kill", "-s", String.valueOf(signal), getPIdList(pIds)});
+            String[] cmd = new String[3+pIds.size()];
+            cmd[0]="kill";
+            cmd[1]="-s";
+            cmd[2]=String.valueOf(signal);
+            Iterator<Integer> it = pIds.iterator();
+            for (int i = 3; i < cmd.length; i++) {
+                cmd[i] = String.valueOf(it.next());
+            }
+            Process p = Runtime.getRuntime().exec(cmd);
             ProcessUtils.execute(p);
         } catch (Exception ex) {
             if (ex instanceof InterruptedException) {
