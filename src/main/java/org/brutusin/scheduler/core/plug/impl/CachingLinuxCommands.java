@@ -52,20 +52,20 @@ public class CachingLinuxCommands extends LinuxCommands {
     }
     
     @Override
-    public Map<String, Stats> getStats(int[] pIds) throws IOException, InterruptedException {
+    public Map<Integer, Stats> getStats(int[] pIds) throws IOException, InterruptedException {
         String key = Arrays.toString(pIds);
         Element element = cache.get(key);
         if (element == null) {
             synchronized (cache) {
                 element = cache.get(key);
                 if (element == null) {
-                    Map<String, Stats> stats = commands.getStats(pIds);
+                    Map<Integer, Stats> stats = commands.getStats(pIds);
                     element = new Element(key, stats);
                     cache.put(element);
                 }
             }
         }
-        return (Map<String, Stats>) element.getObjectValue();
+        return (Map<Integer, Stats>) element.getObjectValue();
     }
     
     @Override

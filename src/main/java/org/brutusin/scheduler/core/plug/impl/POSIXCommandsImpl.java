@@ -34,9 +34,9 @@ import org.brutusin.scheduler.data.Stats;
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class POSIXCommandsImpl extends LinuxCommands {
-
+    
     private static final int SIGKILL_DELAY_SECONDS = 5;
-
+    
     private static String getPIdList(int[] pIds) {
         StringBuilder sb = new StringBuilder("");
         for (int i = 0; i < pIds.length; i++) {
@@ -47,7 +47,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         return sb.toString();
     }
-
+    
     private static String executeBashCommand(String command) throws IOException, InterruptedException {
         String[] cmd = {"/bin/bash", "-c", command};
         Process p = Runtime.getRuntime().exec(cmd);
@@ -87,9 +87,9 @@ public class POSIXCommandsImpl extends LinuxCommands {
         };
         t.setName("killtree " + pId);
         t.start();
-
+        
     }
-
+    
     public void getAndStopTree(Set<Integer> visited, int pId) throws InterruptedException {
         try {
             // needed to stop quickly forking parent from producing children between child killing and parent killing
@@ -113,13 +113,13 @@ public class POSIXCommandsImpl extends LinuxCommands {
             visited.add(pId);
         }
     }
-
+    
     private void kill(Set<Integer> pIds, int signal) throws InterruptedException {
         try {
-            String[] cmd = new String[3+pIds.size()];
-            cmd[0]="kill";
-            cmd[1]="-s";
-            cmd[2]=String.valueOf(signal);
+            String[] cmd = new String[3 + pIds.size()];
+            cmd[0] = "kill";
+            cmd[1] = "-s";
+            cmd[2] = String.valueOf(signal);
             Iterator<Integer> it = pIds.iterator();
             for (int i = 3; i < cmd.length; i++) {
                 cmd[i] = String.valueOf(it.next());
@@ -134,43 +134,51 @@ public class POSIXCommandsImpl extends LinuxCommands {
             }
         }
     }
-
+    
     @Override
     public long getSystemRSSUsedMemory() throws IOException, InterruptedException {
         return getSystemRSSMemory() - getSystemRSSFreeMemory();
     }
-
+    
     @Override
-    public Map<String, Stats> getStats(int[] pids) throws IOException, InterruptedException {
-        Map<String, Stats> ret = new HashMap<String, Stats>();
-        String[] cmd = {"ps", "-p", getPIdList(pids), "-o", "pid,rss,pcpu", "--no-headers"};
+    public Map<Integer, Stats> getStats(int[] pIds) throws IOException, InterruptedException {
+        Map<Integer, Stats> ret = new HashMap<>();
+        String[] cmd = new String[pIds.length + 5];
+        cmd[0] = "ps";
+        cmd[1] = "-o";
+        cmd[2] = "pid,rss,pcpu";
+        cmd[3] = "--no-headers";
+        cmd[4] = "-p";
+        for (int i = 5; i < cmd.length; i++) {
+            cmd[i] = String.valueOf(pIds[i - 5]);
+        }
         Process p = Runtime.getRuntime().exec(cmd);
         String stdout = ProcessUtils.execute(p)[0];
         if (stdout != null) {
             String[] lines = stdout.split("\n");
-            for (int i = 0; i < lines.length; i++) {
-                String[] cols = lines[i].split("\\s+");
+            for (String line : lines) {
+                String[] cols = line.split("\\s+");
                 Stats st = new Stats();
                 st.setRssBytes(Integer.valueOf(cols[1]));
                 st.setCpuPercent(Double.valueOf(cols[2]));
-                ret.put(cols[0], st);
+                ret.put(Integer.valueOf(cols[0]), st);
             }
         }
         return ret;
     }
-
+    
     @Override
     public long getSystemRSSFreeMemory() throws IOException, InterruptedException {
         String ouput = executeBashCommand("echo $((`cat /proc/meminfo | grep ^Cached:| awk '{print $2}'` + `cat /proc/meminfo | grep ^MemFree:| awk '{print $2}'` ))");
         return Long.valueOf(ouput);
     }
-
+    
     @Override
     public long getSystemRSSMemory() throws IOException, InterruptedException {
         String ouput = executeBashCommand("cat /proc/meminfo | grep ^MemTotal:| awk '{print $2}'");
         return Long.valueOf(ouput);
     }
-
+    
     @Override
     public String[] getRunAsCommand(String user, String[] cmd) {
         StringBuilder sb = new StringBuilder("");
@@ -182,14 +190,14 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         return new String[]{"runuser", "-p", user, "-c", sb.toString()};
     }
-
+    
     @Override
     public String getRunningUser() throws IOException, InterruptedException {
         String[] cmd = {"id", "-un"};
         Process p = Runtime.getRuntime().exec(cmd);
         return ProcessUtils.execute(p)[0];
     }
-
+    
     @Override
     public void createNamedPipes(File... files) throws IOException, InterruptedException {
         String[] mkfifo = new String[files.length + 1];
@@ -210,10 +218,10 @@ public class POSIXCommandsImpl extends LinuxCommands {
         p = Runtime.getRuntime().exec(chmod);
         ProcessUtils.execute(p);
     }
-
+    
     @Override
     public String getFileOwner(File f) throws IOException, InterruptedException {
         return executeBashCommand("ls -ld \"" + f.getAbsolutePath() + "\" | awk 'NR==1 {print $3}'");
     }
-
+    
 }

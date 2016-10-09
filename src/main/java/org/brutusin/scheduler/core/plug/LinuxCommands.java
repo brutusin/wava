@@ -34,7 +34,7 @@ public abstract class LinuxCommands {
         return INSTANCE;
     }
 
-    public abstract Map<String, Stats> getStats(int[] pids) throws IOException, InterruptedException;
+    public abstract Map<Integer, Stats> getStats(int[] pids) throws IOException, InterruptedException;
     
     public abstract void killTree(int pid) throws IOException, InterruptedException;
 

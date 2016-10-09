@@ -164,7 +164,7 @@ public class Scheduler {
     private void checkPromises(long availableMemory) throws IOException, InterruptedException {
         int[] pIds = getPIds();
         if (pIds.length > 0) {
-            Map<String, Stats> statMap = LinuxCommands.getInstance().getStats(pIds);
+            Map<Integer, Stats> statMap = LinuxCommands.getInstance().getStats(pIds);
             synchronized (processMap) {
                 for (Map.Entry<Integer, ProcessInfo> entry : processMap.entrySet()) {
                     ProcessInfo pi = entry.getValue();
@@ -472,7 +472,7 @@ public class Scheduler {
 
     public static class Config {
 
-        private int pollingSecs = 10;
+        private int pollingSecs = 5;
         private int maxTotalRSSBytes = -1;
 
         public Config() {
