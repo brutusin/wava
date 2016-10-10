@@ -15,6 +15,13 @@
  */
 package org.brutusin.wava.main;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileLock;
+import org.brutusin.commons.utils.Miscellaneous;
+import org.brutusin.wava.core.ANSIColor;
+import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.RequestHandler;
 import org.brutusin.wava.core.Scheduler;
 
@@ -23,9 +30,24 @@ import org.brutusin.wava.core.Scheduler;
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class CoreMain {
+
+    private static FileLock tryLock(File f) throws IOException {
+        RandomAccessFile raf = new RandomAccessFile(f, "rws");
+        return raf.getChannel().tryLock();
+    }
+
     public static void main(String[] args) throws Exception {
-        Scheduler scheduler = new Scheduler();
-        RequestHandler requestHandler = new RequestHandler(scheduler);
-        requestHandler.start();
+        FileLock lock = tryLock(new File(Environment.ROOT, ".lock"));
+        if (lock == null) {
+            System.err.println(ANSIColor.RED + "Another WAVA core process is running!" + ANSIColor.RESET);
+            System.exit(-2);
+        }
+        try {
+            Scheduler scheduler = new Scheduler();
+            RequestHandler requestHandler = new RequestHandler(scheduler);
+            requestHandler.start();
+        } finally {
+            lock.release();
+        }
     }
 }

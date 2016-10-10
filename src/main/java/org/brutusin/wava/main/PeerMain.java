@@ -18,9 +18,12 @@ package org.brutusin.wava.main;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileLock;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -38,6 +41,7 @@ import org.brutusin.commons.Bean;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.json.spi.JsonNode;
+import org.brutusin.wava.core.ANSIColor;
 import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.Event;
 import org.brutusin.wava.core.plug.LinuxCommands;
@@ -50,17 +54,6 @@ import org.brutusin.wava.data.SubmitInfo;
 public class PeerMain {
 
     private final static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-
-    public static final String ANSI_RESET = "\u001B[0m";
-    public static final String ANSI_BLACK = "\u001B[30m";
-    public static final String ANSI_RED = "\u001B[31m";
-    public static final String ANSI_GREEN = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE = "\u001B[34m";
-    public static final String ANSI_PURPLE = "\u001B[35m";
-    public static final String ANSI_CYAN = "\u001B[36m";
-    public static final String ANSI_WHITE = "\u001B[37m";
-
     private static final Pattern EVENT_PATTERN;
 
     static {
@@ -146,11 +139,21 @@ public class PeerMain {
     private static void showHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
         PrintWriter pw = new PrintWriter(System.err);
-        formatter.printHelp(pw, Integer.MAX_VALUE, "schedule.sh [options] [command]\nEnqueues a command to be executed when enough RSS memory is available", "\nOptions:", options, 4, 4, "");
+        formatter.printHelp(pw, Integer.MAX_VALUE, "wava.sh [options] [command]\nEnqueues a command to be executed [W]hen enough RSS memory is [AVA]ilable", "\nOptions:", options, 4, 4, "");
         pw.flush();
     }
 
+    private static FileLock tryLock(File f) throws IOException {
+        RandomAccessFile raf = new RandomAccessFile(f, "rws");
+        return raf.getChannel().tryLock();
+    }
+
     public static void main(String[] args) throws Exception {
+        FileLock lock = tryLock(new File(Environment.ROOT, ".lock"));
+        if (lock != null) {
+            System.err.println(ANSIColor.RED + "WAVA core process is not running!" + ANSIColor.RESET);
+            System.exit(-2);
+        }
         SubmitInfo ri = getRequest(args);
         if (ri != null) {
             File counterFile = new File(Environment.ROOT, "state/.seq");
@@ -174,7 +177,7 @@ public class PeerMain {
                         BufferedReader br = new BufferedReader(new InputStreamReader(lcIs));
                         String line;
                         while ((line = br.readLine()) != null) {
-                            String color = ANSI_RESET;
+                            String color = ANSIColor.RESET;
                             String value = line;
                             Matcher matcher = EVENT_PATTERN.matcher(line);
                             if (matcher.matches()) {
@@ -188,22 +191,22 @@ public class PeerMain {
                                 if (evt == Event.ping) {
                                     return;
                                 } else if (evt == Event.id || evt == Event.start) {
-                                    color = ANSI_CYAN;
+                                    color = ANSIColor.CYAN;
                                 } else if (evt == Event.warn) {
-                                    color = ANSI_YELLOW;
+                                    color = ANSIColor.YELLOW;
                                 } else if (evt == Event.error || evt == Event.interrupted) {
-                                    color = ANSI_RED;
+                                    color = ANSIColor.RED;
                                 } else if (evt == Event.retcode) {
                                     retCode.setValue(node.asInteger());
                                     if (retCode.getValue() == 0) {
-                                        color = ANSI_GREEN;
+                                        color = ANSIColor.GREEN;
                                     } else {
-                                        color = ANSI_RED;
+                                        color = ANSIColor.RED;
                                     }
                                 } else if (evt == Event.info) {
-                                    color = ANSI_GREEN;
+                                    color = ANSIColor.GREEN;
                                 }
-                                System.err.println(color + "[" + date + "][scheduler:" + evt + "] " + value + ANSI_RESET);
+                                System.err.println(color + "[" + date + "][scheduler:" + evt + "] " + value + ANSIColor.RESET);
                             }
                         }
                     } catch (Throwable th) {
