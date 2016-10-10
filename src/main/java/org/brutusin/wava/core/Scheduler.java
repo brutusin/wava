@@ -1,7 +1,8 @@
-package org.brutusin.scheduler.core;
+package org.brutusin.wava.core;
 
-import org.brutusin.scheduler.core.plug.PromiseHandler;
-import org.brutusin.scheduler.core.plug.LinuxCommands;
+import org.brutusin.wava.core.cfg.Config;
+import org.brutusin.wava.core.plug.PromiseHandler;
+import org.brutusin.wava.core.plug.LinuxCommands;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
@@ -16,9 +17,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.brutusin.commons.utils.Miscellaneous;
-import org.brutusin.scheduler.data.CancelInfo;
-import org.brutusin.scheduler.data.SubmitInfo;
-import org.brutusin.scheduler.data.Stats;
+import org.brutusin.wava.data.CancelInfo;
+import org.brutusin.wava.data.SubmitInfo;
+import org.brutusin.wava.data.Stats;
 
 public class Scheduler {
 
@@ -31,20 +32,12 @@ public class Scheduler {
     private final ThreadGroup threadGroup = new ThreadGroup(Scheduler.class.getName());
     private final AtomicInteger counter = new AtomicInteger();
     private final Thread processingThread;
-    private final Config cfg;
 
     private final String runningUser;
     private boolean closed;
 
-    public Scheduler() throws IOException, InterruptedException {
-        this(null);
-    }
 
-    public Scheduler(Config cfg) throws IOException, InterruptedException {
-        if (cfg == null) {
-            cfg = new Config();
-        }
-        this.cfg = cfg;
+    public Scheduler() throws IOException, InterruptedException {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
 
         remakeFolder(new File(Environment.ROOT, "streams/"));
@@ -59,7 +52,7 @@ public class Scheduler {
                         break;
                     }
                     try {
-                        Thread.sleep(Scheduler.this.cfg.getPollingSecs() * 1000);
+                        Thread.sleep(Config.getInstance().getPollingSecs() * 1000);
                         refresh();
                     } catch (Throwable th) {
                         LOGGER.log(Level.SEVERE, null, th);
@@ -130,8 +123,8 @@ public class Scheduler {
         cleanStalePeers();
         long maxPromisedMemory = getMaxPromisedMemory();
         long availableMemory;
-        if (cfg.getMaxTotalRSSBytes() > 0) {
-            availableMemory = cfg.getMaxTotalRSSBytes() - maxPromisedMemory;
+        if (Config.getInstance().getMaxTotalRSSBytes() > 0) {
+            availableMemory = Config.getInstance().getMaxTotalRSSBytes() - maxPromisedMemory;
         } else {
             availableMemory = LinuxCommands.getInstance().getSystemRSSMemory() - maxPromisedMemory;
         }
@@ -286,8 +279,8 @@ public class Scheduler {
                 } else {
                     cmd = channel.getRequest().getCommand();
                 }
-                ProcessBuilder pb = new ProcessBuilder(cmd);
-                //pb.environment().clear();
+                ProcessBuilder pb = new ProcessBuilder(LinuxCommands.getInstance().getCommandCPUAffinity(cmd, Config.getInstance().getCpuAfinity()));
+                pb.environment().clear();
                 pb.directory(channel.getRequest().getWorkingDirectory());
                 if (channel.getRequest().getEnvironment() != null) {
                     pb.environment().putAll(channel.getRequest().getEnvironment());
@@ -467,44 +460,6 @@ public class Scheduler {
 
         public int getPid() {
             return pId;
-        }
-    }
-
-    public static class Config {
-
-        private int pollingSecs = 5;
-        private int maxTotalRSSBytes = -1;
-
-        public Config() {
-        }
-
-        public int getPollingSecs() {
-            return pollingSecs;
-        }
-
-        public int getMaxTotalRSSBytes() {
-            return maxTotalRSSBytes;
-        }
-
-        public void setPollingSecs(int pollingSecs) {
-            if (pollingSecs < 1) {
-                throw new IllegalArgumentException("pollingSecs must be a positive integer");
-            }
-            this.pollingSecs = pollingSecs;
-        }
-
-        public void setMaxTotalRSSBytes(int maxTotalRSSBytes) {
-            this.maxTotalRSSBytes = maxTotalRSSBytes;
-        }
-
-        public Config pollingSecs(int pollingSecs) {
-            setPollingSecs(pollingSecs);
-            return this;
-        }
-
-        public Config maxTotalRSSBytes(int maxTotalRSSBytes) {
-            setMaxTotalRSSBytes(maxTotalRSSBytes);
-            return this;
         }
     }
 }

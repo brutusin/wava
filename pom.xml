@@ -7,28 +7,28 @@
         <version>1.0.4</version>
     </parent>
     <groupId>org.brutusin</groupId>
-    <artifactId>linux-scheduler</artifactId>
+    <artifactId>wava</artifactId>
     <packaging>jar</packaging>   
     <version>1.4.2-SNAPSHOT</version>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>A RSS-memory-aware scheduler for Linux batch processes</description>
     
-    <url>https://github.com/brutusin/linux-scheduler</url>
+    <url>https://github.com/brutusin/wava</url>
     
     <issueManagement>
         <system>GitHub Issues</system>
-        <url>https://github.com/brutusin/linux-scheduler/issues</url>
+        <url>https://github.com/brutusin/wava/issues</url>
     </issueManagement>
     
     <ciManagement>
         <system>travis-ci</system>
-        <url>https://travis-ci.org/brutusin/linux-scheduler</url>
+        <url>https://travis-ci.org/brutusin/wava</url>
     </ciManagement>
     
     <scm>
-        <url>https://github.com/brutusin/linux-scheduler</url>
-        <connection>scm:git:https://github.com/brutusin/linux-scheduler.git</connection>
-        <developerConnection>scm:git:https://github.com/brutusin/linux-scheduler.git</developerConnection>
+        <url>https://github.com/brutusin/wava</url>
+        <connection>scm:git:https://github.com/brutusin/wava.git</connection>
+        <developerConnection>scm:git:https://github.com/brutusin/wava.git</developerConnection>
         <tag>v1.0.2</tag>
     </scm>
     
@@ -75,6 +75,11 @@
             <groupId>net.sf.ehcache</groupId>
             <artifactId>ehcache</artifactId>
             <version>2.10.2.2.21</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-nop</artifactId>
+            <version>1.7.21</version>
         </dependency>
     </dependencies>
     <build>

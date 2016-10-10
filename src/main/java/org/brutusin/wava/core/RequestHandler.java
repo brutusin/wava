@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.scheduler.core;
+package org.brutusin.wava.core;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -31,8 +31,8 @@ import java.util.logging.Logger;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.ParseException;
 import org.brutusin.json.spi.JsonCodec;
-import org.brutusin.scheduler.core.plug.LinuxCommands;
-import org.brutusin.scheduler.data.SubmitInfo;
+import org.brutusin.wava.core.plug.LinuxCommands;
+import org.brutusin.wava.data.SubmitInfo;
 
 /**
  *

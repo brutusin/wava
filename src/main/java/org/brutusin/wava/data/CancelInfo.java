@@ -1,4 +1,4 @@
-package org.brutusin.scheduler.data;
+package org.brutusin.wava.data;
 
 public class CancelInfo {
 

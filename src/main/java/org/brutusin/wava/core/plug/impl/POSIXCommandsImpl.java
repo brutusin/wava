@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.scheduler.core.plug.impl;
+package org.brutusin.wava.core.plug.impl;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,28 +26,16 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.commons.utils.ProcessUtils;
-import org.brutusin.scheduler.core.plug.LinuxCommands;
-import org.brutusin.scheduler.data.Stats;
+import org.brutusin.wava.core.cfg.Config;
+import org.brutusin.wava.core.plug.LinuxCommands;
+import org.brutusin.wava.data.Stats;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class POSIXCommandsImpl extends LinuxCommands {
-    
-    private static final int SIGKILL_DELAY_SECONDS = 5;
-    
-    private static String getPIdList(int[] pIds) {
-        StringBuilder sb = new StringBuilder("");
-        for (int i = 0; i < pIds.length; i++) {
-            if (i > 0) {
-                sb.append(",");
-            }
-            sb.append(pIds[i]);
-        }
-        return sb.toString();
-    }
-    
+
     private static String executeBashCommand(String command) throws IOException, InterruptedException {
         String[] cmd = {"/bin/bash", "-c", command};
         Process p = Runtime.getRuntime().exec(cmd);
@@ -55,21 +43,6 @@ public class POSIXCommandsImpl extends LinuxCommands {
         return ret[0];
     }
 
-    /**
-     *
-     * killtree() { local _pid=$1 local _sig=${2:--TERM} kill -stop ${_pid}
-     * 2>/dev/null # needed to stop quickly forking parent from producing
-     * children between child killing and parent killing for _child in $(ps -o
-     * pid --no-headers --ppid ${_pid}); do killtree ${_child} ${_sig}
-     * 2>/dev/null done kill -${_sig} ${_pid} 2>/dev/null }
-     *
-     * if [ $# -eq 0 -o $# -gt 2 ]; then echo "Usage: $(basename $0) <pid>
-     * [signal]" exit 1 fi
-     *
-     * @param pId
-     * @throws IOException
-     * @throws InterruptedException
-     */
     @Override
     public void killTree(int pId) throws IOException, InterruptedException {
         final Set<Integer> visitedIds = new HashSet<>();
@@ -79,7 +52,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             @Override
             public void run() {
                 try {
-                    Thread.sleep(1000 * SIGKILL_DELAY_SECONDS);
+                    Thread.sleep(1000 * Config.getInstance().getSigKillDelaySecs());
                     kill(visitedIds, 9); // SIGKILL
                 } catch (InterruptedException ex) {
                 }
@@ -87,9 +60,9 @@ public class POSIXCommandsImpl extends LinuxCommands {
         };
         t.setName("killtree " + pId);
         t.start();
-        
+
     }
-    
+
     public void getAndStopTree(Set<Integer> visited, int pId) throws InterruptedException {
         try {
             // needed to stop quickly forking parent from producing children between child killing and parent killing
@@ -113,7 +86,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             visited.add(pId);
         }
     }
-    
+
     private void kill(Set<Integer> pIds, int signal) throws InterruptedException {
         try {
             String[] cmd = new String[3 + pIds.size()];
@@ -134,12 +107,12 @@ public class POSIXCommandsImpl extends LinuxCommands {
             }
         }
     }
-    
+
     @Override
     public long getSystemRSSUsedMemory() throws IOException, InterruptedException {
         return getSystemRSSMemory() - getSystemRSSFreeMemory();
     }
-    
+
     @Override
     public Map<Integer, Stats> getStats(int[] pIds) throws IOException, InterruptedException {
         Map<Integer, Stats> ret = new HashMap<>();
@@ -166,19 +139,31 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         return ret;
     }
-    
+
+    @Override
+    public String[] getCommandCPUAffinity(String[] cmd, String affinity) {
+        String[] ret = new String[cmd.length + 3];
+        ret[0] = "taskset";
+        ret[1] = "-c";
+        ret[2] = affinity;
+        for (int i = 3; i < ret.length; i++) {
+            ret[i] = cmd[i - 3];
+        }
+        return ret;
+    }
+
     @Override
     public long getSystemRSSFreeMemory() throws IOException, InterruptedException {
         String ouput = executeBashCommand("echo $((`cat /proc/meminfo | grep ^Cached:| awk '{print $2}'` + `cat /proc/meminfo | grep ^MemFree:| awk '{print $2}'` ))");
         return Long.valueOf(ouput);
     }
-    
+
     @Override
     public long getSystemRSSMemory() throws IOException, InterruptedException {
         String ouput = executeBashCommand("cat /proc/meminfo | grep ^MemTotal:| awk '{print $2}'");
         return Long.valueOf(ouput);
     }
-    
+
     @Override
     public String[] getRunAsCommand(String user, String[] cmd) {
         StringBuilder sb = new StringBuilder("");
@@ -190,14 +175,14 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         return new String[]{"runuser", "-p", user, "-c", sb.toString()};
     }
-    
+
     @Override
     public String getRunningUser() throws IOException, InterruptedException {
         String[] cmd = {"id", "-un"};
         Process p = Runtime.getRuntime().exec(cmd);
         return ProcessUtils.execute(p)[0];
     }
-    
+
     @Override
     public void createNamedPipes(File... files) throws IOException, InterruptedException {
         String[] mkfifo = new String[files.length + 1];
@@ -218,10 +203,10 @@ public class POSIXCommandsImpl extends LinuxCommands {
         p = Runtime.getRuntime().exec(chmod);
         ProcessUtils.execute(p);
     }
-    
+
     @Override
     public String getFileOwner(File f) throws IOException, InterruptedException {
         return executeBashCommand("ls -ld \"" + f.getAbsolutePath() + "\" | awk 'NR==1 {print $3}'");
     }
-    
+
 }

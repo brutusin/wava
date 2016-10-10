@@ -13,19 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.scheduler.main;
+package org.brutusin.wava.main;
 
-import org.brutusin.scheduler.core.RequestHandler;
-import org.brutusin.scheduler.core.Scheduler;
+import org.brutusin.wava.core.RequestHandler;
+import org.brutusin.wava.core.Scheduler;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class CoreProcess {
+public class CoreMain {
     public static void main(String[] args) throws Exception {
-        Scheduler.Config cfg = null; 
-        Scheduler scheduler = new Scheduler(cfg);
+        Scheduler scheduler = new Scheduler();
         RequestHandler requestHandler = new RequestHandler(scheduler);
         requestHandler.start();
     }

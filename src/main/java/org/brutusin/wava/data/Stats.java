@@ -13,27 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.scheduler.core;
-
-import java.io.File;
+package org.brutusin.wava.data;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public final class Environment {
+public class Stats {
 
-    public static final File ROOT;
-    private static final String BRUTUSIN_SCHEDULER_ENV = "BRUTUSIN_SCHEDULER";
+    private long rssBytes;
+    private double cpuPercent;
 
-    static {
-        String value = System.getenv(BRUTUSIN_SCHEDULER_ENV);
-        if (value == null) {
-            throw new Error("Enviroment variable not found: " + BRUTUSIN_SCHEDULER_ENV);
-        }
-        ROOT = new File(value);
+    public long getRssBytes() {
+        return rssBytes;
     }
 
-    private Environment() {
+    public void setRssBytes(long rssBytes) {
+        this.rssBytes = rssBytes;
+    }
+
+    public double getCpuPercent() {
+        return cpuPercent;
+    }
+
+    public void setCpuPercent(double cpuPercent) {
+        this.cpuPercent = cpuPercent;
     }
 }

@@ -13,30 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.scheduler.data;
+package org.brutusin.wava.core.plug.impl;
+
+import java.io.IOException;
+import org.brutusin.wava.core.Event;
+import org.brutusin.wava.core.plug.PromiseHandler;
+import org.brutusin.wava.core.Scheduler;
+import org.brutusin.wava.core.plug.LinuxCommands;
+import org.brutusin.wava.data.Stats;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class Stats {
+public class StrictPromiseHandler extends PromiseHandler {
 
-    private long rssBytes;
-    private double cpuPercent;
-
-    public long getRssBytes() {
-        return rssBytes;
-    }
-
-    public void setRssBytes(long rssBytes) {
-        this.rssBytes = rssBytes;
-    }
-
-    public double getCpuPercent() {
-        return cpuPercent;
-    }
-
-    public void setCpuPercent(double cpuPercent) {
-        this.cpuPercent = cpuPercent;
+    @Override
+    public void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, Stats processStats) throws IOException, InterruptedException {
+        pi.getChannel().sendLogToPeer(Event.warn, "memory promise excedeed");
+        LinuxCommands.getInstance().killTree(pi.getPid());
     }
 }

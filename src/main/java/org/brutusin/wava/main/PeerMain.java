@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.scheduler.main;
+package org.brutusin.wava.main;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -38,16 +38,16 @@ import org.brutusin.commons.Bean;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.json.spi.JsonNode;
-import org.brutusin.scheduler.core.Environment;
-import org.brutusin.scheduler.core.Event;
-import org.brutusin.scheduler.core.plug.LinuxCommands;
-import org.brutusin.scheduler.data.SubmitInfo;
+import org.brutusin.wava.core.Environment;
+import org.brutusin.wava.core.Event;
+import org.brutusin.wava.core.plug.LinuxCommands;
+import org.brutusin.wava.data.SubmitInfo;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class PeerProcess {
+public class PeerMain {
 
     private final static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 

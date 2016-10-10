@@ -13,24 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.scheduler.core.plug;
+package org.brutusin.wava.core;
 
-import java.io.IOException;
-import org.brutusin.scheduler.core.Scheduler;
-import org.brutusin.scheduler.core.plug.impl.StrictPromiseHandler;
-import org.brutusin.scheduler.data.Stats;
+import java.io.File;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public abstract class PromiseHandler {
+public final class Environment {
 
-    private static final PromiseHandler INSTANCE = new StrictPromiseHandler();
+    public static final File ROOT;
+    private static final String WAVA_HOME = "WAVA_HOME";
 
-    public static PromiseHandler getInstance() {
-        return INSTANCE;
+    static {
+        String value = System.getenv(WAVA_HOME);
+        if (value == null) {
+            throw new Error("Enviroment variable not found: " + WAVA_HOME);
+        }
+        ROOT = new File(value);
     }
 
-    public abstract void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, Stats processStats) throws IOException, InterruptedException;
+    private Environment() {
+    }
 }

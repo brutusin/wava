@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.scheduler.core.plug;
+package org.brutusin.wava.core.plug;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
-import org.brutusin.scheduler.core.plug.impl.CachingLinuxCommands;
-import org.brutusin.scheduler.core.plug.impl.POSIXCommandsImpl;
-import org.brutusin.scheduler.data.Stats;
+import org.brutusin.wava.core.plug.impl.CachingLinuxCommands;
+import org.brutusin.wava.core.plug.impl.POSIXCommandsImpl;
+import org.brutusin.wava.data.Stats;
 
 /**
  *
@@ -28,12 +28,14 @@ import org.brutusin.scheduler.data.Stats;
  */
 public abstract class LinuxCommands {
 
-    private static final LinuxCommands INSTANCE = new CachingLinuxCommands(new POSIXCommandsImpl(), 2);
+    private static final LinuxCommands INSTANCE = new CachingLinuxCommands(new POSIXCommandsImpl());
 
     public static LinuxCommands getInstance() {
         return INSTANCE;
     }
 
+    public abstract String[] getCommandCPUAffinity(String[] cmd, String affinity);
+    
     public abstract Map<Integer, Stats> getStats(int[] pids) throws IOException, InterruptedException;
     
     public abstract void killTree(int pid) throws IOException, InterruptedException;
