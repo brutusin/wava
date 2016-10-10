@@ -16,6 +16,7 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.brutusin.commons.utils.ErrorHandler;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.wava.data.CancelInfo;
 import org.brutusin.wava.data.SubmitInfo;
@@ -35,7 +36,6 @@ public class Scheduler {
 
     private final String runningUser;
     private boolean closed;
-
 
     public Scheduler() throws IOException, InterruptedException {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
@@ -202,6 +202,7 @@ public class Scheduler {
             if (submitChannel != null) {
                 if (!cancelChannel.getUser().equals("root") && !cancelChannel.getUser().equals(submitChannel.getUser())) {
                     cancelChannel.sendLogToPeer(Event.error, "user '" + cancelChannel.getUser() + "' is not allowed to cancel a job from user '" + submitChannel.getUser() + "'");
+                    cancelChannel.sendLogToPeer(Event.retcode, "-1");
                     cancelChannel.close();
                     return;
                 }
@@ -212,6 +213,7 @@ public class Scheduler {
                 submitChannel.sendLogToPeer(Event.retcode, "-1");
                 submitChannel.close();
                 cancelChannel.sendLogToPeer(Event.info, "enqueued job sucessfully cancelled");
+                cancelChannel.sendLogToPeer(Event.retcode, "0");
                 cancelChannel.close();
                 return;
             }
@@ -219,10 +221,12 @@ public class Scheduler {
         ProcessInfo pi = processMap.get(cancelChannel.getRequest().getId());
         if (pi == null) {
             cancelChannel.sendLogToPeer(Event.error, "job #" + cancelChannel.getRequest().getId() + " not found");
+            cancelChannel.sendLogToPeer(Event.retcode, "-1");
             cancelChannel.close();
         } else {
             LinuxCommands.getInstance().killTree(pi.getPid());
             cancelChannel.sendLogToPeer(Event.info, "running job sucessfully cancelled");
+            cancelChannel.sendLogToPeer(Event.retcode, "0");
             cancelChannel.close();
         }
     }
@@ -298,9 +302,9 @@ public class Scheduler {
                         channel.sendLogToPeer(Event.error, Miscellaneous.getStrackTrace(ex));
                         return;
                     }
-                    Thread stoutReaderThread = Miscellaneous.pipeAsynchronously(process.getInputStream(), channel.getStdoutOs());
+                    Thread stoutReaderThread = Miscellaneous.pipeAsynchronously(process.getInputStream(), (ErrorHandler) null, channel.getStdoutOs());
                     stoutReaderThread.setName("stdout-pid-" + pId);
-                    Thread sterrReaderThread = Miscellaneous.pipeAsynchronously(process.getErrorStream(), channel.getStderrOs());
+                    Thread sterrReaderThread = Miscellaneous.pipeAsynchronously(process.getErrorStream(), (ErrorHandler) null, channel.getStderrOs());
                     sterrReaderThread.setName("stderr-pid-" + pId);
                     try {
                         int code = process.waitFor();

@@ -28,10 +28,14 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.ParseException;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.core.plug.LinuxCommands;
+import org.brutusin.wava.data.CancelInfo;
+import org.brutusin.wava.data.OpName;
 import org.brutusin.wava.data.SubmitInfo;
 
 /**
@@ -41,6 +45,20 @@ import org.brutusin.wava.data.SubmitInfo;
 public class RequestHandler {
 
     private static final Logger LOGGER = Logger.getLogger(RequestHandler.class.getName());
+    public static final Pattern OP_FILE_PATTERN;
+
+    static {
+        StringBuilder sb = new StringBuilder("(\\d+)-(");
+        OpName[] values = OpName.values();
+        for (int i = 0; i < values.length; i++) {
+            if (i > 0) {
+                sb.append("|");
+            }
+            sb.append(values[i]);
+        }
+        sb.append(")");
+        OP_FILE_PATTERN = Pattern.compile(sb.toString());
+    }
 
     private final Scheduler scheduler;
 
@@ -86,18 +104,25 @@ public class RequestHandler {
     }
 
     private void handleRequest(File requestFile) throws IOException, InterruptedException, ParseException {
-        String name = requestFile.getName();
-        int index = name.indexOf("-schedule.json");
-        if (index > 0) {
-            Integer id = Integer.valueOf(name.substring(0, index));
+        Matcher matcher = OP_FILE_PATTERN.matcher(requestFile.getName());
+        if (matcher.matches()) {
+            Integer id = Integer.valueOf(matcher.group(1));
+            OpName opName = OpName.valueOf(matcher.group(2));
             String user = LinuxCommands.getInstance().getFileOwner(requestFile);
-            FileInputStream fis = new FileInputStream(requestFile);
-            String contents = Miscellaneous.toString(fis, "UTF-8");
-            SubmitInfo ri = JsonCodec.getInstance().parse(contents, SubmitInfo.class);
-            fis.close();
+            String json;
+            try (FileInputStream fis = new FileInputStream(requestFile)) {
+                json = Miscellaneous.toString(fis, "UTF-8");
+            }
             requestFile.delete();
-            PeerChannel<SubmitInfo> channel = new PeerChannel(user, ri, new File(Environment.ROOT, "/streams/" + id));
-            this.scheduler.submit(channel);
+            if (opName == OpName.submit) {
+                SubmitInfo input = JsonCodec.getInstance().parse(json, SubmitInfo.class);
+                PeerChannel<SubmitInfo> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                this.scheduler.submit(channel);
+            } else if (opName == OpName.cancel) {
+                CancelInfo input = JsonCodec.getInstance().parse(json, CancelInfo.class);
+                PeerChannel<CancelInfo> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                this.scheduler.cancel(channel);
+            }
         }
     }
 
@@ -110,8 +135,10 @@ public class RequestHandler {
 
         String s = JsonCodec.getInstance().transform(new File("/tmp"));
         System.out.println(s);
-        System.out.println(JsonCodec.getInstance().parse(s, File.class).getAbsolutePath());
-        System.out.println(JsonCodec.getInstance().parse(s, File.class).getAbsolutePath());
+        System.out.println(JsonCodec.getInstance().parse(s, File.class
+        ).getAbsolutePath());
+        System.out.println(JsonCodec.getInstance().parse(s, File.class
+        ).getAbsolutePath());
         System.out.println(ri.getWorkingDirectory().getAbsolutePath());
     }
 
