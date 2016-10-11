@@ -90,7 +90,7 @@ public final class Utils {
     public static void validateCoreRunning() throws IOException {
         FileLock lock = Utils.tryLock(new File(Environment.ROOT, ".lock"));
         if (lock != null) {
-            System.err.println(ANSIColor.RED + "WAVA core process is not running!" + ANSIColor.RESET);
+            System.err.println(ANSIColor.RED.getCode() + "WAVA core process is not running!" + ANSIColor.RESET.getCode());
             System.exit(-2);
         }
     }
