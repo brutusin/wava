@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class SubmitInfo {
 
-    private int groupId;
+    private String groupName;
 
     private String[] command;
 
@@ -30,15 +30,15 @@ public class SubmitInfo {
     public void setWorkingDirectory(File workingDirectory) {
         this.workingDirectory = workingDirectory;
     }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
+    }
     
-    public int getGroupId() {
-        return groupId;
-    }
-
-    public void setGroupId(int groupId) {
-        this.groupId = groupId;
-    }
-
     public String[] getCommand() {
         return command;
     }

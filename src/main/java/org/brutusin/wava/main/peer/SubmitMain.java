@@ -49,9 +49,9 @@ public class SubmitMain {
                 .desc("maximum RSS memory to be demanded by the process")
                 .required()
                 .build();
-        Option gOpt = Option.builder("g").argName("positive integer")
+        Option gOpt = Option.builder("g").argName("group id")
                 .hasArg()
-                .desc("group id of the execution. Group priority can be changed. Jobs of the same group follow a FIFO ordering")
+                .desc("priority group of the execution. Jobs of the same group follow a FIFO ordering")
                 .build();
         options.addOption(hOpt);
         options.addOption(mOpt);
@@ -84,12 +84,8 @@ public class SubmitMain {
             ri.setWorkingDirectory(new File(""));
             ri.setEnvironment(System.getenv());
             if (cl.hasOption("g")) {
-                try {
-                    int groupId = Integer.valueOf(cl.getOptionValue("g"));
-                    ri.setGroupId(groupId);
-                } catch (NumberFormatException ex) {
-                    throw new ParseException("Invalid memory (-g) value");
-                }
+                String group = cl.getOptionValue("g");
+                ri.setGroupName(group);
             }
             return ri;
         } catch (ParseException exp) {

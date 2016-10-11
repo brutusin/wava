@@ -54,4 +54,8 @@ public final class Config {
     public String getCpuAfinity() {
         return impl.getCpuAfinity();
     }
+
+    public int getDynamicGroupIdleSeconds() {
+        return impl.getDynamicGroupIdleSeconds();
+    }
 }

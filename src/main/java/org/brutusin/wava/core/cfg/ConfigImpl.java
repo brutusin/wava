@@ -25,6 +25,7 @@ public class ConfigImpl {
     private int maxTotalRSSBytes = -1;
     private int commandTTLCacheSecs = 2;
     private int sigKillDelaySecs = 5;
+    private int dynamicGroupIdleSeconds = 10;
     private String cpuAfinity = "0-" + (Runtime.getRuntime().availableProcessors() - 1);
 
     public int getPollingSecs() {
@@ -65,5 +66,13 @@ public class ConfigImpl {
 
     public void setCpuAfinity(String cpuAfinity) {
         this.cpuAfinity = cpuAfinity;
+    }
+
+    public int getDynamicGroupIdleSeconds() {
+        return dynamicGroupIdleSeconds;
+    }
+
+    public void setDynamicGroupIdleSeconds(int dynamicGroupIdleSeconds) {
+        this.dynamicGroupIdleSeconds = dynamicGroupIdleSeconds;
     }
 }

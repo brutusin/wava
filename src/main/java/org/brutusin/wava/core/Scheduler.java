@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableSet;
@@ -28,13 +27,16 @@ import org.brutusin.wava.data.ANSIColor;
 public class Scheduler {
 
     private final static Logger LOGGER = Logger.getLogger(Scheduler.class.getName());
+    private final static String DEFAULT_GROUP_NAME = "default";
+
     private final Map<Integer, PeerChannel<SubmitInfo>> jobMap = Collections.synchronizedMap(new HashMap<Integer, PeerChannel<SubmitInfo>>());
     private final Map<Integer, ProcessInfo> processMap = Collections.synchronizedMap(new HashMap<Integer, ProcessInfo>());
     private final Map<Integer, Integer> previousPositionMap = Collections.synchronizedMap(new HashMap<Integer, Integer>());
     private final NavigableSet<Key> jobQueue = Collections.synchronizedNavigableSet(new TreeSet());
-    private final Map<Integer, GroupInfo> groupMap = Collections.synchronizedMap(new HashMap());
+    private final Map<String, GroupInfo> groupMap = Collections.synchronizedMap(new HashMap());
     private final ThreadGroup threadGroup = new ThreadGroup(Scheduler.class.getName());
-    private final AtomicInteger counter = new AtomicInteger();
+    private final AtomicInteger jobCounter = new AtomicInteger();
+    private final AtomicInteger groupCounter = new AtomicInteger();
     private final Thread processingThread;
 
     private final String runningUser;
@@ -42,7 +44,7 @@ public class Scheduler {
 
     public Scheduler() throws IOException, InterruptedException {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
-
+        createGroup(DEFAULT_GROUP_NAME, LinuxCommands.getInstance().getRunningUser(), 0, -1);
         remakeFolder(new File(Environment.ROOT, "streams/"));
         remakeFolder(new File(Environment.ROOT, "state/"));
         remakeFolder(new File(Environment.ROOT, "request/"));
@@ -73,6 +75,18 @@ public class Scheduler {
     private static void remakeFolder(File f) throws IOException {
         Miscellaneous.deleteDirectory(f);
         Miscellaneous.createDirectory(f);
+    }
+
+    private GroupInfo createGroup(String name, String user, int priority, int timetoIdleSeconds) {
+        synchronized (groupMap) {
+            if (!groupMap.containsKey(name)) {
+                GroupInfo gi = new GroupInfo(name, user, timetoIdleSeconds);
+                gi.setPriority(priority);
+                groupMap.put(gi.getGroupName(), gi);
+                return gi;
+            }
+        }
+        return null;
     }
 
     private int[] getPIds() {
@@ -189,12 +203,22 @@ public class Scheduler {
             if (submitChannel == null) {
                 throw new IllegalArgumentException("Request info is required");
             }
-            int id = counter.incrementAndGet();
+            if (submitChannel.getRequest().getGroupName() == null) {
+                submitChannel.getRequest().setGroupName(DEFAULT_GROUP_NAME);
+            }
+            int id = jobCounter.incrementAndGet();
+            GroupInfo gi;
+            synchronized (groupMap) {
+                gi = groupMap.get(submitChannel.getRequest().getGroupName());
+                if (gi == null) { // dynamic group
+                    gi = createGroup(submitChannel.getRequest().getGroupName(), submitChannel.getUser(), 0, Config.getInstance().getDynamicGroupIdleSeconds());
+                }
+                gi.getJobs().add(id);
+            }
             jobMap.put(id, submitChannel);
             submitChannel.log(ANSIColor.CYAN, "processing job " + String.valueOf(id));
-            GroupInfo gi = getGroup(submitChannel.getRequest().getGroupId());
-            gi.getJobs().add(id);
-            Key key = new Key(gi.getPriority(), submitChannel.getRequest().getGroupId(), id);
+
+            Key key = new Key(gi.getPriority(), gi.getGroupId(), id);
             jobQueue.add(key);
             refresh();
         }
@@ -232,7 +256,7 @@ public class Scheduler {
                     line.append(" ");
                     line.append(StringUtils.rightPad(String.valueOf(id), 8));
                     line.append(" ");
-                    line.append(StringUtils.leftPad(String.valueOf(pi.getChannel().getRequest().getGroupId()), 8));
+                    line.append(StringUtils.leftPad(String.valueOf(pi.getChannel().getRequest().getGroupName()), 8));
                     line.append(" ");
                     line.append(StringUtils.leftPad(pi.getChannel().getUser(), 8));
                     line.append(" ");
@@ -275,7 +299,7 @@ public class Scheduler {
                         return;
                     }
                     jobMap.remove(cancelChannel.getRequest().getId());
-                    GroupInfo gi = groupMap.get(submitChannel.getRequest().getGroupId());
+                    GroupInfo gi = groupMap.get(submitChannel.getRequest().getGroupName());
                     Key key = new Key(gi.getPriority(), gi.groupId, cancelChannel.getRequest().getId());
                     jobQueue.remove(key);
                     submitChannel.log(ANSIColor.YELLOW, "Cancelled by user '" + cancelChannel.getUser() + "'");
@@ -302,19 +326,6 @@ public class Scheduler {
             }
         } finally {
             cancelChannel.close();
-        }
-    }
-
-    private GroupInfo getGroup(int groupId) {
-        synchronized (groupMap) {
-            GroupInfo gi = groupMap.get(groupId);
-            if (gi == null) {
-                gi = new GroupInfo();
-                gi.setGroupId(groupId);
-                gi.setJobs(Collections.synchronizedSet(new HashSet<Integer>()));
-                groupMap.put(groupId, gi);
-            }
-            return gi;
         }
     }
 
@@ -407,11 +418,30 @@ public class Scheduler {
                         channel.close();
                         jobMap.remove(id);
                         processMap.remove(id);
-                        GroupInfo group = groupMap.get(channel.getRequest().getGroupId());
-                        group.getJobs().remove(id);
+                        final GroupInfo gi = groupMap.get(channel.getRequest().getGroupName());
+                        gi.getJobs().remove(id);
                         synchronized (groupMap) {
-                            if (group.getJobs().isEmpty()) {
-                                groupMap.remove(channel.getRequest().getGroupId());
+                            if (gi.getJobs().isEmpty()) {
+                                if (gi.getTimeToIdelSeconds() == 0) {
+                                    groupMap.remove(gi.getGroupName());
+                                } else if (gi.getTimeToIdelSeconds() > 0) {
+                                    Thread t = new Thread(threadGroup, "group-" + gi.getGroupName() + " idle thread") {
+                                        @Override
+                                        public void run() {
+                                            try {
+                                                Thread.sleep(1000 * gi.getTimeToIdelSeconds());
+                                                synchronized (groupMap) {
+                                                    if (gi.getJobs().isEmpty()) {
+                                                        groupMap.remove(gi.getGroupName());
+                                                    }
+                                                }
+                                            } catch (InterruptedException ex) {
+                                                Logger.getLogger(Scheduler.class.getName()).log(Level.SEVERE, null, ex);
+                                            }
+                                        }
+                                    };
+                                    t.setDaemon(true);
+                                }
                             }
                         }
                         refresh();
@@ -484,33 +514,35 @@ public class Scheduler {
 
     private class GroupInfo {
 
-        private int groupId;
-        private String user;
-        private Set<Integer> jobs;
+        private final String groupName;
+        private final int groupId;
+        private final String user;
+        private final Set<Integer> jobs = Collections.synchronizedNavigableSet(new TreeSet<Integer>());
+        private final int timeToIdelSeconds;
+
         private int priority;
+
+        public GroupInfo(String groupName, String user, int timeToIdelSeconds) {
+            this.groupName = groupName;
+            this.groupId = groupCounter.incrementAndGet();
+            this.user = user;
+            this.timeToIdelSeconds = timeToIdelSeconds;
+        }
+
+        public String getGroupName() {
+            return groupName;
+        }
 
         public int getGroupId() {
             return groupId;
-        }
-
-        public void setGroupId(int groupId) {
-            this.groupId = groupId;
         }
 
         public String getUser() {
             return user;
         }
 
-        public void setUser(String user) {
-            this.user = user;
-        }
-
         public Set<Integer> getJobs() {
             return jobs;
-        }
-
-        public void setJobs(Set<Integer> jobs) {
-            this.jobs = jobs;
         }
 
         public int getPriority() {
@@ -519,6 +551,10 @@ public class Scheduler {
 
         public void setPriority(int priority) {
             this.priority = priority;
+        }
+
+        public int getTimeToIdelSeconds() {
+            return timeToIdelSeconds;
         }
     }
 
