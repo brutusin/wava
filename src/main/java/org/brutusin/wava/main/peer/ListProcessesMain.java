@@ -13,20 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.main.util;
+package org.brutusin.wava.main.peer;
+
+import org.brutusin.wava.data.OpName;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public interface ANSIColor {
-    public static final String RESET = "\u001B[0m";
-    public static final String BLACK = "\u001B[30m";
-    public static final String RED = "\u001B[31m";
-    public static final String GREEN = "\u001B[32m";
-    public static final String YELLOW = "\u001B[33m";
-    public static final String BLUE = "\u001B[34m";
-    public static final String PURPLE = "\u001B[35m";
-    public static final String CYAN = "\u001B[36m";
-    public static final String WHITE = "\u001B[37m";
+public class ListProcessesMain {
+
+    public static void main(String[] args) throws Exception {
+        Utils.validateCoreRunning();
+        Integer retCode = Utils.executeRequest(OpName.listProcesses, null);
+        if (retCode == null) {
+            retCode = 1;
+        }
+        System.exit(retCode);
+    }
 }

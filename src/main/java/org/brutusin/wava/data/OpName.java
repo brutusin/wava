@@ -21,5 +21,6 @@ package org.brutusin.wava.data;
  */
 public enum OpName {
     submit,
-    cancel
+    cancel,
+    listProcesses
 }

@@ -122,6 +122,9 @@ public class RequestHandler {
                 CancelInfo input = JsonCodec.getInstance().parse(json, CancelInfo.class);
                 PeerChannel<CancelInfo> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
                 this.scheduler.cancel(channel);
+            } else if (opName == OpName.listProcesses) {
+                PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.ROOT, "/streams/" + id));
+                this.scheduler.getRunningProcesses(channel);
             }
         }
     }

@@ -48,13 +48,18 @@ public class CachingLinuxCommands extends LinuxCommands {
     }
 
     @Override
+    public void setImmutable(File f, boolean immutable) throws IOException, InterruptedException {
+        this.commands.setImmutable(f, immutable);
+    }
+
+    @Override
     public void killTree(int pid) throws IOException, InterruptedException {
         this.commands.killTree(pid);
     }
 
     @Override
-    public String[] getCommandCPUAffinity(String[] cmd, String affinity) {
-        return this.commands.getCommandCPUAffinity(cmd, affinity);
+    public String[] decorateWithCPUAffinity(String[] cmd, String affinity) {
+        return this.commands.decorateWithCPUAffinity(cmd, affinity);
     }
 
     @Override

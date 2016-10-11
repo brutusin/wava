@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.main.util;
+package org.brutusin.wava.main.peer;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -26,9 +26,10 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.brutusin.commons.Bean;
@@ -39,6 +40,7 @@ import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.Event;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import org.brutusin.wava.data.OpName;
+import org.brutusin.wava.data.ANSIColor;
 
 /**
  *
@@ -48,21 +50,26 @@ public final class Utils {
 
     public final static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 
-    public static final Pattern EVENT_PATTERN;
-    static {
-        StringBuilder sb = new StringBuilder("(");
-        Event[] values = Event.values();
-        for (int i = 0; i < values.length; i++) {
-            if (i > 0) {
-                sb.append("|");
-            }
-            sb.append(values[i]);
-        }
-        sb.append("):(\\d+):(.+)");
-        EVENT_PATTERN = Pattern.compile(sb.toString());
+    private Utils() {
     }
 
-    private Utils() {
+    public static List<String> parseEventLine(String line) {
+        List<String> ret = new ArrayList<>();
+        int start = 0;
+        boolean inString = false;
+        for (int i = 0; i < line.length(); i++) {
+            if (line.charAt(i) == '"' && (i == 0 || line.charAt(i - 1) != '\\')) {
+                inString = !inString;
+            }
+            if (!inString && line.charAt(i) == ':') {
+                ret.add(line.substring(start, i));
+                start = i + 1;
+            }
+        }
+        if (start < line.length()) {
+            ret.add(line.substring(start));
+        }
+        return ret;
     }
 
     public static void showHelp(Options options, String commandLine) {
@@ -73,6 +80,9 @@ public final class Utils {
     }
 
     public static FileLock tryLock(File f) throws IOException {
+        if (!f.exists()) {
+            Miscellaneous.createFile(f.getAbsolutePath());
+        }
         RandomAccessFile raf = new RandomAccessFile(f, "rws");
         return raf.getChannel().tryLock();
     }
@@ -86,9 +96,6 @@ public final class Utils {
     }
 
     public static Integer executeRequest(OpName opName, Object input) throws IOException, InterruptedException {
-        if (input == null) {
-            return -1;
-        }
         File counterFile = new File(Environment.ROOT, "state/.seq");
         long id = Miscellaneous.getGlobalAutoIncremental(counterFile);
         String json = JsonCodec.getInstance().transform(input);
@@ -109,36 +116,22 @@ public final class Utils {
                     BufferedReader br = new BufferedReader(new InputStreamReader(lcIs));
                     String line;
                     while ((line = br.readLine()) != null) {
-                        String color = ANSIColor.RESET;
-                        String value = line;
-                        Matcher matcher = EVENT_PATTERN.matcher(line);
-                        if (matcher.matches()) {
-                            Event evt = Event.valueOf(matcher.group(1));
-                            String date = Utils.DATE_FORMAT.format(new Date(Long.valueOf(matcher.group(2))));
-                            String json = matcher.group(3);
-                            JsonNode node = JsonCodec.getInstance().parse(json);
+                        List<String> tokens = parseEventLine(line);
+                        Event evt = Event.valueOf(tokens.get(0));
+                        if (evt == Event.ping) {
+
+                        } else if (evt == Event.retcode) {
+                            JsonNode node = JsonCodec.getInstance().parse(tokens.get(1));
+                            retCode.setValue(node.asInteger());
+                        } else if (evt == Event.color) {
+                            ANSIColor color = ANSIColor.valueOf(JsonCodec.getInstance().parse(tokens.get(1)).asString());
+                            String date = Utils.DATE_FORMAT.format(new Date(Long.valueOf(tokens.get(2))));
+                            String value = tokens.get(3);
+                            JsonNode node = JsonCodec.getInstance().parse(value);
                             if (node.getNodeType() == JsonNode.Type.STRING) {
                                 value = node.asString();
                             }
-                            if (evt == Event.ping) {
-                                return;
-                            } else if (evt == Event.id || evt == Event.start) {
-                                color = ANSIColor.CYAN;
-                            } else if (evt == Event.warn) {
-                                color = ANSIColor.YELLOW;
-                            } else if (evt == Event.error || evt == Event.interrupted) {
-                                color = ANSIColor.RED;
-                            } else if (evt == Event.retcode) {
-                                retCode.setValue(node.asInteger());
-                                if (retCode.getValue() == 0) {
-                                    color = ANSIColor.GREEN;
-                                } else {
-                                    color = ANSIColor.RED;
-                                }
-                            } else if (evt == Event.info) {
-                                color = ANSIColor.GREEN;
-                            }
-                            System.err.println(color + "[" + date + "][scheduler:" + evt + "] " + value + ANSIColor.RESET);
+                            System.err.println(color.getCode() + "[wava][" + date + "] " + value + ANSIColor.RESET.getCode());
                         }
                     }
                 } catch (Throwable th) {

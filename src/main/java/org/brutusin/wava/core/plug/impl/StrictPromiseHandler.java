@@ -21,6 +21,7 @@ import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.Scheduler;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import org.brutusin.wava.data.Stats;
+import org.brutusin.wava.data.ANSIColor;
 
 /**
  *
@@ -30,7 +31,7 @@ public class StrictPromiseHandler extends PromiseHandler {
 
     @Override
     public void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, Stats processStats) throws IOException, InterruptedException {
-        pi.getChannel().sendLogToPeer(Event.warn, "memory promise excedeed");
+        pi.getChannel().log(ANSIColor.YELLOW, "memory promise excedeed");
         LinuxCommands.getInstance().killTree(pi.getPid());
     }
 }

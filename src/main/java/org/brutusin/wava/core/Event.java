@@ -20,13 +20,7 @@ package org.brutusin.wava.core;
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public enum Event {
-
-    id,
-    start,
+    color,
     retcode,
-    interrupted,
-    info,
-    warn,
-    error,
     ping
 }

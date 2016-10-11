@@ -15,15 +15,13 @@
  */
 package org.brutusin.wava.main;
 
-import org.brutusin.wava.main.util.ANSIColor;
+import org.brutusin.wava.data.ANSIColor;
 import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
-import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.RequestHandler;
 import org.brutusin.wava.core.Scheduler;
+import org.brutusin.wava.main.peer.Utils;
 
 /**
  *
@@ -31,13 +29,9 @@ import org.brutusin.wava.core.Scheduler;
  */
 public class CoreMain {
 
-    private static FileLock tryLock(File f) throws IOException {
-        RandomAccessFile raf = new RandomAccessFile(f, "rws");
-        return raf.getChannel().tryLock();
-    }
-
     public static void main(String[] args) throws Exception {
-        FileLock lock = tryLock(new File(Environment.ROOT, ".lock"));
+        File lockFile = new File(Environment.ROOT, ".lock");
+        FileLock lock = Utils.tryLock(lockFile);
         if (lock == null) {
             System.err.println(ANSIColor.RED + "Another WAVA core process is running!" + ANSIColor.RESET);
             System.exit(-2);

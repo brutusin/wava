@@ -21,11 +21,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
+import org.brutusin.wava.data.ANSIColor;
 
 /**
- * 
+ *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
- * @param <T> 
+ * @param <T>
  */
 public class PeerChannel<T> {
 
@@ -47,8 +48,8 @@ public class PeerChannel<T> {
         this.stderrOs = new FileOutputStream(stderrNamedPipe);
         Miscellaneous.deleteDirectory(namedPipesRoot);
     }
-    
-    private static boolean writeSilently(OutputStream os, String message) {
+
+    public static boolean println(OutputStream os, String message) {
         try {
             os.write(message.getBytes());
             os.write("\n".getBytes());
@@ -75,12 +76,34 @@ public class PeerChannel<T> {
         return stderrOs;
     }
 
-    public boolean sendLogToPeer(Event event, String value) {
-        if (value == null) {
-            return writeSilently(lifeCycleOs, event + ":" + System.currentTimeMillis());
-        } else {
-            return writeSilently(lifeCycleOs, event + ":" + System.currentTimeMillis() + ":" + JsonCodec.getInstance().transform(value));
+    public boolean log(ANSIColor color, String message) {
+        return sendToPeer(Event.color, color.name(), System.currentTimeMillis(), message);
+    }
+
+    public boolean ping() {
+        return sendToPeer(Event.ping);
+    }
+
+    public boolean setRetCode(int retCode, boolean logMessage) {
+        if (logMessage) {
+            String message = "retcode:" + retCode;
+            if (retCode == 0) {
+                log(ANSIColor.GREEN, message);
+            } else {
+                log(ANSIColor.RED, message);
+            }
         }
+        return sendToPeer(Event.retcode, retCode);
+    }
+
+    private boolean sendToPeer(Event event, Object... values) {
+        StringBuilder sb = new StringBuilder(event.name());
+        if (values != null) {
+            for (Object value : values) {
+                sb.append(":").append(JsonCodec.getInstance().transform(value));
+            }
+        }
+        return println(lifeCycleOs, sb.toString());
     }
 
     public T getRequest() {

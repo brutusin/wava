@@ -22,8 +22,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.commons.utils.ProcessUtils;
 import org.brutusin.wava.core.cfg.Config;
@@ -41,6 +39,13 @@ public class POSIXCommandsImpl extends LinuxCommands {
         Process p = Runtime.getRuntime().exec(cmd);
         String[] ret = ProcessUtils.execute(p);
         return ret[0];
+    }
+
+    @Override
+    public void setImmutable(File f, boolean immutable) throws IOException, InterruptedException {
+        String[] cmd = {"chattr", immutable ? "+i" : "-i", f.getAbsolutePath()};
+        Process p = Runtime.getRuntime().exec(cmd);
+        ProcessUtils.execute(p);
     }
 
     @Override
@@ -126,11 +131,17 @@ public class POSIXCommandsImpl extends LinuxCommands {
             cmd[i] = String.valueOf(pIds[i - 5]);
         }
         Process p = Runtime.getRuntime().exec(cmd);
-        String stdout = ProcessUtils.execute(p)[0];
+        String stdout = null;
+        try {
+            stdout = ProcessUtils.execute(p)[0];
+        } catch (RuntimeException ex) {
+            // no processes exist retcode=1
+            return null;
+        }
         if (stdout != null) {
             String[] lines = stdout.split("\n");
             for (String line : lines) {
-                String[] cols = line.split("\\s+");
+                String[] cols = line.trim().split("\\s+");
                 Stats st = new Stats();
                 st.setRssBytes(Integer.valueOf(cols[1]));
                 st.setCpuPercent(Double.valueOf(cols[2]));
@@ -141,7 +152,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     @Override
-    public String[] getCommandCPUAffinity(String[] cmd, String affinity) {
+    public String[] decorateWithCPUAffinity(String[] cmd, String affinity) {
         String[] ret = new String[cmd.length + 3];
         ret[0] = "taskset";
         ret[1] = "-c";

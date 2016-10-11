@@ -34,7 +34,9 @@ public abstract class LinuxCommands {
         return INSTANCE;
     }
 
-    public abstract String[] getCommandCPUAffinity(String[] cmd, String affinity);
+    public abstract void setImmutable(File f, boolean immutable) throws IOException, InterruptedException;
+    
+    public abstract String[] decorateWithCPUAffinity(String[] cmd, String affinity);
     
     public abstract Map<Integer, Stats> getStats(int[] pids) throws IOException, InterruptedException;
     
