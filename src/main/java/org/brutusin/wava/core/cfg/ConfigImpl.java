@@ -26,7 +26,7 @@ public class ConfigImpl {
     private int commandTTLCacheSecs = 2;
     private int sigKillDelaySecs = 5;
     private int dynamicGroupIdleSeconds = 10;
-    private int[] nicenessRange = {20,19};
+    private int[] nicenessRange = {-20,19};
     private String cpuAfinity = "0-" + (Runtime.getRuntime().availableProcessors() - 1);
 
     public int getPollingSecs() {

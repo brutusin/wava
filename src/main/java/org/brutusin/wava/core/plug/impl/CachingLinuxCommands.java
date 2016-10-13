@@ -59,11 +59,6 @@ public class CachingLinuxCommands extends LinuxCommands {
     }
 
     @Override
-    public String[] getRunWithNicenessCommand(int niceness, String[] cmd) {
-        return commands.getRunWithNicenessCommand(niceness, cmd);
-    }
-
-    @Override
     public void killTree(int pid) throws IOException, InterruptedException {
         this.commands.killTree(pid);
     }

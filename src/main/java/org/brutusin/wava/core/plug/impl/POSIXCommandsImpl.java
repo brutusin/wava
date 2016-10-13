@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import org.brutusin.commons.utils.Miscellaneous;
+import org.brutusin.commons.utils.ProcessException;
 import org.brutusin.commons.utils.ProcessUtils;
 import org.brutusin.wava.core.cfg.Config;
 import org.brutusin.wava.core.plug.LinuxCommands;
@@ -43,9 +44,22 @@ public class POSIXCommandsImpl extends LinuxCommands {
 
     @Override
     public void setNiceness(int pId, int niceness) throws IOException, InterruptedException {
-        String[] cmd = {"renice", "-n", String.valueOf(niceness), "-p", String.valueOf(pId)};
-        Process p = Runtime.getRuntime().exec(cmd);
-        ProcessUtils.execute(p);
+        try {
+            String[] cmd = {"renice", "-n", String.valueOf(niceness), "-p", String.valueOf(pId)};
+            Runtime.getRuntime().exec(cmd);
+            Process p = Runtime.getRuntime().exec(cmd);
+            ProcessUtils.execute(p);
+            Process getChildrenProcess = Runtime.getRuntime().exec(new String[]{"ps", "-o", "pid", "--no-headers", "--ppid", String.valueOf(pId)});
+            String output = ProcessUtils.execute(getChildrenProcess)[0];
+            if (output != null) {
+                String[] childrenIds = output.split("\n");
+                for (String childrenId : childrenIds) {
+                    setNiceness(Integer.valueOf(childrenId), niceness);
+                }
+            }
+        } catch (ProcessException pe) {
+            // Ignore process non-zero retcodes
+        }
     }
 
     @Override
@@ -193,20 +207,6 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         return new String[]{"runuser", "-p", user, "-c", sb.toString()};
     }
-
-    @Override
-    public String[] getRunWithNicenessCommand(int niceness, String[] cmd) {
-        StringBuilder sb = new StringBuilder("");
-        for (int i = 0; i < cmd.length; i++) {
-            if (i > 0) {
-                sb.append(" ");
-            }
-            sb.append("\"").append(cmd[i]).append("\"");
-        }
-        return new String[]{"nice", "-n", String.valueOf(niceness), sb.toString()};
-    }
-    
-    
 
     @Override
     public String getRunningUser() throws IOException, InterruptedException {

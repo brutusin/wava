@@ -5,10 +5,13 @@ import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
@@ -31,6 +34,7 @@ public class Scheduler {
 
     private final static Logger LOGGER = Logger.getLogger(Scheduler.class.getName());
     private final static String DEFAULT_GROUP_NAME = "default";
+    private final static int NICENESS_RANGE = Config.getInstance().getNicenessRange()[1] - Config.getInstance().getNicenessRange()[0];
 
     private final Map<Integer, PeerChannel<SubmitInfo>> jobMap = Collections.synchronizedMap(new HashMap<Integer, PeerChannel<SubmitInfo>>());
     private final Map<Integer, ProcessInfo> processMap = Collections.synchronizedMap(new HashMap<Integer, ProcessInfo>());
@@ -41,6 +45,18 @@ public class Scheduler {
     private final AtomicInteger jobCounter = new AtomicInteger();
     private final AtomicInteger groupCounter = new AtomicInteger();
     private final Thread processingThread;
+    private final Comparator<ProcessInfo> processComparator = new Comparator<ProcessInfo>() {
+        @Override
+        public int compare(ProcessInfo p1, ProcessInfo p2) {
+            GroupInfo g1 = groupMap.get(p1.getChannel().getRequest().getGroupName());
+            GroupInfo g2 = groupMap.get(p2.getChannel().getRequest().getGroupName());
+            int ret = Integer.compare(g1.getPriority(), g2.getPriority());
+            if (ret == 0) {
+                ret = Integer.compare(p1.getId(), p2.getId());
+            }
+            return ret;
+        }
+    };
 
     private final String runningUser;
     private boolean closed;
@@ -141,6 +157,7 @@ public class Scheduler {
 
     private void refresh() throws IOException, InterruptedException {
         cleanStalePeers();
+        recomputeNiceness();
         long maxPromisedMemory = getMaxPromisedMemory();
         long availableMemory;
         if (Config.getInstance().getMaxTotalRSSBytes() > 0) {
@@ -175,7 +192,14 @@ public class Scheduler {
     }
 
     private void recomputeNiceness() throws IOException, InterruptedException {
-
+        synchronized (processMap) {
+            List<ProcessInfo> processes = new ArrayList<>(processMap.values());
+            Collections.sort(processes, processComparator);
+            for (int i = 0; i < processes.size(); i++) {
+                ProcessInfo pi = processes.get(i);
+                pi.setNiceness(Config.getInstance().getNicenessRange()[0] + (i * NICENESS_RANGE) / (processes.size() > 1 ? (processes.size() - 1) : 1));
+            }
+        }
     }
 
     private void checkPromises(long availableMemory) throws IOException, InterruptedException {
@@ -236,45 +260,48 @@ public class Scheduler {
             StringBuilder header = new StringBuilder();
             header.append(ANSIColor.BLACK.getCode());
             header.append(ANSIColor.BG_GREEN.getCode());
-            header.append(StringUtils.rightPad("PID", 8));
+            header.append(StringUtils.leftPad("PID", 8));
             header.append(" ");
-            header.append(StringUtils.rightPad("JOB", 8));
+            header.append(StringUtils.rightPad("GROUP", 8));
             header.append(" ");
-            header.append(StringUtils.leftPad("GROUP", 8));
+            header.append(StringUtils.leftPad("PRIORITY", 8));
             header.append(" ");
-            header.append(StringUtils.leftPad("USER", 8));
+            header.append(StringUtils.leftPad("JOB", 8));
+            header.append(" ");
+            header.append(StringUtils.rightPad("USER", 8));
             header.append(" ");
             header.append(StringUtils.leftPad("NICE", 4));
             header.append(" ");
-            header.append(StringUtils.rightPad("MAX_EXP_RSS", 12));
+            header.append(StringUtils.leftPad("MAX_EXP_RSS", 12));
             header.append(" ");
-            header.append(StringUtils.rightPad("MAX_SEEN_RSS", 12));
+            header.append(StringUtils.leftPad("MAX_SEEN_RSS", 12));
             header.append(" ");
             header.append("CMD");
             header.append(ANSIColor.END_OF_LINE.getCode());
             header.append(ANSIColor.RESET.getCode());
             PeerChannel.println(channel.getStdoutOs(), header.toString());
             synchronized (processMap) {
-                for (Map.Entry<Integer, ProcessInfo> entrySet : processMap.entrySet()) {
-                    Integer id = entrySet.getKey();
-                    ProcessInfo pi = entrySet.getValue();
+                for (ProcessInfo pi : processMap.values()) {
+                    GroupInfo gi = groupMap.get(pi.getChannel().getRequest().getGroupName());
                     StringBuilder line = new StringBuilder();
-                    line.append(StringUtils.rightPad(String.valueOf(pi.getPid()), 8));
+                    line.append(StringUtils.leftPad(String.valueOf(pi.getPid()), 8));
                     line.append(" ");
-                    line.append(StringUtils.rightPad(String.valueOf(id), 8));
+                    line.append(StringUtils.rightPad(String.valueOf(gi.getGroupName()), 8));
                     line.append(" ");
-                    line.append(StringUtils.leftPad(String.valueOf(pi.getChannel().getRequest().getGroupName()), 8));
+                    line.append(StringUtils.leftPad(String.valueOf(gi.getPriority()), 8));
                     line.append(" ");
-                    line.append(StringUtils.leftPad(pi.getChannel().getUser(), 8));
+                    line.append(StringUtils.leftPad(String.valueOf(pi.getId()), 8));
                     line.append(" ");
-                    line.append(StringUtils.leftPad(" ", 4));
+                    line.append(StringUtils.rightPad(pi.getChannel().getUser(), 8));
                     line.append(" ");
-                    line.append(StringUtils.rightPad(String.valueOf(pi.getChannel().getRequest().getMaxRSS()), 12));
+                    line.append(StringUtils.leftPad(String.valueOf(pi.getNiceness()), 4));
+                    line.append(" ");
+                    line.append(StringUtils.leftPad(String.valueOf(pi.getChannel().getRequest().getMaxRSS()), 12));
                     line.append(" ");
                     if (pi.getMaxSeenRSS() > 0.9 * pi.getChannel().getRequest().getMaxRSS()) {
                         line.append(ANSIColor.RED.getCode());
                     }
-                    line.append(StringUtils.rightPad(String.valueOf(pi.getMaxSeenRSS()), 12));
+                    line.append(StringUtils.leftPad(String.valueOf(pi.getMaxSeenRSS()), 12));
                     line.append(ANSIColor.RESET.getCode());
                     line.append(" ");
                     line.append(Arrays.toString(pi.getChannel().getRequest().getCommand()));
@@ -406,7 +433,7 @@ public class Scheduler {
                         process = pb.start();
                         pId = Miscellaneous.getUnixId(process);
                         channel.sendEvent(Event.running, pId);
-                        pi = new ProcessInfo(pId, channel);
+                        pi = new ProcessInfo(id, pId, channel);
                         // starts runnning with more desfavorable niceness
                         pi.setNiceness(Config.getInstance().getNicenessRange()[1]);
                         processMap.put(id, pi);
@@ -470,6 +497,7 @@ public class Scheduler {
                                         }
                                     };
                                     t.setDaemon(true);
+                                    t.start();
                                 }
                             }
                         }
@@ -589,12 +617,14 @@ public class Scheduler {
 
     public class ProcessInfo {
 
+        private final int id;
         private final int pId;
         private final PeerChannel<SubmitInfo> channel;
         private long maxSeenRSS;
         private int niceness = Integer.MAX_VALUE;
 
-        public ProcessInfo(int pId, PeerChannel<SubmitInfo> channel) {
+        public ProcessInfo(int id, int pId, PeerChannel<SubmitInfo> channel) {
+            this.id = id;
             this.pId = pId;
             this.channel = channel;
         }
@@ -617,6 +647,10 @@ public class Scheduler {
 
         public int getNiceness() {
             return niceness;
+        }
+
+        public int getId() {
+            return id;
         }
 
         public void setNiceness(int niceness) throws IOException, InterruptedException {

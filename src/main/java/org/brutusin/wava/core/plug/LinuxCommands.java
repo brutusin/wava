@@ -52,8 +52,6 @@ public abstract class LinuxCommands {
 
     public abstract String[] getRunAsCommand(String user, String[] cmd);
     
-    public abstract String[] getRunWithNicenessCommand(int niceness, String[] cmd);
-
     public abstract void createNamedPipes(File... files) throws IOException, InterruptedException;
 
     public abstract String getFileOwner(File f) throws IOException, InterruptedException;
