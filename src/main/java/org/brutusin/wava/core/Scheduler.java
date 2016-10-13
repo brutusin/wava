@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -37,7 +38,7 @@ public class Scheduler {
     private final static int NICENESS_RANGE = Config.getInstance().getNicenessRange()[1] - Config.getInstance().getNicenessRange()[0];
 
     private final Map<Integer, PeerChannel<SubmitInfo>> jobMap = Collections.synchronizedMap(new HashMap<Integer, PeerChannel<SubmitInfo>>());
-    private final Map<Integer, ProcessInfo> processMap = Collections.synchronizedMap(new HashMap<Integer, ProcessInfo>());
+    private final Map<Key, ProcessInfo> processMap = Collections.synchronizedMap(new TreeMap<Key, ProcessInfo>());
     private final Map<Integer, Integer> previousPositionMap = Collections.synchronizedMap(new HashMap<Integer, Integer>());
     private final NavigableSet<Key> jobQueue = Collections.synchronizedNavigableSet(new TreeSet());
     private final Map<String, GroupInfo> groupMap = Collections.synchronizedMap(new HashMap());
@@ -45,18 +46,6 @@ public class Scheduler {
     private final AtomicInteger jobCounter = new AtomicInteger();
     private final AtomicInteger groupCounter = new AtomicInteger();
     private final Thread processingThread;
-    private final Comparator<ProcessInfo> processComparator = new Comparator<ProcessInfo>() {
-        @Override
-        public int compare(ProcessInfo p1, ProcessInfo p2) {
-            GroupInfo g1 = groupMap.get(p1.getChannel().getRequest().getGroupName());
-            GroupInfo g2 = groupMap.get(p2.getChannel().getRequest().getGroupName());
-            int ret = Integer.compare(g1.getPriority(), g2.getPriority());
-            if (ret == 0) {
-                ret = Integer.compare(p1.getId(), p2.getId());
-            }
-            return ret;
-        }
-    };
 
     private final String runningUser;
     private boolean closed;
@@ -122,9 +111,8 @@ public class Scheduler {
     private long getMaxPromisedMemory() {
         synchronized (processMap) {
             long sum = 0;
-            for (Integer id : processMap.keySet()) {
-                PeerChannel<SubmitInfo> channel = processMap.get(id).getChannel();
-                sum += channel.getRequest().getMaxRSS();
+            for (ProcessInfo pi : processMap.values()) {
+                sum += pi.getChannel().getRequest().getMaxRSS();
             }
             return sum;
         }
@@ -193,11 +181,10 @@ public class Scheduler {
 
     private void recomputeNiceness() throws IOException, InterruptedException {
         synchronized (processMap) {
-            List<ProcessInfo> processes = new ArrayList<>(processMap.values());
-            Collections.sort(processes, processComparator);
-            for (int i = 0; i < processes.size(); i++) {
-                ProcessInfo pi = processes.get(i);
-                pi.setNiceness(Config.getInstance().getNicenessRange()[0] + (i * NICENESS_RANGE) / (processes.size() > 1 ? (processes.size() - 1) : 1));
+            int i = 0;
+            for (ProcessInfo pi : processMap.values()) {
+                pi.setNiceness(Config.getInstance().getNicenessRange()[0] + (i * NICENESS_RANGE) / (processMap.size() > 1 ? (processMap.size() - 1) : 1));
+                i++;
             }
         }
     }
@@ -208,8 +195,7 @@ public class Scheduler {
             Map<Integer, Stats> statMap = LinuxCommands.getInstance().getStats(pIds);
             if (statMap != null) {
                 synchronized (processMap) {
-                    for (Map.Entry<Integer, ProcessInfo> entry : processMap.entrySet()) {
-                        ProcessInfo pi = entry.getValue();
+                    for (ProcessInfo pi : processMap.values()) {
                         Stats stats = statMap.get(pi.getPid());
                         if (stats != null) {
                             PeerChannel<SubmitInfo> channel = pi.getChannel();
@@ -365,31 +351,38 @@ public class Scheduler {
 
     public void setPriority(PeerChannel<PriorityInfo> channel) throws IOException {
         try {
-            synchronized (jobQueue) {
-                if (closed) {
-                    throw new IllegalStateException("Instance is closed");
-                }
-                GroupInfo gi = groupMap.get(channel.getRequest().getGroupName());
-                if (gi == null) {
-                    channel.log(ANSIColor.RED, "unknown group name '" + channel.getRequest().getGroupName() + "'");
-                    channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
-                    return;
-                }
+
+            if (closed) {
+                throw new IllegalStateException("Instance is closed");
+            }
+            GroupInfo gi = groupMap.get(channel.getRequest().getGroupName());
+            if (gi == null) {
+                channel.log(ANSIColor.RED, "unknown group name '" + channel.getRequest().getGroupName() + "'");
+                channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
+                return;
+            }
+            synchronized (gi) {
                 int newPriority = channel.getRequest().getPriority();
+                
                 if (newPriority != gi.getPriority()) {
                     synchronized (gi.getJobs()) {
                         for (Integer id : gi.getJobs()) {
-                            PeerChannel<SubmitInfo> submitChannel = jobMap.get(id);
-                            if (submitChannel != null) {
-                                Key key = new Key(gi.getPriority(), gi.getGroupId(), id);
-                                jobQueue.remove(key);
-                                Key newKey = new Key(newPriority, gi.getGroupId(), id);
-                                jobQueue.add(newKey);
+                            PeerChannel<SubmitInfo> submitChannel;
+                            Key key = new Key(gi.getPriority(), gi.getGroupId(), id);
+                            Key newKey = new Key(newPriority, gi.getGroupId(), id);
+                            synchronized (jobQueue) {
+                                submitChannel = jobMap.remove(id);
+                                if (submitChannel != null) {
+                                    jobQueue.add(newKey);
+                                }
                             }
                             if (submitChannel == null) {
-                                ProcessInfo pi = processMap.get(id);
-                                if (pi != null) {
-                                    submitChannel = pi.getChannel();
+                                synchronized (processMap) {
+                                    ProcessInfo pi = processMap.remove(key);
+                                    if (pi != null) {
+                                        processMap.put(newKey, pi);
+                                        submitChannel = pi.getChannel();
+                                    }
                                 }
                             }
                             if (submitChannel != null) {
@@ -401,6 +394,7 @@ public class Scheduler {
                 }
                 channel.sendEvent(Event.retcode, 0);
             }
+
         } finally {
             channel.close();
         }
@@ -414,6 +408,7 @@ public class Scheduler {
         t = new Thread(this.threadGroup, "scheduled process " + id) {
             @Override
             public void run() {
+                GroupInfo gi = groupMap.get(channel.getRequest().getGroupName());
                 String[] cmd = channel.getRequest().getCommand();
                 if (Scheduler.this.runningUser.equals("root")) {
                     cmd = LinuxCommands.getInstance().getRunAsCommand(channel.getUser(), cmd);
@@ -436,7 +431,10 @@ public class Scheduler {
                         pi = new ProcessInfo(id, pId, channel);
                         // starts runnning with more desfavorable niceness
                         pi.setNiceness(Config.getInstance().getNicenessRange()[1]);
-                        processMap.put(id, pi);
+                        synchronized (gi) {
+                            Key key = new Key(gi.getPriority(), gi.getGroupId(), id);
+                            processMap.put(key, pi);
+                        }
                     } catch (Exception ex) {
                         channel.sendEvent(Event.error, JsonCodec.getInstance().transform(Miscellaneous.getStrackTrace(ex)));
                         channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
@@ -473,8 +471,10 @@ public class Scheduler {
                     try {
                         channel.close();
                         jobMap.remove(id);
-                        processMap.remove(id);
-                        final GroupInfo gi = groupMap.get(channel.getRequest().getGroupName());
+                        synchronized (gi) {
+                            Key key = new Key(gi.getPriority(), gi.getGroupId(), id);
+                            processMap.remove(key);
+                        }
                         gi.getJobs().remove(id);
                         synchronized (groupMap) {
                             if (gi.getJobs().isEmpty()) {
