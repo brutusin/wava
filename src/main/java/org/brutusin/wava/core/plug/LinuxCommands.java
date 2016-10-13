@@ -36,6 +36,8 @@ public abstract class LinuxCommands {
 
     public abstract void setImmutable(File f, boolean immutable) throws IOException, InterruptedException;
     
+    public abstract void setNiceness(int pId, int niceness) throws IOException, InterruptedException;
+    
     public abstract String[] decorateWithCPUAffinity(String[] cmd, String affinity);
     
     public abstract Map<Integer, Stats> getStats(int[] pids) throws IOException, InterruptedException;
@@ -49,6 +51,8 @@ public abstract class LinuxCommands {
     public abstract long getSystemRSSMemory() throws IOException, InterruptedException;
 
     public abstract String[] getRunAsCommand(String user, String[] cmd);
+    
+    public abstract String[] getRunWithNicenessCommand(int niceness, String[] cmd);
 
     public abstract void createNamedPipes(File... files) throws IOException, InterruptedException;
 

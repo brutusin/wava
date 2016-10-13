@@ -169,12 +169,21 @@ public final class Utils {
         Thread errThread = new Thread() {
             @Override
             public void run() {
+                InputStream errIs = null;
                 try {
-                    InputStream errIs = new FileInputStream(stderrNamedPipe);
+                    errIs = new FileInputStream(stderrNamedPipe);
                     BufferedReader br = new BufferedReader(new InputStreamReader(errIs));
-                    Miscellaneous.pipeSynchronously(br, System.err);
+                    Miscellaneous.pipeSynchronously(br, false, System.err);
                 } catch (Throwable th) {
                     th.printStackTrace();
+                } finally {
+                    if (errIs != null) {
+                        try {
+                            errIs.close();
+                        } catch (IOException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
                 }
             }
         };

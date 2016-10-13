@@ -19,6 +19,7 @@ import java.util.logging.Logger;
 import org.apache.commons.lang3.StringUtils;
 import org.brutusin.commons.utils.ErrorHandler;
 import org.brutusin.commons.utils.Miscellaneous;
+import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.data.CancelInfo;
 import org.brutusin.wava.data.PriorityInfo;
 import org.brutusin.wava.data.SubmitInfo;
@@ -171,6 +172,10 @@ public class Scheduler {
                 }
             }
         }
+    }
+
+    private void recomputeNiceness() throws IOException, InterruptedException {
+
     }
 
     private void checkPromises(long availableMemory) throws IOException, InterruptedException {
@@ -382,13 +387,12 @@ public class Scheduler {
         t = new Thread(this.threadGroup, "scheduled process " + id) {
             @Override
             public void run() {
-                String[] cmd;
+                String[] cmd = channel.getRequest().getCommand();
                 if (Scheduler.this.runningUser.equals("root")) {
-                    cmd = LinuxCommands.getInstance().getRunAsCommand(channel.getUser(), channel.getRequest().getCommand());
-                } else {
-                    cmd = channel.getRequest().getCommand();
+                    cmd = LinuxCommands.getInstance().getRunAsCommand(channel.getUser(), cmd);
                 }
-                ProcessBuilder pb = new ProcessBuilder(LinuxCommands.getInstance().decorateWithCPUAffinity(cmd, Config.getInstance().getCpuAfinity()));
+                cmd = LinuxCommands.getInstance().decorateWithCPUAffinity(cmd, Config.getInstance().getCpuAfinity());
+                ProcessBuilder pb = new ProcessBuilder(cmd);
                 pb.environment().clear();
                 pb.directory(channel.getRequest().getWorkingDirectory());
                 if (channel.getRequest().getEnvironment() != null) {
@@ -403,15 +407,17 @@ public class Scheduler {
                         pId = Miscellaneous.getUnixId(process);
                         channel.sendEvent(Event.running, pId);
                         pi = new ProcessInfo(pId, channel);
+                        // starts runnning with more desfavorable niceness
+                        pi.setNiceness(Config.getInstance().getNicenessRange()[1]);
                         processMap.put(id, pi);
-                    } catch (IOException ex) {
-                        channel.sendEvent(Event.error, Miscellaneous.getStrackTrace(ex));
+                    } catch (Exception ex) {
+                        channel.sendEvent(Event.error, JsonCodec.getInstance().transform(Miscellaneous.getStrackTrace(ex)));
                         channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                         return;
                     }
-                    Thread stoutReaderThread = Miscellaneous.pipeAsynchronously(process.getInputStream(), (ErrorHandler) null, channel.getStdoutOs());
+                    Thread stoutReaderThread = Miscellaneous.pipeAsynchronously(process.getInputStream(), (ErrorHandler) null, true, channel.getStdoutOs());
                     stoutReaderThread.setName("stdout-pid-" + pId);
-                    Thread sterrReaderThread = Miscellaneous.pipeAsynchronously(process.getErrorStream(), (ErrorHandler) null, channel.getStderrOs());
+                    Thread sterrReaderThread = Miscellaneous.pipeAsynchronously(process.getErrorStream(), (ErrorHandler) null, true, channel.getStderrOs());
                     sterrReaderThread.setName("stderr-pid-" + pId);
                     try {
                         int code = process.waitFor();
@@ -586,6 +592,7 @@ public class Scheduler {
         private final int pId;
         private final PeerChannel<SubmitInfo> channel;
         private long maxSeenRSS;
+        private int niceness = Integer.MAX_VALUE;
 
         public ProcessInfo(int pId, PeerChannel<SubmitInfo> channel) {
             this.pId = pId;
@@ -606,6 +613,18 @@ public class Scheduler {
 
         public void setMaxSeenRSS(long maxSeenRSS) {
             this.maxSeenRSS = maxSeenRSS;
+        }
+
+        public int getNiceness() {
+            return niceness;
+        }
+
+        public void setNiceness(int niceness) throws IOException, InterruptedException {
+            if (niceness != this.niceness) {
+                LinuxCommands.getInstance().setNiceness(pId, niceness);
+                channel.sendEvent(Event.niceness, niceness);
+                this.niceness = niceness;
+            }
         }
     }
 }

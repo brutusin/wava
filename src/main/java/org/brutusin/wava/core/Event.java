@@ -24,7 +24,7 @@ public enum Event {
     queued,
     priority,
     running,
-    nice,
+    niceness,
     retcode,
     ping,
     error,

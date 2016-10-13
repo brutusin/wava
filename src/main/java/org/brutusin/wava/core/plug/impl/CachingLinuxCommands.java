@@ -48,8 +48,19 @@ public class CachingLinuxCommands extends LinuxCommands {
     }
 
     @Override
+    public void setNiceness(int pId, int niceness) throws IOException, InterruptedException {
+        this.commands.setNiceness(pId, niceness);
+    }
+
+    
+    @Override
     public void setImmutable(File f, boolean immutable) throws IOException, InterruptedException {
         this.commands.setImmutable(f, immutable);
+    }
+
+    @Override
+    public String[] getRunWithNicenessCommand(int niceness, String[] cmd) {
+        return commands.getRunWithNicenessCommand(niceness, cmd);
     }
 
     @Override

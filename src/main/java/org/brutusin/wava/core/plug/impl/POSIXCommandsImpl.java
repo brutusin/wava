@@ -42,6 +42,13 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     @Override
+    public void setNiceness(int pId, int niceness) throws IOException, InterruptedException {
+        String[] cmd = {"renice", "-n", String.valueOf(niceness), "-p", String.valueOf(pId)};
+        Process p = Runtime.getRuntime().exec(cmd);
+        ProcessUtils.execute(p);
+    }
+
+    @Override
     public void setImmutable(File f, boolean immutable) throws IOException, InterruptedException {
         String[] cmd = {"chattr", immutable ? "+i" : "-i", f.getAbsolutePath()};
         Process p = Runtime.getRuntime().exec(cmd);
@@ -186,6 +193,20 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         return new String[]{"runuser", "-p", user, "-c", sb.toString()};
     }
+
+    @Override
+    public String[] getRunWithNicenessCommand(int niceness, String[] cmd) {
+        StringBuilder sb = new StringBuilder("");
+        for (int i = 0; i < cmd.length; i++) {
+            if (i > 0) {
+                sb.append(" ");
+            }
+            sb.append("\"").append(cmd[i]).append("\"");
+        }
+        return new String[]{"nice", "-n", String.valueOf(niceness), sb.toString()};
+    }
+    
+    
 
     @Override
     public String getRunningUser() throws IOException, InterruptedException {

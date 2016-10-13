@@ -58,4 +58,8 @@ public final class Config {
     public int getDynamicGroupIdleSeconds() {
         return impl.getDynamicGroupIdleSeconds();
     }
+
+    public int[] getNicenessRange() {
+        return impl.getNicenessRange();
+    }
 }
