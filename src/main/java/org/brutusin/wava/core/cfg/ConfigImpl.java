@@ -21,6 +21,7 @@ package org.brutusin.wava.core.cfg;
  */
 public class ConfigImpl {
 
+    private boolean ansiColors = true;
     private int pollingSecs = 5;
     private int maxTotalRSSBytes = -1;
     private int commandTTLCacheSecs = 2;
@@ -28,6 +29,14 @@ public class ConfigImpl {
     private int dynamicGroupIdleSeconds = 10;
     private int[] nicenessRange = {-20,19};
     private String cpuAfinity = "0-" + (Runtime.getRuntime().availableProcessors() - 1);
+
+    public boolean isAnsiColors() {
+        return ansiColors;
+    }
+
+    public void setAnsiColors(boolean ansiColors) {
+        this.ansiColors = ansiColors;
+    }
 
     public int getPollingSecs() {
         return pollingSecs;

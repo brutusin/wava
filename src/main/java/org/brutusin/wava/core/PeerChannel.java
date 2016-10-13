@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Date;
 import org.brutusin.commons.utils.Miscellaneous;
-import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.utils.ANSIColor;
 import org.brutusin.wava.utils.Utils;
 
@@ -101,9 +100,9 @@ public class PeerChannel<T> {
             return false;
         }
         if (value == null) {
-            return println(eventsOs, event.name() + ":" + System.currentTimeMillis());
+            return println(eventsOs, System.currentTimeMillis() + ":" + event.name());
         } else {
-            return println(eventsOs, event.name() + ":" + System.currentTimeMillis() + ":" + value);
+            return println(eventsOs, System.currentTimeMillis() + ":" + event.name() + ":" + value);
         }
     }
 

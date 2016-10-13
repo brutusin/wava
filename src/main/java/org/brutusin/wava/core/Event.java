@@ -28,5 +28,6 @@ public enum Event {
     retcode,
     ping,
     error,
+    exceed,
     maxrss
 }

@@ -26,6 +26,10 @@ public final class Config {
         }
     }
 
+    public boolean isAnsiColors() {
+        return impl.isAnsiColors();
+    }
+
     private ConfigImpl createDefaultCfg() {
         ConfigImpl ret = new ConfigImpl();
         return ret;

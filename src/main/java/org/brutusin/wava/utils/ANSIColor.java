@@ -15,6 +15,8 @@
  */
 package org.brutusin.wava.utils;
 
+import org.brutusin.wava.core.cfg.Config;
+
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
@@ -29,7 +31,6 @@ public enum ANSIColor {
     PURPLE("\u001B[35m"),
     CYAN("\u001B[36m"),
     WHITE("\u001B[37m"),
-    
     BG_GREEN("\u001b[42m"),
     BG_BLACK("\u001b[40m"),
     BG_RED("\u001b[41m"),
@@ -38,7 +39,6 @@ public enum ANSIColor {
     BG_MAGENTA("\u001b[45m"),
     BG_CYAN("\u001b[46m"),
     BG_WHITE("\u001b[47m"),
-    
     RESET("\u001B[0m"),
     BOLD("\u001b[1m"),
     UNDERLINED("\u001b[4m"),
@@ -54,6 +54,10 @@ public enum ANSIColor {
     }
 
     public String getCode() {
-        return code;
+        if (Config.getInstance().isAnsiColors()) {
+            return code;
+        } else {
+            return "";
+        }
     }
 }

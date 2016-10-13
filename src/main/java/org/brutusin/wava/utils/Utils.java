@@ -92,7 +92,7 @@ public final class Utils {
         FileLock lock = Utils.tryLock(new File(Environment.ROOT, ".lock"));
         if (lock != null) {
             System.err.println(ANSIColor.RED.getCode() + "WAVA core process is not running!" + ANSIColor.RESET.getCode());
-            System.exit(-2);
+            System.exit(WAVA_ERROR_RETCODE);
         }
     }
 
@@ -118,7 +118,14 @@ public final class Utils {
                     String line;
                     while ((line = br.readLine()) != null) {
                         List<String> tokens = parseEventLine(line);
-                        Event evt = Event.valueOf(tokens.get(0));
+                        Event evt = Event.valueOf(tokens.get(1));
+                        String value;
+                        if (tokens.size() > 2) {
+                            value = tokens.get(2);
+                        } else {
+                            value = null;
+                        }
+
                         if (evt == Event.ping) {
 
                         } else if (eventStream != null) {
@@ -127,31 +134,33 @@ public final class Utils {
                                     eventStream.write((line + "\n").getBytes());
                                 }
                             } else {
+                                Date date = new Date(Long.valueOf(tokens.get(0)));
                                 ANSIColor color = ANSIColor.GREEN;
-                                String value = tokens.get(2);
                                 if (evt == Event.id || evt == Event.running) {
                                     color = ANSIColor.CYAN;
                                 } else if (evt == Event.queued) {
                                     color = ANSIColor.YELLOW;
                                 } else if (evt == Event.retcode) {
                                     color = ANSIColor.RED;
+                                } else if (evt == Event.exceed) {
+                                    color = ANSIColor.RED;
                                 } else if (evt == Event.error) {
                                     color = ANSIColor.RED;
-                                    JsonNode node = JsonCodec.getInstance().parse(value);
-                                    value = node.asString();
+                                    if (value != null) {
+                                        JsonNode node = JsonCodec.getInstance().parse(value);
+                                        value = node.asString();
+                                    }
                                 }
-                                Date date = new Date(Long.valueOf(tokens.get(1)));
                                 synchronized (eventStream) {
-                                    eventStream.write((color.getCode() + "[wava] [" + Utils.DATE_FORMAT.format(date) + "] [" + evt + ":" + value + "]" + ANSIColor.RESET.getCode() + "\n").getBytes());
+                                    eventStream.write((color.getCode() + "[wava] [" + Utils.DATE_FORMAT.format(date) + "] [" + evt + (value != null ? (":" + value) : "") + "]" + ANSIColor.RESET.getCode() + "\n").getBytes());
                                 }
                             }
                         } else if (evt == Event.retcode) {
-                            JsonNode node = JsonCodec.getInstance().parse(tokens.get(2));
-                            retCode.setValue(node.asInteger());
+                            retCode.setValue(Integer.valueOf(value));
                         }
                     }
                 } catch (Throwable th) {
-                    th.printStackTrace();
+                    th.printStackTrace(System.err);
                 }
             }
         };
@@ -162,7 +171,7 @@ public final class Utils {
                     InputStream outIs = new FileInputStream(stdoutNamedPipe);
                     Miscellaneous.pipeAsynchronously(outIs, System.out);
                 } catch (Throwable th) {
-                    th.printStackTrace();
+                    th.printStackTrace(System.err);
                 }
             }
         };
@@ -175,13 +184,13 @@ public final class Utils {
                     BufferedReader br = new BufferedReader(new InputStreamReader(errIs));
                     Miscellaneous.pipeSynchronously(br, false, System.err);
                 } catch (Throwable th) {
-                    th.printStackTrace();
+                    th.printStackTrace(System.err);
                 } finally {
                     if (errIs != null) {
                         try {
                             errIs.close();
                         } catch (IOException ex) {
-                            ex.printStackTrace();
+                            ex.printStackTrace(System.err);
                         }
                     }
                 }
