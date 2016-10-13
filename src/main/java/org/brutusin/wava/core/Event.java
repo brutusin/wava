@@ -20,7 +20,13 @@ package org.brutusin.wava.core;
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public enum Event {
-    color,
+    id,
+    queued,
+    priority,
+    running,
+    nice,
     retcode,
-    ping
+    ping,
+    error,
+    maxrss
 }

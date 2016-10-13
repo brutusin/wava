@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.main.peer;
+package org.brutusin.wava.utils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -21,6 +21,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
@@ -29,7 +30,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.regex.Matcher;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.brutusin.commons.Bean;
@@ -38,9 +38,9 @@ import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.json.spi.JsonNode;
 import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.Event;
+import org.brutusin.wava.core.PeerChannel;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import org.brutusin.wava.data.OpName;
-import org.brutusin.wava.data.ANSIColor;
 
 /**
  *
@@ -48,6 +48,7 @@ import org.brutusin.wava.data.ANSIColor;
  */
 public final class Utils {
 
+    public final static int WAVA_ERROR_RETCODE = 2016;
     public final static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 
     private Utils() {
@@ -95,43 +96,58 @@ public final class Utils {
         }
     }
 
-    public static Integer executeRequest(OpName opName, Object input) throws IOException, InterruptedException {
+    public static Integer executeRequest(OpName opName, Object input, final OutputStream eventStream, boolean prettyEvents) throws IOException, InterruptedException {
         File counterFile = new File(Environment.ROOT, "state/.seq");
         long id = Miscellaneous.getGlobalAutoIncremental(counterFile);
         String json = JsonCodec.getInstance().transform(input);
         File requestFile = new File(Environment.ROOT, "request/" + id + "-" + opName);
         File streamRoot = new File(Environment.ROOT, "streams/" + id);
         Miscellaneous.createDirectory(streamRoot);
-        final File lifeCycleNamedPipe = new File(streamRoot, "lifecycle");
-        final File stdoutNamedPipe = new File(streamRoot, "stdout");
-        final File stderrNamedPipe = new File(streamRoot, "stderr");
-        LinuxCommands.getInstance().createNamedPipes(lifeCycleNamedPipe, stderrNamedPipe, stdoutNamedPipe);
+        File eventsNamedPipe = new File(streamRoot, PeerChannel.NamedPipe.events.name());
+        File stdoutNamedPipe = new File(streamRoot, PeerChannel.NamedPipe.stdout.name());
+        File stderrNamedPipe = new File(streamRoot, PeerChannel.NamedPipe.stderr.name());
+        LinuxCommands.getInstance().createNamedPipes(eventsNamedPipe, stderrNamedPipe, stdoutNamedPipe);
         final Bean<Integer> retCode = new Bean<>();
-        Thread lcThread;
-        lcThread = new Thread() {
+        Thread eventsThread;
+        eventsThread = new Thread() {
             @Override
             public void run() {
                 try {
-                    InputStream lcIs = new FileInputStream(lifeCycleNamedPipe);
-                    BufferedReader br = new BufferedReader(new InputStreamReader(lcIs));
+                    InputStream eventsIs = new FileInputStream(eventsNamedPipe);
+                    BufferedReader br = new BufferedReader(new InputStreamReader(eventsIs));
                     String line;
                     while ((line = br.readLine()) != null) {
                         List<String> tokens = parseEventLine(line);
                         Event evt = Event.valueOf(tokens.get(0));
                         if (evt == Event.ping) {
 
-                        } else if (evt == Event.retcode) {
-                            JsonNode node = JsonCodec.getInstance().parse(tokens.get(1));
-                            retCode.setValue(node.asInteger());
-                        } else if (evt == Event.color) {
-                            ANSIColor color = ANSIColor.valueOf(JsonCodec.getInstance().parse(tokens.get(1)).asString());
-                            String date = Utils.DATE_FORMAT.format(new Date(Long.valueOf(tokens.get(2))));
-                            String value = tokens.get(3);
-                            JsonNode node = JsonCodec.getInstance().parse(value);
-                            if (node.getNodeType() == JsonNode.Type.STRING) {
-                                value = node.asString();
+                        } else if (eventStream != null) {
+                            if (!prettyEvents) {
+                                synchronized (eventStream) {
+                                    eventStream.write((line + "\n").getBytes());
+                                }
+                            } else {
+                                ANSIColor color = ANSIColor.GREEN;
+                                String value = tokens.get(2);
+                                if (evt == Event.id || evt == Event.running) {
+                                    color = ANSIColor.CYAN;
+                                } else if (evt == Event.queued) {
+                                    color = ANSIColor.YELLOW;
+                                } else if (evt == Event.retcode) {
+                                    color = ANSIColor.RED;
+                                } else if (evt == Event.error) {
+                                    color = ANSIColor.RED;
+                                    JsonNode node = JsonCodec.getInstance().parse(value);
+                                    value = node.asString();
+                                }
+                                Date date = new Date(Long.valueOf(tokens.get(1)));
+                                synchronized (eventStream) {
+                                    eventStream.write((color.getCode() + "[wava] [" + Utils.DATE_FORMAT.format(date) + "] [" + evt + ":" + value + "]" + ANSIColor.RESET.getCode() + "\n").getBytes());
+                                }
                             }
-                            System.err.println(color.getCode() + "[wava][" + date + "] " + value + ANSIColor.RESET.getCode());
+                        } else if (evt == Event.retcode) {
+                            JsonNode node = JsonCodec.getInstance().parse(tokens.get(2));
+                            retCode.setValue(node.asInteger());
                         }
                     }
                 } catch (Throwable th) {
@@ -156,20 +172,17 @@ public final class Utils {
                 try {
                     InputStream errIs = new FileInputStream(stderrNamedPipe);
                     BufferedReader br = new BufferedReader(new InputStreamReader(errIs));
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        System.err.println(line);
-                    }
+                    Miscellaneous.pipeSynchronously(br, System.err);
                 } catch (Throwable th) {
                     th.printStackTrace();
                 }
             }
         };
-        lcThread.start();
+        eventsThread.start();
         outThread.start();
         errThread.start();
         Miscellaneous.writeStringToFile(requestFile, json, "UTF-8");
-        lcThread.join();
+        eventsThread.join();
         outThread.join();
         errThread.join();
         return retCode.getValue();

@@ -20,9 +20,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.brutusin.commons.utils.ErrorHandler;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.wava.data.CancelInfo;
+import org.brutusin.wava.data.PriorityInfo;
 import org.brutusin.wava.data.SubmitInfo;
 import org.brutusin.wava.data.Stats;
-import org.brutusin.wava.data.ANSIColor;
+import org.brutusin.wava.utils.ANSIColor;
+import org.brutusin.wava.utils.Utils;
 
 public class Scheduler {
 
@@ -164,7 +166,7 @@ public class Scheduler {
                 PeerChannel channel = jobMap.get(key.getId());
                 Integer prevPosition = previousPositionMap.get(key.getId());
                 if (prevPosition == null || position != prevPosition) {
-                    channel.log(ANSIColor.GREEN, "job enqueded at position " + position + " ...");
+                    channel.sendEvent(Event.queued, position);
                     previousPositionMap.put(key.getId(), position);
                 }
             }
@@ -216,10 +218,10 @@ public class Scheduler {
                 gi.getJobs().add(id);
             }
             jobMap.put(id, submitChannel);
-            submitChannel.log(ANSIColor.CYAN, "processing job " + String.valueOf(id));
-
+            submitChannel.sendEvent(Event.id, id);
             Key key = new Key(gi.getPriority(), gi.getGroupId(), id);
             jobQueue.add(key);
+            submitChannel.sendEvent(Event.priority, gi.getPriority());
             refresh();
         }
     }
@@ -275,9 +277,9 @@ public class Scheduler {
                     PeerChannel.println(channel.getStdoutOs(), line.toString());
                 }
                 if (processMap.size() == 0) {
-                    channel.setRetCode(1, false);
+                    channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                 } else {
-                    channel.setRetCode(0, false);
+                    channel.sendEvent(Event.retcode, 0);
                 }
             }
         } finally {
@@ -295,7 +297,7 @@ public class Scheduler {
                 if (submitChannel != null) {
                     if (!cancelChannel.getUser().equals("root") && !cancelChannel.getUser().equals(submitChannel.getUser())) {
                         cancelChannel.log(ANSIColor.RED, "user '" + cancelChannel.getUser() + "' is not allowed to cancel a queued job from user '" + submitChannel.getUser() + "'");
-                        cancelChannel.setRetCode(-1, false);
+                        cancelChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                         return;
                     }
                     jobMap.remove(cancelChannel.getRequest().getId());
@@ -303,10 +305,10 @@ public class Scheduler {
                     Key key = new Key(gi.getPriority(), gi.groupId, cancelChannel.getRequest().getId());
                     jobQueue.remove(key);
                     submitChannel.log(ANSIColor.YELLOW, "Cancelled by user '" + cancelChannel.getUser() + "'");
-                    submitChannel.setRetCode(-1, true);
+                    submitChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                     submitChannel.close();
                     cancelChannel.log(ANSIColor.GREEN, "enqueued job sucessfully cancelled");
-                    cancelChannel.setRetCode(0, false);
+                    cancelChannel.sendEvent(Event.retcode, 0);
                     return;
                 }
             }
@@ -314,43 +316,61 @@ public class Scheduler {
             if (pi != null) {
                 if (!cancelChannel.getUser().equals("root") && !cancelChannel.getUser().equals(pi.getChannel().getUser())) {
                     cancelChannel.log(ANSIColor.RED, "user '" + cancelChannel.getUser() + "' is not allowed to terminate a running job from user '" + pi.getChannel().getUser() + "'");
-                    cancelChannel.setRetCode(-1, false);
+                    cancelChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                     return;
                 }
                 LinuxCommands.getInstance().killTree(pi.getPid());
                 cancelChannel.log(ANSIColor.GREEN, "running job sucessfully cancelled");
-                cancelChannel.setRetCode(0, false);
+                cancelChannel.sendEvent(Event.retcode, 0);
             } else {
                 cancelChannel.log(ANSIColor.RED, "job #" + cancelChannel.getRequest().getId() + " not found");
-                cancelChannel.setRetCode(1, false);
+                cancelChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
             }
         } finally {
             cancelChannel.close();
         }
     }
 
-    public void setPriority(Integer groupId, Integer newPriority) {
-        if (groupId == null) {
-            throw new IllegalArgumentException("Group id is required");
-        }
-        if (newPriority == null) {
-            throw new IllegalArgumentException("New priority is required");
-        }
-        synchronized (jobQueue) {
-            if (closed) {
-                throw new IllegalStateException("Instance is closed");
+    public void setPriority(PeerChannel<PriorityInfo> channel) throws IOException {
+        try {
+            synchronized (jobQueue) {
+                if (closed) {
+                    throw new IllegalStateException("Instance is closed");
+                }
+                GroupInfo gi = groupMap.get(channel.getRequest().getGroupName());
+                if (gi == null) {
+                    channel.log(ANSIColor.RED, "unknown group name '" + channel.getRequest().getGroupName() + "'");
+                    channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
+                    return;
+                }
+                int newPriority = channel.getRequest().getPriority();
+                if (newPriority != gi.getPriority()) {
+                    synchronized (gi.getJobs()) {
+                        for (Integer id : gi.getJobs()) {
+                            PeerChannel<SubmitInfo> submitChannel = jobMap.get(id);
+                            if (submitChannel != null) {
+                                Key key = new Key(gi.getPriority(), gi.getGroupId(), id);
+                                jobQueue.remove(key);
+                                Key newKey = new Key(newPriority, gi.getGroupId(), id);
+                                jobQueue.add(newKey);
+                            }
+                            if (submitChannel == null) {
+                                ProcessInfo pi = processMap.get(id);
+                                if (pi != null) {
+                                    submitChannel = pi.getChannel();
+                                }
+                            }
+                            if (submitChannel != null) {
+                                submitChannel.sendEvent(Event.priority, newPriority);
+                            }
+                        }
+                    }
+                    gi.setPriority(newPriority);
+                }
+                channel.sendEvent(Event.retcode, 0);
             }
-            GroupInfo gi = groupMap.get(groupId);
-            if (gi == null) {
-                throw new IllegalArgumentException("Unmanaged group id");
-            }
-            for (Integer id : gi.getJobs()) {
-                Key key = new Key(gi.getPriority(), groupId, id);
-                jobQueue.remove(key);
-                Key newKey = new Key(newPriority, groupId, id);
-                jobQueue.add(newKey);
-            }
-            gi.setPriority(newPriority);
+        } finally {
+            channel.close();
         }
     }
 
@@ -374,17 +394,19 @@ public class Scheduler {
                 if (channel.getRequest().getEnvironment() != null) {
                     pb.environment().putAll(channel.getRequest().getEnvironment());
                 }
+                ProcessInfo pi;
                 Process process;
                 int pId;
                 try {
                     try {
                         process = pb.start();
                         pId = Miscellaneous.getUnixId(process);
-                        channel.log(ANSIColor.CYAN, "running with pid " + String.valueOf(pId));
-                        ProcessInfo pi = new ProcessInfo(pId, channel);
+                        channel.sendEvent(Event.running, pId);
+                        pi = new ProcessInfo(pId, channel);
                         processMap.put(id, pi);
                     } catch (IOException ex) {
-                        channel.log(ANSIColor.RED, Miscellaneous.getStrackTrace(ex));
+                        channel.sendEvent(Event.error, Miscellaneous.getStrackTrace(ex));
+                        channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                         return;
                     }
                     Thread stoutReaderThread = Miscellaneous.pipeAsynchronously(process.getInputStream(), (ErrorHandler) null, channel.getStdoutOs());
@@ -393,7 +415,8 @@ public class Scheduler {
                     sterrReaderThread.setName("stderr-pid-" + pId);
                     try {
                         int code = process.waitFor();
-                        channel.setRetCode(code, true);
+                        channel.sendEvent(Event.maxrss, pi.getMaxSeenRSS());
+                        channel.sendEvent(Event.retcode, code);
                     } catch (InterruptedException ex) {
                         try {
                             LinuxCommands.getInstance().killTree(pId);

@@ -36,6 +36,7 @@ import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import org.brutusin.wava.data.CancelInfo;
 import org.brutusin.wava.data.OpName;
+import org.brutusin.wava.data.PriorityInfo;
 import org.brutusin.wava.data.SubmitInfo;
 
 /**
@@ -125,6 +126,10 @@ public class RequestHandler {
             } else if (opName == OpName.listProcesses) {
                 PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.ROOT, "/streams/" + id));
                 this.scheduler.getRunningProcesses(channel);
+            }else if (opName == OpName.changePriority) {
+                PriorityInfo input = JsonCodec.getInstance().parse(json, PriorityInfo.class);
+                PeerChannel<PriorityInfo> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                this.scheduler.setPriority(channel);
             }
         }
     }

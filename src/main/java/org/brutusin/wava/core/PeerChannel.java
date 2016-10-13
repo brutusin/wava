@@ -19,9 +19,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Date;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
-import org.brutusin.wava.data.ANSIColor;
+import org.brutusin.wava.utils.ANSIColor;
+import org.brutusin.wava.utils.Utils;
 
 /**
  *
@@ -30,20 +32,27 @@ import org.brutusin.wava.data.ANSIColor;
  */
 public class PeerChannel<T> {
 
+    public enum NamedPipe {
+
+        events,
+        stdout,
+        stderr
+    }
     private final String user;
     private final T request;
+    private boolean closed = false;
 
-    private final FileOutputStream lifeCycleOs;
+    private final FileOutputStream eventsOs;
     private final FileOutputStream stdoutOs;
     private final FileOutputStream stderrOs;
 
     public PeerChannel(String user, T input, File namedPipesRoot) throws IOException, InterruptedException {
         this.user = user;
         this.request = input;
-        File lifeCycleNamedPipe = new File(namedPipesRoot, "lifecycle");
-        File stdoutNamedPipe = new File(namedPipesRoot, "stdout");
-        File stderrNamedPipe = new File(namedPipesRoot, "stderr");
-        this.lifeCycleOs = new FileOutputStream(lifeCycleNamedPipe);
+        File eventsNamedPipe = new File(namedPipesRoot, NamedPipe.events.name());
+        File stdoutNamedPipe = new File(namedPipesRoot, NamedPipe.stdout.name());
+        File stderrNamedPipe = new File(namedPipesRoot, NamedPipe.stderr.name());
+        this.eventsOs = new FileOutputStream(eventsNamedPipe);
         this.stdoutOs = new FileOutputStream(stdoutNamedPipe);
         this.stderrOs = new FileOutputStream(stderrNamedPipe);
         Miscellaneous.deleteDirectory(namedPipesRoot);
@@ -64,8 +73,8 @@ public class PeerChannel<T> {
         return user;
     }
 
-    public OutputStream getLifeCycleOs() {
-        return lifeCycleOs;
+    public OutputStream getEventsOs() {
+        return eventsOs;
     }
 
     public OutputStream getStdoutOs() {
@@ -76,42 +85,35 @@ public class PeerChannel<T> {
         return stderrOs;
     }
 
-    public boolean log(ANSIColor color, String message) {
-        return sendToPeer(Event.color, color.name(), System.currentTimeMillis(), message);
+    public synchronized boolean log(ANSIColor color, String message) {
+        if (closed) {
+            return false;
+        }
+        return println(stderrOs, color + "[wava] [" + Utils.DATE_FORMAT.format(new Date()) + "] " + message + ANSIColor.RESET);
     }
 
     public boolean ping() {
-        return sendToPeer(Event.ping);
+        return sendEvent(Event.ping, null);
     }
 
-    public boolean setRetCode(int retCode, boolean logMessage) {
-        if (logMessage) {
-            String message = "retcode:" + retCode;
-            if (retCode == 0) {
-                log(ANSIColor.GREEN, message);
-            } else {
-                log(ANSIColor.RED, message);
-            }
+    public synchronized boolean sendEvent(Event event, Object value) {
+        if (closed) {
+            return false;
         }
-        return sendToPeer(Event.retcode, retCode);
-    }
-
-    private boolean sendToPeer(Event event, Object... values) {
-        StringBuilder sb = new StringBuilder(event.name());
-        if (values != null) {
-            for (Object value : values) {
-                sb.append(":").append(JsonCodec.getInstance().transform(value));
-            }
+        if (value == null) {
+            return println(eventsOs, event.name() + ":" + System.currentTimeMillis());
+        } else {
+            return println(eventsOs, event.name() + ":" + System.currentTimeMillis() + ":" + value);
         }
-        return println(lifeCycleOs, sb.toString());
     }
 
     public T getRequest() {
         return request;
     }
 
-    public void close() throws IOException {
-        this.lifeCycleOs.close();
+    public synchronized void close() throws IOException {
+        this.closed = true;
+        this.eventsOs.close();
         this.stdoutOs.close();
         this.stderrOs.close();
     }

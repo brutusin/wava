@@ -15,7 +15,6 @@
  */
 package org.brutusin.wava.main.peer;
 
-import org.brutusin.wava.utils.Utils;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -23,51 +22,62 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.brutusin.wava.data.CancelInfo;
+import org.brutusin.wava.utils.Utils;
 import org.brutusin.wava.data.OpName;
+import org.brutusin.wava.data.PriorityInfo;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class CancelMain {
+public class ChangePriority {
 
-    private static CancelInfo getRequest(String[] args) {
+    private static void showHelp(Options options) {
+        Utils.showHelp(options, "wava-priority.sh [options] [command]\nChanges priority of a job group");
+    }
+    
+    private static PriorityInfo getRequest(String[] args) {
         Options options = new Options();
-        Option jOpt = Option.builder("j")
-                .argName("job id")
+        Option gOpt = Option.builder("g")
+                .argName("group name")
                 .hasArg()
                 .required()
                 .build();
-        options.addOption(jOpt);
+        Option pOpt = Option.builder("p")
+                .argName("integer")
+                .desc("new priority")
+                .hasArg()
+                .required()
+                .build();
+        
+        options.addOption(gOpt);
+        options.addOption(pOpt);
 
         try {
             CommandLineParser parser = new DefaultParser();
             CommandLine cl = parser.parse(options, args);
 
-            int id;
+            int priority;
             try {
-                id = Integer.valueOf(cl.getOptionValue("j"));
+                priority = Integer.valueOf(cl.getOptionValue(pOpt.getOpt()));
             } catch (NumberFormatException ex) {
                 throw new ParseException("Invalid memory (-j) value");
             }
-            CancelInfo ci = new CancelInfo();
-            ci.setId(id);
-            return ci;
+            PriorityInfo pi = new PriorityInfo();
+            pi.setGroupName(cl.getOptionValue(gOpt.getOpt()));
+            pi.setPriority(priority);
+            return pi;
         } catch (ParseException exp) {
             System.err.println("Parsing failed.  Reason: " + exp.getMessage() + "\n");
             showHelp(options);
             return null;
         }
     }
-
-    private static void showHelp(Options options) {
-        Utils.showHelp(options, "wava-cancel.sh [options] [command]\nCancel a running or enqueued job");
-    }
-
+    
     public static void main(String[] args) throws Exception {
         Utils.validateCoreRunning();
-        CancelInfo ci = getRequest(args);
-        Integer retCode = Utils.executeRequest(OpName.cancel, ci, null, false);
+        PriorityInfo pi = getRequest(args);
+        Integer retCode = Utils.executeRequest(OpName.changePriority, pi, null, false);
         if (retCode == null) {
             retCode = 1;
         }

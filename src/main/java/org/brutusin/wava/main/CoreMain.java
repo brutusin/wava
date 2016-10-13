@@ -15,13 +15,13 @@
  */
 package org.brutusin.wava.main;
 
-import org.brutusin.wava.data.ANSIColor;
+import org.brutusin.wava.utils.ANSIColor;
 import java.io.File;
 import java.nio.channels.FileLock;
 import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.RequestHandler;
 import org.brutusin.wava.core.Scheduler;
-import org.brutusin.wava.main.peer.Utils;
+import org.brutusin.wava.utils.Utils;
 
 /**
  *

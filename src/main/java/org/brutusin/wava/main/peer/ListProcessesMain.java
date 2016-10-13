@@ -15,6 +15,7 @@
  */
 package org.brutusin.wava.main.peer;
 
+import org.brutusin.wava.utils.Utils;
 import org.brutusin.wava.data.OpName;
 
 /**
@@ -25,7 +26,7 @@ public class ListProcessesMain {
 
     public static void main(String[] args) throws Exception {
         Utils.validateCoreRunning();
-        Integer retCode = Utils.executeRequest(OpName.listProcesses, null);
+        Integer retCode = Utils.executeRequest(OpName.listProcesses, null, null, false);
         if (retCode == null) {
             retCode = 1;
         }

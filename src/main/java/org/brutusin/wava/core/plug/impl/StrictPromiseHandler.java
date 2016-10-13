@@ -21,7 +21,7 @@ import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.Scheduler;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import org.brutusin.wava.data.Stats;
-import org.brutusin.wava.data.ANSIColor;
+import org.brutusin.wava.utils.ANSIColor;
 
 /**
  *
