@@ -18,7 +18,6 @@ package org.brutusin.wava.core.plug.impl;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Map;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Element;
@@ -26,7 +25,6 @@ import net.sf.ehcache.config.CacheConfiguration;
 import net.sf.ehcache.config.PersistenceConfiguration;
 import org.brutusin.wava.core.cfg.Config;
 import org.brutusin.wava.core.plug.LinuxCommands;
-import org.brutusin.wava.data.Stats;
 
 /**
  *
@@ -52,7 +50,6 @@ public class CachingLinuxCommands extends LinuxCommands {
         this.commands.setNiceness(pId, niceness);
     }
 
-    
     @Override
     public void setImmutable(File f, boolean immutable) throws IOException, InterruptedException {
         this.commands.setImmutable(f, immutable);
@@ -69,20 +66,20 @@ public class CachingLinuxCommands extends LinuxCommands {
     }
 
     @Override
-    public Map<Integer, Stats> getStats(int[] pIds) throws IOException, InterruptedException {
+    public long[] getTreeRSS(int[] pIds) throws IOException, InterruptedException {
         String key = Arrays.toString(pIds);
         Element element = cache.get(key);
         if (element == null) {
             synchronized (cache) {
                 element = cache.get(key);
                 if (element == null) {
-                    Map<Integer, Stats> stats = commands.getStats(pIds);
-                    element = new Element(key, stats);
+                    long[] ret = commands.getTreeRSS(pIds);
+                    element = new Element(key, ret);
                     cache.put(element);
                 }
             }
         }
-        return (Map<Integer, Stats>) element.getObjectValue();
+        return (long[]) element.getObjectValue();
     }
 
     @Override

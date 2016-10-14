@@ -5,13 +5,10 @@ import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
@@ -27,7 +24,6 @@ import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.data.CancelInfo;
 import org.brutusin.wava.data.PriorityInfo;
 import org.brutusin.wava.data.SubmitInfo;
-import org.brutusin.wava.data.Stats;
 import org.brutusin.wava.utils.ANSIColor;
 import org.brutusin.wava.utils.Utils;
 
@@ -190,20 +186,22 @@ public class Scheduler {
     }
 
     private void checkPromises(long availableMemory) throws IOException, InterruptedException {
-        int[] pIds = getPIds();
-        if (pIds.length > 0) {
-            Map<Integer, Stats> statMap = LinuxCommands.getInstance().getStats(pIds);
-            if (statMap != null) {
-                synchronized (processMap) {
+
+        synchronized (processMap) {
+            int[] pIds = getPIds();
+            if (pIds.length > 0) {
+                long[] treeRSSs = LinuxCommands.getInstance().getTreeRSS(pIds);
+                if (treeRSSs != null) {
+                    int i = 0;
                     for (ProcessInfo pi : processMap.values()) {
-                        Stats stats = statMap.get(pi.getPid());
-                        if (stats != null) {
+                        long treeRSS = treeRSSs[i++];
+                        if (treeRSS != 0) {
                             PeerChannel<SubmitInfo> channel = pi.getChannel();
-                            if (stats.getRssBytes() > pi.getMaxSeenRSS()) {
-                                pi.setMaxSeenRSS(stats.getRssBytes());
+                            if (treeRSS > pi.getMaxSeenRSS()) {
+                                pi.setMaxSeenRSS(treeRSS);
                             }
-                            if (channel.getRequest().getMaxRSS() < stats.getRssBytes()) {
-                                PromiseHandler.getInstance().promiseFailed(availableMemory, pi, stats);
+                            if (channel.getRequest().getMaxRSS() < treeRSS) {
+                                PromiseHandler.getInstance().promiseFailed(availableMemory, pi, treeRSS);
                             }
                         }
                     }
@@ -363,7 +361,7 @@ public class Scheduler {
             }
             synchronized (gi) {
                 int newPriority = channel.getRequest().getPriority();
-                
+
                 if (newPriority != gi.getPriority()) {
                     synchronized (gi.getJobs()) {
                         for (Integer id : gi.getJobs()) {
@@ -429,7 +427,7 @@ public class Scheduler {
                         pId = Miscellaneous.getUnixId(process);
                         channel.sendEvent(Event.running, pId);
                         pi = new ProcessInfo(id, pId, channel);
-                        // starts runnning with more desfavorable niceness
+                        // starts running with more desfavorable niceness
                         pi.setNiceness(Config.getInstance().getNicenessRange()[1]);
                         synchronized (gi) {
                             Key key = new Key(gi.getPriority(), gi.getGroupId(), id);

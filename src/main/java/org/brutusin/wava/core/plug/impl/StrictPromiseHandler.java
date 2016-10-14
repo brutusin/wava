@@ -20,7 +20,6 @@ import org.brutusin.wava.core.Event;
 import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.Scheduler;
 import org.brutusin.wava.core.plug.LinuxCommands;
-import org.brutusin.wava.data.Stats;
 
 /**
  *
@@ -29,7 +28,7 @@ import org.brutusin.wava.data.Stats;
 public class StrictPromiseHandler extends PromiseHandler {
 
     @Override
-    public void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, Stats processStats) throws IOException, InterruptedException {
+    public void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException {
         pi.getChannel().sendEvent(Event.exceed, pi.getChannel().getRequest().getMaxRSS());
         LinuxCommands.getInstance().killTree(pi.getPid());
     }

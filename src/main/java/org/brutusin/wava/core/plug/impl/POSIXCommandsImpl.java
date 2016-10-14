@@ -27,7 +27,6 @@ import org.brutusin.commons.utils.ProcessException;
 import org.brutusin.commons.utils.ProcessUtils;
 import org.brutusin.wava.core.cfg.Config;
 import org.brutusin.wava.core.plug.LinuxCommands;
-import org.brutusin.wava.data.Stats;
 
 /**
  *
@@ -140,17 +139,13 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     @Override
-    public Map<Integer, Stats> getStats(int[] pIds) throws IOException, InterruptedException {
-        Map<Integer, Stats> ret = new HashMap<>();
-        String[] cmd = new String[pIds.length + 5];
-        cmd[0] = "ps";
-        cmd[1] = "-o";
-        cmd[2] = "pid,rss,pcpu";
-        cmd[3] = "--no-headers";
-        cmd[4] = "-p";
-        for (int i = 5; i < cmd.length; i++) {
-            cmd[i] = String.valueOf(pIds[i - 5]);
+    public long[] getTreeRSS(int[] pIds) throws IOException, InterruptedException {
+        long[] ret = new long[pIds.length];
+        Map<Integer, Integer> indexes = new HashMap<>();
+        for (int i = 0; i < pIds.length; i++) {
+            indexes.put(pIds[i], i);
         }
+        String[] cmd = {"ps", "axo", "pid,ppid,rss", "--no-headers", "--sort=start_time"};
         Process p = Runtime.getRuntime().exec(cmd);
         String stdout = null;
         try {
@@ -163,10 +158,18 @@ public class POSIXCommandsImpl extends LinuxCommands {
             String[] lines = stdout.split("\n");
             for (String line : lines) {
                 String[] cols = line.trim().split("\\s+");
-                Stats st = new Stats();
-                st.setRssBytes(Integer.valueOf(cols[1]));
-                st.setCpuPercent(Double.valueOf(cols[2]));
-                ret.put(Integer.valueOf(cols[0]), st);
+                Integer pid = Integer.valueOf(cols[0]);
+                Integer index = indexes.get(pid);
+                if (index == null) {
+                    Integer ppid = Integer.valueOf(cols[1]);
+                    index = indexes.get(ppid);
+                    if (index != null) {
+                        indexes.put(ppid, index);
+                    }
+                }
+                if (index != null) {
+                    ret[index] += Integer.valueOf(cols[2]);
+                }
             }
         }
         return ret;

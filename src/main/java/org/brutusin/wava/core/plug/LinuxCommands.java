@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Map;
 import org.brutusin.wava.core.plug.impl.CachingLinuxCommands;
 import org.brutusin.wava.core.plug.impl.POSIXCommandsImpl;
-import org.brutusin.wava.data.Stats;
 
 /**
  *
@@ -40,7 +39,7 @@ public abstract class LinuxCommands {
     
     public abstract String[] decorateWithCPUAffinity(String[] cmd, String affinity);
     
-    public abstract Map<Integer, Stats> getStats(int[] pids) throws IOException, InterruptedException;
+    public abstract long[] getTreeRSS(int[] pids) throws IOException, InterruptedException;
     
     public abstract void killTree(int pid) throws IOException, InterruptedException;
 

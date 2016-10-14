@@ -18,7 +18,6 @@ package org.brutusin.wava.core.plug;
 import java.io.IOException;
 import org.brutusin.wava.core.Scheduler;
 import org.brutusin.wava.core.plug.impl.StrictPromiseHandler;
-import org.brutusin.wava.data.Stats;
 
 /**
  *
@@ -32,5 +31,5 @@ public abstract class PromiseHandler {
         return INSTANCE;
     }
 
-    public abstract void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, Stats processStats) throws IOException, InterruptedException;
+    public abstract void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException;
 }
