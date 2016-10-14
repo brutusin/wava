@@ -16,7 +16,9 @@
 package org.brutusin.wava.core.plug.impl;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -164,7 +166,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
                     Integer ppid = Integer.valueOf(cols[1]);
                     index = indexes.get(ppid);
                     if (index != null) {
-                        indexes.put(ppid, index);
+                        indexes.put(pid, index);
                     }
                 }
                 if (index != null) {
@@ -243,5 +245,4 @@ public class POSIXCommandsImpl extends LinuxCommands {
     public String getFileOwner(File f) throws IOException, InterruptedException {
         return executeBashCommand("ls -ld \"" + f.getAbsolutePath() + "\" | awk 'NR==1 {print $3}'");
     }
-
 }
