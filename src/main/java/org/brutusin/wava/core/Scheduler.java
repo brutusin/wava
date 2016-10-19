@@ -264,6 +264,7 @@ public class Scheduler {
     public void getRunningProcesses(PeerChannel<Void> channel) throws IOException, InterruptedException {
         try {
             StringBuilder header = new StringBuilder(ANSICode.CLEAR.getCode());
+            header.append(ANSICode.MOVE_TO_TOP.getCode());
             header.append(ANSICode.BLACK.getCode());
             header.append(ANSICode.BG_GREEN.getCode());
             header.append(StringUtils.leftPad("PID", 8));

@@ -46,6 +46,7 @@ public enum ANSICode {
     REVERSED("\u001b[7m"),
     INVISIBLE("\u001b[8m"),
     END_OF_LINE("\u001b[K"),
+    MOVE_TO_TOP("\u001b[0;0f"),
     CLEAR("\u001b[2J");
 
     private final String code;
