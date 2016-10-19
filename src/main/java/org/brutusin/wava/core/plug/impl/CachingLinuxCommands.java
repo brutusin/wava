@@ -160,6 +160,7 @@ public class CachingLinuxCommands extends LinuxCommands {
                 if (element == null) {
                     String value = commands.getRunningUser();
                     element = new Element(key, value);
+                    element.setEternal(true);
                     cache.put(element);
                 }
             }

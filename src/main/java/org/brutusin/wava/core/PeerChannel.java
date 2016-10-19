@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Date;
 import org.brutusin.commons.utils.Miscellaneous;
-import org.brutusin.wava.utils.ANSIColor;
+import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.Utils;
 
 /**
@@ -84,11 +84,11 @@ public class PeerChannel<T> {
         return stderrOs;
     }
 
-    public synchronized boolean log(ANSIColor color, String message) {
+    public synchronized boolean log(ANSICode color, String message) {
         if (closed) {
             return false;
         }
-        return println(stderrOs, color + "[wava] [" + Utils.DATE_FORMAT.format(new Date()) + "] " + message + ANSIColor.RESET);
+        return println(stderrOs, color + "[wava] [" + Utils.DATE_FORMAT.format(new Date()) + "] " + message + ANSICode.RESET);
     }
 
     public boolean ping() {

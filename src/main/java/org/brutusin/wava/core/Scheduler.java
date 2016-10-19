@@ -24,14 +24,29 @@ import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.data.CancelInfo;
 import org.brutusin.wava.data.PriorityInfo;
 import org.brutusin.wava.data.SubmitInfo;
-import org.brutusin.wava.utils.ANSIColor;
+import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.Utils;
 
 public class Scheduler {
 
+    public final static String DEFAULT_GROUP_NAME = "default";
+    public final static int EVICTION_ETERNAL = -1;
+
     private final static Logger LOGGER = Logger.getLogger(Scheduler.class.getName());
-    private final static String DEFAULT_GROUP_NAME = "default";
     private final static int NICENESS_RANGE = Config.getInstance().getNicenessRange()[1] - Config.getInstance().getNicenessRange()[0];
+    private final static long MAX_MANAGED_RSS;
+
+    static {
+        if (Config.getInstance().getMaxTotalRSSBytes() > 0) {
+            MAX_MANAGED_RSS = Config.getInstance().getMaxTotalRSSBytes();
+        } else {
+            try {
+                MAX_MANAGED_RSS = LinuxCommands.getInstance().getSystemRSSMemory();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+    }
 
     private final Map<Integer, PeerChannel<SubmitInfo>> jobMap = Collections.synchronizedMap(new HashMap<Integer, PeerChannel<SubmitInfo>>());
     private final Map<Key, ProcessInfo> processMap = Collections.synchronizedMap(new TreeMap<Key, ProcessInfo>());
@@ -48,7 +63,7 @@ public class Scheduler {
 
     public Scheduler() throws IOException, InterruptedException {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
-        createGroup(DEFAULT_GROUP_NAME, LinuxCommands.getInstance().getRunningUser(), 0, -1);
+        createGroup(DEFAULT_GROUP_NAME, LinuxCommands.getInstance().getRunningUser(), 0, EVICTION_ETERNAL);
         remakeFolder(new File(Environment.ROOT, "streams/"));
         remakeFolder(new File(Environment.ROOT, "state/"));
         remakeFolder(new File(Environment.ROOT, "request/"));
@@ -141,15 +156,13 @@ public class Scheduler {
 
     private void refresh() throws IOException, InterruptedException {
         cleanStalePeers();
-        recomputeNiceness();
-        long maxPromisedMemory = getMaxPromisedMemory();
-        long availableMemory;
-        if (Config.getInstance().getMaxTotalRSSBytes() > 0) {
-            availableMemory = Config.getInstance().getMaxTotalRSSBytes() - maxPromisedMemory;
-        } else {
-            availableMemory = LinuxCommands.getInstance().getSystemRSSMemory() - maxPromisedMemory;
-        }
+        updateNiceness();
+        long availableMemory = MAX_MANAGED_RSS - getMaxPromisedMemory();
         checkPromises(availableMemory);
+        long freeRSS = LinuxCommands.getInstance().getSystemRSSFreeMemory();
+        if (availableMemory > freeRSS) {
+            availableMemory = freeRSS;
+        }
         synchronized (jobQueue) {
             while (jobQueue.size() > 0) {
                 final Key key = jobQueue.first();
@@ -175,18 +188,25 @@ public class Scheduler {
         }
     }
 
-    private void recomputeNiceness() throws IOException, InterruptedException {
+    private void updateNiceness() throws IOException, InterruptedException {
+        updateNiceness(null);
+    }
+
+    private void updateNiceness(Integer pId) throws IOException, InterruptedException {
         synchronized (processMap) {
             int i = 0;
             for (ProcessInfo pi : processMap.values()) {
-                pi.setNiceness(Config.getInstance().getNicenessRange()[0] + (i * NICENESS_RANGE) / (processMap.size() > 1 ? (processMap.size() - 1) : 1));
+                if (pId == null || pi.getPid() == pId) {
+                    pi.setNiceness(Config.getInstance().getNicenessRange()[0] + (i * NICENESS_RANGE) / (processMap.size() > 1 ? (processMap.size() - 1) : 1));
+                }
                 i++;
             }
         }
     }
 
-    private void checkPromises(long availableMemory) throws IOException, InterruptedException {
+    private long checkPromises(long availableMemory) throws IOException, InterruptedException {
 
+        long currentRSS = 0;
         synchronized (processMap) {
             int[] pIds = getPIds();
             if (pIds.length > 0) {
@@ -195,6 +215,7 @@ public class Scheduler {
                     int i = 0;
                     for (ProcessInfo pi : processMap.values()) {
                         long treeRSS = treeRSSs[i++];
+                        currentRSS += treeRSS;
                         if (treeRSS != 0) {
                             PeerChannel<SubmitInfo> channel = pi.getChannel();
                             if (treeRSS > pi.getMaxSeenRSS()) {
@@ -208,6 +229,7 @@ public class Scheduler {
                 }
             }
         }
+        return currentRSS;
     }
 
     public void submit(PeerChannel<SubmitInfo> submitChannel) throws IOException, InterruptedException {
@@ -241,9 +263,9 @@ public class Scheduler {
 
     public void getRunningProcesses(PeerChannel<Void> channel) throws IOException, InterruptedException {
         try {
-            StringBuilder header = new StringBuilder();
-            header.append(ANSIColor.BLACK.getCode());
-            header.append(ANSIColor.BG_GREEN.getCode());
+            StringBuilder header = new StringBuilder(ANSICode.CLEAR.getCode());
+            header.append(ANSICode.BLACK.getCode());
+            header.append(ANSICode.BG_GREEN.getCode());
             header.append(StringUtils.leftPad("PID", 8));
             header.append(" ");
             header.append(StringUtils.rightPad("GROUP", 8));
@@ -261,8 +283,8 @@ public class Scheduler {
             header.append(StringUtils.leftPad("MAX_SEEN_RSS", 12));
             header.append(" ");
             header.append("CMD");
-            header.append(ANSIColor.END_OF_LINE.getCode());
-            header.append(ANSIColor.RESET.getCode());
+            header.append(ANSICode.END_OF_LINE.getCode());
+            header.append(ANSICode.RESET.getCode());
             PeerChannel.println(channel.getStdoutOs(), header.toString());
             synchronized (processMap) {
                 for (ProcessInfo pi : processMap.values()) {
@@ -283,10 +305,10 @@ public class Scheduler {
                     line.append(StringUtils.leftPad(String.valueOf(pi.getChannel().getRequest().getMaxRSS()), 12));
                     line.append(" ");
                     if (pi.getMaxSeenRSS() > 0.9 * pi.getChannel().getRequest().getMaxRSS()) {
-                        line.append(ANSIColor.RED.getCode());
+                        line.append(ANSICode.RED.getCode());
                     }
                     line.append(StringUtils.leftPad(String.valueOf(pi.getMaxSeenRSS()), 12));
-                    line.append(ANSIColor.RESET.getCode());
+                    line.append(ANSICode.RESET.getCode());
                     line.append(" ");
                     line.append(Arrays.toString(pi.getChannel().getRequest().getCommand()));
                     line.append(" ");
@@ -312,7 +334,7 @@ public class Scheduler {
                 PeerChannel<SubmitInfo> submitChannel = jobMap.get(cancelChannel.getRequest().getId());
                 if (submitChannel != null) {
                     if (!cancelChannel.getUser().equals("root") && !cancelChannel.getUser().equals(submitChannel.getUser())) {
-                        cancelChannel.log(ANSIColor.RED, "user '" + cancelChannel.getUser() + "' is not allowed to cancel a queued job from user '" + submitChannel.getUser() + "'");
+                        cancelChannel.log(ANSICode.RED, "user '" + cancelChannel.getUser() + "' is not allowed to cancel a queued job from user '" + submitChannel.getUser() + "'");
                         cancelChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                         return;
                     }
@@ -320,10 +342,10 @@ public class Scheduler {
                     GroupInfo gi = groupMap.get(submitChannel.getRequest().getGroupName());
                     Key key = new Key(gi.getPriority(), gi.groupId, cancelChannel.getRequest().getId());
                     jobQueue.remove(key);
-                    submitChannel.log(ANSIColor.YELLOW, "Cancelled by user '" + cancelChannel.getUser() + "'");
+                    submitChannel.log(ANSICode.YELLOW, "Cancelled by user '" + cancelChannel.getUser() + "'");
                     submitChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                     submitChannel.close();
-                    cancelChannel.log(ANSIColor.GREEN, "enqueued job sucessfully cancelled");
+                    cancelChannel.log(ANSICode.GREEN, "enqueued job sucessfully cancelled");
                     cancelChannel.sendEvent(Event.retcode, 0);
                     return;
                 }
@@ -331,15 +353,15 @@ public class Scheduler {
             ProcessInfo pi = processMap.get(cancelChannel.getRequest().getId());
             if (pi != null) {
                 if (!cancelChannel.getUser().equals("root") && !cancelChannel.getUser().equals(pi.getChannel().getUser())) {
-                    cancelChannel.log(ANSIColor.RED, "user '" + cancelChannel.getUser() + "' is not allowed to terminate a running job from user '" + pi.getChannel().getUser() + "'");
+                    cancelChannel.log(ANSICode.RED, "user '" + cancelChannel.getUser() + "' is not allowed to terminate a running job from user '" + pi.getChannel().getUser() + "'");
                     cancelChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                     return;
                 }
                 LinuxCommands.getInstance().killTree(pi.getPid());
-                cancelChannel.log(ANSIColor.GREEN, "running job sucessfully cancelled");
+                cancelChannel.log(ANSICode.GREEN, "running job sucessfully cancelled");
                 cancelChannel.sendEvent(Event.retcode, 0);
             } else {
-                cancelChannel.log(ANSIColor.RED, "job #" + cancelChannel.getRequest().getId() + " not found");
+                cancelChannel.log(ANSICode.RED, "job #" + cancelChannel.getRequest().getId() + " not found");
                 cancelChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
             }
         } finally {
@@ -355,7 +377,7 @@ public class Scheduler {
             }
             GroupInfo gi = groupMap.get(channel.getRequest().getGroupName());
             if (gi == null) {
-                channel.log(ANSIColor.RED, "unknown group name '" + channel.getRequest().getGroupName() + "'");
+                channel.log(ANSICode.RED, "unknown group name '" + channel.getRequest().getGroupName() + "'");
                 channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                 return;
             }
@@ -427,12 +449,11 @@ public class Scheduler {
                         pId = Miscellaneous.getUnixId(process);
                         channel.sendEvent(Event.running, pId);
                         pi = new ProcessInfo(id, pId, channel);
-                        // starts running with more desfavorable niceness
-                        pi.setNiceness(Config.getInstance().getNicenessRange()[1]);
                         synchronized (gi) {
                             Key key = new Key(gi.getPriority(), gi.getGroupId(), id);
                             processMap.put(key, pi);
                         }
+                        updateNiceness(pId);
                     } catch (Exception ex) {
                         channel.sendEvent(Event.error, JsonCodec.getInstance().transform(Miscellaneous.getStrackTrace(ex)));
                         channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);

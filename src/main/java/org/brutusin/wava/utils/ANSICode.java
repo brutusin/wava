@@ -21,7 +21,7 @@ import org.brutusin.wava.core.cfg.Config;
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public enum ANSIColor {
+public enum ANSICode {
 
     BLACK("\u001B[30m"),
     RED("\u001B[31m"),
@@ -45,11 +45,12 @@ public enum ANSIColor {
     BLINK("\u001b[5m"),
     REVERSED("\u001b[7m"),
     INVISIBLE("\u001b[8m"),
-    END_OF_LINE("\u001b[K");
+    END_OF_LINE("\u001b[K"),
+    CLEAR("\u001b[2J");
 
     private final String code;
 
-    ANSIColor(String code) {
+    ANSICode(String code) {
         this.code = code;
     }
 

@@ -46,7 +46,7 @@ public final class Config {
     public int getMaxTotalRSSBytes() {
         return impl.getMaxTotalRSSBytes();
     }
-
+    
     public int getCommandTTLCacheSecs() {
         return impl.getCommandTTLCacheSecs();
     }

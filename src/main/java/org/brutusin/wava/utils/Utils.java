@@ -91,7 +91,7 @@ public final class Utils {
     public static void validateCoreRunning() throws IOException {
         FileLock lock = Utils.tryLock(new File(Environment.ROOT, ".lock"));
         if (lock != null) {
-            System.err.println(ANSIColor.RED.getCode() + "WAVA core process is not running!" + ANSIColor.RESET.getCode());
+            System.err.println(ANSICode.RED.getCode() + "WAVA core process is not running!" + ANSICode.RESET.getCode());
             System.exit(WAVA_ERROR_RETCODE);
         }
     }
@@ -128,35 +128,42 @@ public final class Utils {
 
                         if (evt == Event.ping) {
 
-                        } else if (eventStream != null) {
-                            if (!prettyEvents) {
-                                synchronized (eventStream) {
-                                    eventStream.write((line + "\n").getBytes());
-                                }
-                            } else {
-                                Date date = new Date(Long.valueOf(tokens.get(0)));
-                                ANSIColor color = ANSIColor.GREEN;
-                                if (evt == Event.id || evt == Event.running) {
-                                    color = ANSIColor.CYAN;
-                                } else if (evt == Event.queued) {
-                                    color = ANSIColor.YELLOW;
-                                } else if (evt == Event.retcode) {
-                                    color = ANSIColor.RED;
-                                } else if (evt == Event.exceed) {
-                                    color = ANSIColor.RED;
-                                } else if (evt == Event.error) {
-                                    color = ANSIColor.RED;
-                                    if (value != null) {
-                                        JsonNode node = JsonCodec.getInstance().parse(value);
-                                        value = node.asString();
+                        } else {
+                            if (evt == Event.retcode) {
+                                retCode.setValue(Integer.valueOf(value));
+                            }
+                            if (eventStream != null) {
+                                if (!prettyEvents) {
+                                    synchronized (eventStream) {
+                                        eventStream.write((line + "\n").getBytes());
+                                    }
+                                } else {
+                                    Date date = new Date(Long.valueOf(tokens.get(0)));
+                                    ANSICode color = ANSICode.CYAN;
+                                    if (evt == Event.id || evt == Event.running) {
+                                        color = ANSICode.GREEN;
+                                    } else if (evt == Event.queued) {
+                                        color = ANSICode.YELLOW;
+                                    } else if (evt == Event.retcode) {
+                                        if (retCode.getValue() == 0) {
+                                            color = ANSICode.GREEN;
+                                        } else {
+                                            color = ANSICode.RED;
+                                        }
+                                    } else if (evt == Event.exceed) {
+                                        color = ANSICode.RED;
+                                    } else if (evt == Event.error) {
+                                        color = ANSICode.RED;
+                                        if (value != null) {
+                                            JsonNode node = JsonCodec.getInstance().parse(value);
+                                            value = node.asString();
+                                        }
+                                    }
+                                    synchronized (eventStream) {
+                                        eventStream.write((color.getCode() + "[wava] [" + Utils.DATE_FORMAT.format(date) + "] [" + evt + (value != null ? (":" + value) : "") + "]" + ANSICode.RESET.getCode() + "\n").getBytes());
                                     }
                                 }
-                                synchronized (eventStream) {
-                                    eventStream.write((color.getCode() + "[wava] [" + Utils.DATE_FORMAT.format(date) + "] [" + evt + (value != null ? (":" + value) : "") + "]" + ANSIColor.RESET.getCode() + "\n").getBytes());
-                                }
                             }
-                        } else if (evt == Event.retcode) {
-                            retCode.setValue(Integer.valueOf(value));
                         }
                     }
                 } catch (Throwable th) {

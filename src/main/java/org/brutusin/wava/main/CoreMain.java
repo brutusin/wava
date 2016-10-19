@@ -15,7 +15,7 @@
  */
 package org.brutusin.wava.main;
 
-import org.brutusin.wava.utils.ANSIColor;
+import org.brutusin.wava.utils.ANSICode;
 import java.io.File;
 import java.nio.channels.FileLock;
 import org.brutusin.wava.core.Environment;
@@ -33,7 +33,7 @@ public class CoreMain {
         File lockFile = new File(Environment.ROOT, ".lock");
         FileLock lock = Utils.tryLock(lockFile);
         if (lock == null) {
-            System.err.println(ANSIColor.RED + "Another WAVA core process is running!" + ANSIColor.RESET);
+            System.err.println(ANSICode.RED + "Another WAVA core process is running!" + ANSICode.RESET);
             System.exit(-2);
         }
         try {
