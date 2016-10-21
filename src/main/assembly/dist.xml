@@ -21,6 +21,7 @@
     </files>
     <fileSets>
         <fileSet>
+            <filtered>true</filtered>
             <directory>src/main/scripts</directory>
             <outputDirectory>bin</outputDirectory>
             <includes>

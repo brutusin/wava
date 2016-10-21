@@ -1,1 +1,0 @@
-http://dg01:81/repos/HDG_Research/trunk/microservices/memory-scheduler/src/main/java/

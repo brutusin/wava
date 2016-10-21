@@ -61,7 +61,7 @@ public class SubmitMain {
                 .hasArg()
                 .desc("priority group of the execution. Jobs of the same group follow a FIFO ordering")
                 .build();
-        
+
         options.addOption(hOpt);
         options.addOption(mOpt);
         options.addOption(gOpt);
@@ -113,12 +113,15 @@ public class SubmitMain {
     }
 
     private static void showHelp(Options options) {
-        Utils.showHelp(options, "wava.sh [options] [command]\nEnqueues a command to be executed [W]hen enough RSS memory is [AVA]ilable");
+        Utils.showHelp(options, "wava.sh -s [options] [command]\nEnqueues a command to be executed [W]hen enough RSS memory is [AVA]ilable");
     }
 
     public static void main(String[] args) throws Exception {
         Utils.validateCoreRunning();
         Pair<SubmitInfo, File> pair = getRequest(args);
+        if (pair == null) {
+            System.exit(Utils.WAVA_ERROR_RETCODE);
+        }
         OutputStream eventOs;
         boolean prettyEvents;
         if (pair.getElement2() == null) {
@@ -130,7 +133,7 @@ public class SubmitMain {
         }
         Integer retCode = Utils.executeRequest(OpName.submit, pair.getElement1(), eventOs, prettyEvents);
         if (retCode == null) {
-            retCode = 1;
+            retCode = Utils.WAVA_ERROR_RETCODE;
         }
         System.exit(retCode);
     }
