@@ -33,7 +33,7 @@ import org.brutusin.wava.data.PriorityInfo;
 public class ChangePriority {
 
     private static void showHelp(Options options) {
-        Utils.showHelp(options, "wava.sh -p [options] [command]\nChanges the priority of a job group");
+        Utils.showHelp(options, "wava.sh -p [options]\nChanges the priority of a job group");
     }
     
     private static PriorityInfo getRequest(String[] args) {
