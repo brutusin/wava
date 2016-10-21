@@ -64,9 +64,11 @@ public class WavaMain {
             if (args.length > 0) {
                 CommandLineParser parser = new DefaultParser();
                 CommandLine cl = parser.parse(options, Arrays.copyOfRange(args, 0, 1));
-                String[] subArgs = null;
+                String[] subArgs;
                 if (args.length > 1) {
                     subArgs = Arrays.copyOfRange(args, 1, args.length);
+                } else {
+                    subArgs = new String[0];
                 }
                 if (cl.hasOption(hOpt.getOpt())) {
                     showHelp(options);

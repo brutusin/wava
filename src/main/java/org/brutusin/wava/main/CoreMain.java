@@ -22,6 +22,7 @@ import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.RequestHandler;
 import org.brutusin.wava.core.Scheduler;
 import org.brutusin.wava.utils.Utils;
+import static org.brutusin.wava.utils.Utils.WAVA_ERROR_RETCODE;
 
 /**
  *
@@ -33,8 +34,8 @@ public class CoreMain {
         File lockFile = new File(Environment.ROOT, ".lock");
         FileLock lock = Utils.tryLock(lockFile);
         if (lock == null) {
-            System.err.println(ANSICode.RED + "Another WAVA core process is running!" + ANSICode.RESET);
-            System.exit(-2);
+            System.err.println(ANSICode.RED.getCode() + "Another WAVA core process is running!" + ANSICode.RESET.getCode());
+            System.exit(WAVA_ERROR_RETCODE);
         }
         try {
             Scheduler scheduler = new Scheduler();
