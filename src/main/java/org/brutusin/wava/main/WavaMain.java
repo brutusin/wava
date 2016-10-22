@@ -37,14 +37,21 @@ public class WavaMain {
 
     public static void main(String[] args) throws Exception {
         Options options = new Options();
-        Option hOpt = new Option("h", "print this message");
+        Option hOpt = Option.builder("h")
+                .longOpt("help")
+                .desc("print this message")
+                .build();
+        Option aOpt = Option.builder("a")
+                .longOpt("about")
+                .desc("information about the program")
+                .build();
         Option cOpt = Option.builder("c")
                 .longOpt("core")
-                .desc("run core wava process")
+                .desc("start scheduler process")
                 .build();
         Option sOpt = Option.builder("s")
                 .longOpt("submit")
-                .desc("submit command. Default option")
+                .desc("submit job")
                 .build();
         Option jOpt = Option.builder("j")
                 .longOpt("jobs")
@@ -55,6 +62,7 @@ public class WavaMain {
                 .desc("change group priority")
                 .build();
 
+        options.addOption(aOpt);
         options.addOption(hOpt);
         options.addOption(cOpt);
         options.addOption(sOpt);
@@ -70,7 +78,9 @@ public class WavaMain {
                 } else {
                     subArgs = new String[0];
                 }
-                if (cl.hasOption(hOpt.getOpt())) {
+                if (cl.hasOption(aOpt.getOpt())) {
+                    AboutMain.main(subArgs);
+                } else if (cl.hasOption(hOpt.getOpt())) {
                     showHelp(options);
                 } else if (cl.hasOption(cOpt.getOpt())) {
                     CoreMain.main(subArgs);

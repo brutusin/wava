@@ -30,6 +30,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.brutusin.commons.Bean;
@@ -41,6 +43,7 @@ import org.brutusin.wava.core.Event;
 import org.brutusin.wava.core.PeerChannel;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import org.brutusin.wava.data.OpName;
+import org.brutusin.wava.main.WavaMain;
 
 /**
  *
@@ -76,8 +79,39 @@ public final class Utils {
     public static void showHelp(Options options, String commandLine) {
         HelpFormatter formatter = new HelpFormatter();
         PrintWriter pw = new PrintWriter(System.err);
+        System.err.println(getLogo());
         formatter.printHelp(pw, Integer.MAX_VALUE, commandLine, null, options, 4, 4, null);
         pw.flush();
+    }
+
+    public static String getVersion() {
+        try {
+            return Miscellaneous.toString(WavaMain.class.getClassLoader().getResourceAsStream("version.txt"), "UTF-8");
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    public static String getLogo() {
+        try {
+            String version = "[W]hen [AVA]ilable scheduler " + getVersion();
+            String line = Miscellaneous.append("_", version.length());
+            StringBuilder sb = new StringBuilder(line);
+            sb.append("\n");
+            sb.append(ANSICode.GREEN.getCode());
+            sb.append(Miscellaneous.toString(WavaMain.class.getClassLoader().getResourceAsStream("logo.txt"), "UTF-8"));
+            sb.append(ANSICode.RESET.getCode());
+            sb.append("\n");
+            sb.append("\n");
+            sb.append(ANSICode.CYAN.getCode());
+            sb.append(version);
+            sb.append(ANSICode.RESET.getCode());
+            sb.append("\n");
+            sb.append(line);
+            return sb.toString();
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     public static FileLock tryLock(File f) throws IOException {

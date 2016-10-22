@@ -9,7 +9,7 @@
     <groupId>org.brutusin</groupId>
     <artifactId>wava</artifactId>
     <packaging>jar</packaging>   
-    <version>1.4.2-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>A RSS-memory-aware scheduler for Linux batch processes</description>
     
@@ -93,16 +93,6 @@
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
-                <includes>
-                    <include>brutusin-rpc.version</include>
-                </includes>
-            </resource>
-            <resource>
-                <directory>src/main/resources</directory>
-                <filtering>false</filtering>
-                <excludes>
-                    <exclude>brutusin-rpc.version</exclude>
-                </excludes>
             </resource>
         </resources>
         <plugins> 
