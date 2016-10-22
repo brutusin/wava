@@ -1,6 +1,6 @@
-package org.brutusin.wava.data;
+package org.brutusin.wava.input;
 
-public class CancelInfo {
+public class CancelInput {
 
     private int id;
 

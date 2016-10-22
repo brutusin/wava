@@ -22,8 +22,8 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.brutusin.wava.data.CancelInfo;
-import org.brutusin.wava.data.OpName;
+import org.brutusin.wava.input.CancelInput;
+import org.brutusin.wava.core.OpName;
 
 /**
  *
@@ -31,7 +31,7 @@ import org.brutusin.wava.data.OpName;
  */
 public class CancelMain {
 
-    private static CancelInfo getRequest(String[] args) {
+    private static CancelInput getRequest(String[] args) {
         Options options = new Options();
         Option jOpt = Option.builder("j")
                 .argName("job id")
@@ -50,7 +50,7 @@ public class CancelMain {
             } catch (NumberFormatException ex) {
                 throw new ParseException("Invalid memory (-j) value");
             }
-            CancelInfo ci = new CancelInfo();
+            CancelInput ci = new CancelInput();
             ci.setId(id);
             return ci;
         } catch (ParseException exp) {
@@ -66,7 +66,7 @@ public class CancelMain {
 
     public static void main(String[] args) throws Exception {
         Utils.validateCoreRunning();
-        CancelInfo ci = getRequest(args);
+        CancelInput ci = getRequest(args);
         Integer retCode = Utils.executeRequest(OpName.cancel, ci, null, false);
         if (retCode == null) {
             retCode = 1;

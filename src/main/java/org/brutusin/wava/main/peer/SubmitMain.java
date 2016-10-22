@@ -27,14 +27,20 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.brutusin.commons.Pair;
-import org.brutusin.wava.data.OpName;
-import org.brutusin.wava.data.SubmitInfo;
+import org.brutusin.wava.core.OpName;
+import org.brutusin.wava.input.SubmitInput;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class SubmitMain {
+
+    public static final String DESCRIPTION = "Enqueues a command to be executed [W]hen enough RSS memory is [AVA]ilable";
+
+    private static void showHelp(Options options) {
+        Utils.showHelp(options, "wava.sh -s [options] [command]\n" + DESCRIPTION);
+    }
 
     private static int getCommandStart(String[] args) {
         for (int i = 0; i < args.length; i = i + 2) {
@@ -45,7 +51,7 @@ public class SubmitMain {
         return args.length;
     }
 
-    private static Pair<SubmitInfo, File> getRequest(String[] args) {
+    private static Pair<SubmitInput, File> getRequest(String[] args) {
         Options options = new Options();
         Option hOpt = new Option("h", "print this message");
         Option mOpt = Option.builder("m").argName("bytes number")
@@ -95,7 +101,7 @@ public class SubmitMain {
             } catch (NumberFormatException ex) {
                 throw new ParseException("Invalid memory (-" + mOpt.getOpt() + ") value");
             }
-            SubmitInfo ri = new SubmitInfo();
+            SubmitInput ri = new SubmitInput();
             ri.setCommand(Arrays.copyOfRange(args, commandStart, args.length));
             ri.setMaxRSS(memory);
             ri.setWorkingDirectory(new File(""));
@@ -112,13 +118,9 @@ public class SubmitMain {
         }
     }
 
-    private static void showHelp(Options options) {
-        Utils.showHelp(options, "wava.sh -s [options] [command]\nEnqueues a command to be executed [W]hen enough RSS memory is [AVA]ilable");
-    }
-
     public static void main(String[] args) throws Exception {
         Utils.validateCoreRunning();
-        Pair<SubmitInfo, File> pair = getRequest(args);
+        Pair<SubmitInput, File> pair = getRequest(args);
         if (pair == null) {
             System.exit(Utils.WAVA_ERROR_RETCODE);
         }

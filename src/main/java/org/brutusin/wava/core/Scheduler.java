@@ -21,9 +21,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.brutusin.commons.utils.ErrorHandler;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
-import org.brutusin.wava.data.CancelInfo;
-import org.brutusin.wava.data.PriorityInfo;
-import org.brutusin.wava.data.SubmitInfo;
+import org.brutusin.wava.input.CancelInput;
+import org.brutusin.wava.input.GroupInput;
+import org.brutusin.wava.input.SubmitInput;
 import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.Utils;
 
@@ -48,7 +48,7 @@ public class Scheduler {
         }
     }
 
-    private final Map<Integer, PeerChannel<SubmitInfo>> jobMap = Collections.synchronizedMap(new HashMap<Integer, PeerChannel<SubmitInfo>>());
+    private final Map<Integer, PeerChannel<SubmitInput>> jobMap = Collections.synchronizedMap(new HashMap<Integer, PeerChannel<SubmitInput>>());
     private final Map<Key, ProcessInfo> processMap = Collections.synchronizedMap(new TreeMap<Key, ProcessInfo>());
     private final Map<Integer, Integer> previousPositionMap = Collections.synchronizedMap(new HashMap<Integer, Integer>());
     private final NavigableSet<Key> jobQueue = Collections.synchronizedNavigableSet(new TreeSet());
@@ -63,7 +63,7 @@ public class Scheduler {
 
     public Scheduler() throws IOException, InterruptedException {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
-        createGroup(DEFAULT_GROUP_NAME, LinuxCommands.getInstance().getRunningUser(), 0, EVICTION_ETERNAL);
+        createGroupInfo(DEFAULT_GROUP_NAME, LinuxCommands.getInstance().getRunningUser(), 0, EVICTION_ETERNAL);
         remakeFolder(new File(Environment.ROOT, "streams/"));
         remakeFolder(new File(Environment.ROOT, "state/"));
         remakeFolder(new File(Environment.ROOT, "request/"));
@@ -96,7 +96,7 @@ public class Scheduler {
         Miscellaneous.createDirectory(f);
     }
 
-    private GroupInfo createGroup(String name, String user, int priority, int timetoIdleSeconds) {
+    private GroupInfo createGroupInfo(String name, String user, int priority, int timetoIdleSeconds) {
         synchronized (groupMap) {
             if (!groupMap.containsKey(name)) {
                 GroupInfo gi = new GroupInfo(name, user, timetoIdleSeconds);
@@ -134,7 +134,7 @@ public class Scheduler {
             Iterator<Key> iterator = jobQueue.iterator();
             while (iterator.hasNext()) {
                 Key key = iterator.next();
-                PeerChannel<SubmitInfo> channel = jobMap.get(key.getId());
+                PeerChannel<SubmitInput> channel = jobMap.get(key.getId());
                 if (!channel.ping()) {
                     iterator.remove();
                     jobMap.remove(key.getId());
@@ -166,7 +166,7 @@ public class Scheduler {
         synchronized (jobQueue) {
             while (jobQueue.size() > 0) {
                 final Key key = jobQueue.first();
-                PeerChannel<SubmitInfo> channel = jobMap.get(key.getId());
+                PeerChannel<SubmitInput> channel = jobMap.get(key.getId());
                 if (channel.getRequest().getMaxRSS() > availableMemory) {
                     break;
                 }
@@ -178,7 +178,7 @@ public class Scheduler {
             int position = 0;
             for (Key key : jobQueue) {
                 position++;
-                PeerChannel channel = jobMap.get(key.getId());
+                PeerChannel<SubmitInput> channel = jobMap.get(key.getId());
                 Integer prevPosition = previousPositionMap.get(key.getId());
                 if (prevPosition == null || position != prevPosition) {
                     channel.sendEvent(Event.queued, position);
@@ -217,7 +217,7 @@ public class Scheduler {
                         long treeRSS = treeRSSs[i++];
                         currentRSS += treeRSS;
                         if (treeRSS != 0) {
-                            PeerChannel<SubmitInfo> channel = pi.getChannel();
+                            PeerChannel<SubmitInput> channel = pi.getChannel();
                             if (treeRSS > pi.getMaxSeenRSS()) {
                                 pi.setMaxSeenRSS(treeRSS);
                             }
@@ -232,7 +232,7 @@ public class Scheduler {
         return currentRSS;
     }
 
-    public void submit(PeerChannel<SubmitInfo> submitChannel) throws IOException, InterruptedException {
+    public void submit(PeerChannel<SubmitInput> submitChannel) throws IOException, InterruptedException {
         synchronized (jobQueue) {
             if (closed) {
                 throw new IllegalStateException("Instance is closed");
@@ -248,7 +248,7 @@ public class Scheduler {
             synchronized (groupMap) {
                 gi = groupMap.get(submitChannel.getRequest().getGroupName());
                 if (gi == null) { // dynamic group
-                    gi = createGroup(submitChannel.getRequest().getGroupName(), submitChannel.getUser(), 0, Config.getInstance().getDynamicGroupIdleSeconds());
+                    gi = createGroupInfo(submitChannel.getRequest().getGroupName(), submitChannel.getUser(), 0, Config.getInstance().getDynamicGroupIdleSeconds());
                 }
                 gi.getJobs().add(id);
             }
@@ -261,13 +261,15 @@ public class Scheduler {
         }
     }
 
-    public void getRunningProcesses(PeerChannel<Void> channel) throws IOException, InterruptedException {
+    public void listJobs(PeerChannel<Void> channel) throws IOException, InterruptedException {
         try {
             StringBuilder header = new StringBuilder(ANSICode.CLEAR.getCode());
             header.append(ANSICode.MOVE_TO_TOP.getCode());
             header.append(ANSICode.BLACK.getCode());
             header.append(ANSICode.BG_GREEN.getCode());
             header.append(StringUtils.leftPad("PID", 8));
+            header.append(" ");
+            header.append(StringUtils.leftPad("QUEUE", 5));
             header.append(" ");
             header.append(StringUtils.rightPad("GROUP", 8));
             header.append(" ");
@@ -287,52 +289,81 @@ public class Scheduler {
             header.append(ANSICode.END_OF_LINE.getCode());
             header.append(ANSICode.RESET.getCode());
             PeerChannel.println(channel.getStdoutOs(), header.toString());
-            synchronized (processMap) {
-                for (ProcessInfo pi : processMap.values()) {
-                    GroupInfo gi = groupMap.get(pi.getChannel().getRequest().getGroupName());
-                    StringBuilder line = new StringBuilder();
-                    line.append(StringUtils.leftPad(String.valueOf(pi.getPid()), 8));
-                    line.append(" ");
-                    line.append(StringUtils.rightPad(String.valueOf(gi.getGroupName()), 8));
-                    line.append(" ");
-                    line.append(StringUtils.leftPad(String.valueOf(gi.getPriority()), 8));
-                    line.append(" ");
-                    line.append(StringUtils.leftPad(String.valueOf(pi.getId()), 8));
-                    line.append(" ");
-                    line.append(StringUtils.rightPad(pi.getChannel().getUser(), 8));
-                    line.append(" ");
-                    line.append(StringUtils.leftPad(String.valueOf(pi.getNiceness()), 4));
-                    line.append(" ");
-                    line.append(StringUtils.leftPad(String.valueOf(pi.getChannel().getRequest().getMaxRSS()), 12));
-                    line.append(" ");
-                    if (pi.getMaxSeenRSS() > 0.9 * pi.getChannel().getRequest().getMaxRSS()) {
-                        line.append(ANSICode.RED.getCode());
+            synchronized (jobQueue) {
+                synchronized (processMap) {
+                    for (ProcessInfo pi : processMap.values()) {
+                        GroupInfo gi = groupMap.get(pi.getChannel().getRequest().getGroupName());
+                        StringBuilder line = new StringBuilder();
+                        line.append(StringUtils.leftPad(String.valueOf(pi.getPid()), 8));
+                        line.append(" ");
+                        line.append(StringUtils.leftPad("", 5));
+                        line.append(" ");
+                        line.append(StringUtils.rightPad(String.valueOf(gi.getGroupName()), 8));
+                        line.append(" ");
+                        line.append(StringUtils.leftPad(String.valueOf(gi.getPriority()), 8));
+                        line.append(" ");
+                        line.append(StringUtils.leftPad(String.valueOf(pi.getId()), 8));
+                        line.append(" ");
+                        line.append(StringUtils.rightPad(pi.getChannel().getUser(), 8));
+                        line.append(" ");
+                        line.append(StringUtils.leftPad(String.valueOf(pi.getNiceness()), 4));
+                        line.append(" ");
+                        line.append(StringUtils.leftPad(String.valueOf(pi.getChannel().getRequest().getMaxRSS()), 12));
+                        line.append(" ");
+                        if (pi.getMaxSeenRSS() > 0.9 * pi.getChannel().getRequest().getMaxRSS()) {
+                            line.append(ANSICode.RED.getCode());
+                        }
+                        line.append(StringUtils.leftPad(String.valueOf(pi.getMaxSeenRSS()), 12));
+                        line.append(ANSICode.RESET.getCode());
+                        line.append(" ");
+                        line.append(Arrays.toString(pi.getChannel().getRequest().getCommand()));
+                        line.append(" ");
+                        PeerChannel.println(channel.getStdoutOs(), line.toString());
                     }
-                    line.append(StringUtils.leftPad(String.valueOf(pi.getMaxSeenRSS()), 12));
-                    line.append(ANSICode.RESET.getCode());
-                    line.append(" ");
-                    line.append(Arrays.toString(pi.getChannel().getRequest().getCommand()));
-                    line.append(" ");
-                    PeerChannel.println(channel.getStdoutOs(), line.toString());
                 }
-                if (processMap.size() == 0) {
-                    channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
-                } else {
-                    channel.sendEvent(Event.retcode, 0);
+                int position = 0;
+                for (Key key : jobQueue) {
+                    position++;
+                    PeerChannel<SubmitInput> submitChannel = jobMap.get(key.getId());
+                    StringBuilder line = new StringBuilder();
+                    line.append(ANSICode.YELLOW.getCode());
+                    line.append(StringUtils.leftPad("", 8));
+                    line.append(" ");
+                    line.append(StringUtils.leftPad(String.valueOf(position), 5));
+                    line.append(" ");
+                    line.append(StringUtils.rightPad(String.valueOf(submitChannel.getRequest().getGroupName()), 8));
+                    line.append(" ");
+                    line.append(StringUtils.leftPad(String.valueOf(key.getPriority()), 8));
+                    line.append(" ");
+                    line.append(StringUtils.leftPad(String.valueOf(key.getId()), 8));
+                    line.append(" ");
+                    line.append(StringUtils.rightPad(submitChannel.getUser(), 8));
+                    line.append(" ");
+                    line.append(StringUtils.leftPad("", 4));
+                    line.append(" ");
+                    line.append(StringUtils.leftPad(String.valueOf(submitChannel.getRequest().getMaxRSS()), 12));
+                    line.append(" ");
+                    line.append(StringUtils.leftPad("", 12));
+                    line.append(" ");
+                    line.append(Arrays.toString(submitChannel.getRequest().getCommand()));
+                    line.append(" ");
+                    line.append(ANSICode.RESET.getCode());
+                    PeerChannel.println(channel.getStdoutOs(), line.toString());
                 }
             }
         } finally {
+            channel.sendEvent(Event.retcode, 0);
             channel.close();
         }
     }
 
-    public void cancel(PeerChannel<CancelInfo> cancelChannel) throws IOException, InterruptedException {
+    public void cancel(PeerChannel<CancelInput> cancelChannel) throws IOException, InterruptedException {
         try {
             synchronized (jobQueue) {
                 if (closed) {
                     throw new IllegalStateException("Instance is closed");
                 }
-                PeerChannel<SubmitInfo> submitChannel = jobMap.get(cancelChannel.getRequest().getId());
+                PeerChannel<SubmitInput> submitChannel = jobMap.get(cancelChannel.getRequest().getId());
                 if (submitChannel != null) {
                     if (!cancelChannel.getUser().equals("root") && !cancelChannel.getUser().equals(submitChannel.getUser())) {
                         cancelChannel.log(ANSICode.RED, "user '" + cancelChannel.getUser() + "' is not allowed to cancel a queued job from user '" + submitChannel.getUser() + "'");
@@ -370,25 +401,39 @@ public class Scheduler {
         }
     }
 
-    public void setPriority(PeerChannel<PriorityInfo> channel) throws IOException {
+    public void updateGroup(PeerChannel<GroupInput> channel) throws IOException {
         try {
-
             if (closed) {
                 throw new IllegalStateException("Instance is closed");
             }
-            GroupInfo gi = groupMap.get(channel.getRequest().getGroupName());
-            if (gi == null) {
-                channel.log(ANSICode.RED, "unknown group name '" + channel.getRequest().getGroupName() + "'");
-                channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
-                return;
+            GroupInfo gi;
+            synchronized (groupMap) {
+                gi = groupMap.get(channel.getRequest().getGroupName());
+                if (gi == null) {
+                    createGroupInfo(channel.getRequest().getGroupName(), channel.getUser(), channel.getRequest().getPriority(), channel.getRequest().getTimetoIdleSeconds());
+                    channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' created successfully");
+                    channel.sendEvent(Event.retcode, 0);
+                    return;
+                } else if (channel.getRequest().isDelete()) {
+                    if (gi.getJobs().isEmpty()) {
+                        channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' deleted successfully");
+                        groupMap.remove(channel.getRequest().getGroupName());
+                        channel.sendEvent(Event.retcode, 0);
+                        return;
+                    } else {
+                        channel.log(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' cannot be deleted, since it contains " + gi.getJobs().size() + " active jobs");
+                        channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
+                        return;
+                    }
+                }
             }
             synchronized (gi) {
-                int newPriority = channel.getRequest().getPriority();
+                Integer newPriority = channel.getRequest().getPriority();
 
-                if (newPriority != gi.getPriority()) {
+                if (newPriority != null && newPriority != gi.getPriority()) {
                     synchronized (gi.getJobs()) {
                         for (Integer id : gi.getJobs()) {
-                            PeerChannel<SubmitInfo> submitChannel;
+                            PeerChannel<SubmitInput> submitChannel;
                             Key key = new Key(gi.getPriority(), gi.getGroupId(), id);
                             Key newKey = new Key(newPriority, gi.getGroupId(), id);
                             synchronized (jobQueue) {
@@ -412,16 +457,21 @@ public class Scheduler {
                         }
                     }
                     gi.setPriority(newPriority);
+                    channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' priority updated successfully");
+                }
+                Integer newTimetoIdleSeconds = channel.getRequest().getTimetoIdleSeconds();
+                if (newTimetoIdleSeconds!=null && newTimetoIdleSeconds!=gi.getTimeToIdelSeconds()) {
+                    gi.setTimeToIdelSeconds(newTimetoIdleSeconds);
+                    channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' time-to-idle updated successfully");
                 }
                 channel.sendEvent(Event.retcode, 0);
             }
-
         } finally {
             channel.close();
         }
     }
 
-    private void execute(final int id, final PeerChannel<SubmitInfo> channel) {
+    private void execute(final int id, final PeerChannel<SubmitInput> channel) {
         if (channel == null) {
             throw new IllegalArgumentException("Id is required");
         }
@@ -595,7 +645,7 @@ public class Scheduler {
         private final int groupId;
         private final String user;
         private final Set<Integer> jobs = Collections.synchronizedNavigableSet(new TreeSet<Integer>());
-        private final int timeToIdelSeconds;
+        private int timeToIdelSeconds;
 
         private int priority;
 
@@ -622,6 +672,10 @@ public class Scheduler {
             return jobs;
         }
 
+        public void setTimeToIdelSeconds(int timeToIdelSeconds) {
+            this.timeToIdelSeconds = timeToIdelSeconds;
+        }
+        
         public int getPriority() {
             return priority;
         }
@@ -639,17 +693,17 @@ public class Scheduler {
 
         private final int id;
         private final int pId;
-        private final PeerChannel<SubmitInfo> channel;
+        private final PeerChannel<SubmitInput> channel;
         private long maxSeenRSS;
         private int niceness = Integer.MAX_VALUE;
 
-        public ProcessInfo(int id, int pId, PeerChannel<SubmitInfo> channel) {
+        public ProcessInfo(int id, int pId, PeerChannel<SubmitInput> channel) {
             this.id = id;
             this.pId = pId;
             this.channel = channel;
         }
 
-        public PeerChannel<SubmitInfo> getChannel() {
+        public PeerChannel<SubmitInput> getChannel() {
             return channel;
         }
 

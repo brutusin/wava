@@ -42,7 +42,7 @@ import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.Event;
 import org.brutusin.wava.core.PeerChannel;
 import org.brutusin.wava.core.plug.LinuxCommands;
-import org.brutusin.wava.data.OpName;
+import org.brutusin.wava.core.OpName;
 import org.brutusin.wava.main.WavaMain;
 
 /**
@@ -91,6 +91,15 @@ public final class Utils {
             throw new RuntimeException(ex);
         }
     }
+    
+    public static String getBuildDate() {
+        try {
+            return Miscellaneous.toString(WavaMain.class.getClassLoader().getResourceAsStream("build-date.txt"), "UTF-8");
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
 
     public static String getLogo() {
         try {

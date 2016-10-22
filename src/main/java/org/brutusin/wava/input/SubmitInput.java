@@ -1,9 +1,9 @@
-package org.brutusin.wava.data;
+package org.brutusin.wava.input;
 
 import java.io.File;
 import java.util.Map;
 
-public class SubmitInfo {
+public class SubmitInput {
 
     private String groupName;
 

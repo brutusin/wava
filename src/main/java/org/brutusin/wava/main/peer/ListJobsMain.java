@@ -16,17 +16,17 @@
 package org.brutusin.wava.main.peer;
 
 import org.brutusin.wava.utils.Utils;
-import org.brutusin.wava.data.OpName;
+import org.brutusin.wava.core.OpName;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class ListProcessesMain {
+public class ListJobsMain {
 
     public static void main(String[] args) throws Exception {
         Utils.validateCoreRunning();
-        Integer retCode = Utils.executeRequest(OpName.listProcesses, null, null, false);
+        Integer retCode = Utils.executeRequest(OpName.jobs, null, null, false);
         if (retCode == null) {
             retCode = 1;
         }

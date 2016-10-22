@@ -35,7 +35,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.build.timestamp.format>dd/MM/yyyy HH:mm:ss</maven.build.timestamp.format>
-        <buildNumber>${maven.build.times|tamp}</buildNumber>
+        <buildNumber>${maven.build.timestamp}</buildNumber>
         
         <brutusin-commons-version>1.5.3-SNAPSHOT</brutusin-commons-version>
         <brutusin-json-version>1.4.1</brutusin-json-version>
@@ -95,7 +95,7 @@
                 <filtering>true</filtering>
             </resource>
         </resources>
-        <plugins> 
+        <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>

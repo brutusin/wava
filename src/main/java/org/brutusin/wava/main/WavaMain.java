@@ -47,27 +47,27 @@ public class WavaMain {
                 .build();
         Option cOpt = Option.builder("c")
                 .longOpt("core")
-                .desc("start scheduler process")
+                .desc("start core scheduler process")
                 .build();
         Option sOpt = Option.builder("s")
                 .longOpt("submit")
-                .desc("submit job")
+               .desc(SubmitMain.DESCRIPTION)
                 .build();
         Option jOpt = Option.builder("j")
                 .longOpt("jobs")
                 .desc("view jobs")
                 .build();
-        Option pOpt = Option.builder("p")
-                .longOpt("priority")
-                .desc("change group priority")
+        Option gOpt = Option.builder("g")
+                .longOpt("group")
+                .desc(GroupMain.DESCRIPTION)
                 .build();
 
         options.addOption(aOpt);
         options.addOption(hOpt);
         options.addOption(cOpt);
         options.addOption(sOpt);
+        options.addOption(gOpt);
         options.addOption(jOpt);
-        options.addOption(pOpt);
         try {
             if (args.length > 0) {
                 CommandLineParser parser = new DefaultParser();
@@ -85,9 +85,9 @@ public class WavaMain {
                 } else if (cl.hasOption(cOpt.getOpt())) {
                     CoreMain.main(subArgs);
                 } else if (cl.hasOption(jOpt.getOpt())) {
-                    ListProcessesMain.main(subArgs);
-                } else if (cl.hasOption(pOpt.getOpt())) {
-                    ChangePriority.main(subArgs);
+                    ListJobsMain.main(subArgs);
+                } else if (cl.hasOption(gOpt.getOpt())) {
+                    GroupMain.main(subArgs);
                 } else if (cl.hasOption(sOpt.getOpt())) {
                     SubmitMain.main(subArgs);
                 }

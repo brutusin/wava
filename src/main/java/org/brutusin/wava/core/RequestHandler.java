@@ -34,10 +34,9 @@ import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.ParseException;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.core.plug.LinuxCommands;
-import org.brutusin.wava.data.CancelInfo;
-import org.brutusin.wava.data.OpName;
-import org.brutusin.wava.data.PriorityInfo;
-import org.brutusin.wava.data.SubmitInfo;
+import org.brutusin.wava.input.CancelInput;
+import org.brutusin.wava.input.GroupInput;
+import org.brutusin.wava.input.SubmitInput;
 
 /**
  *
@@ -116,26 +115,26 @@ public class RequestHandler {
             }
             requestFile.delete();
             if (opName == OpName.submit) {
-                SubmitInfo input = JsonCodec.getInstance().parse(json, SubmitInfo.class);
-                PeerChannel<SubmitInfo> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                SubmitInput input = JsonCodec.getInstance().parse(json, SubmitInput.class);
+                PeerChannel<SubmitInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
                 this.scheduler.submit(channel);
             } else if (opName == OpName.cancel) {
-                CancelInfo input = JsonCodec.getInstance().parse(json, CancelInfo.class);
-                PeerChannel<CancelInfo> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                CancelInput input = JsonCodec.getInstance().parse(json, CancelInput.class);
+                PeerChannel<CancelInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
                 this.scheduler.cancel(channel);
-            } else if (opName == OpName.listProcesses) {
+            } else if (opName == OpName.jobs) {
                 PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.ROOT, "/streams/" + id));
-                this.scheduler.getRunningProcesses(channel);
-            }else if (opName == OpName.changePriority) {
-                PriorityInfo input = JsonCodec.getInstance().parse(json, PriorityInfo.class);
-                PeerChannel<PriorityInfo> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
-                this.scheduler.setPriority(channel);
+                this.scheduler.listJobs(channel);
+            } else if (opName == OpName.group) {
+                GroupInput input = JsonCodec.getInstance().parse(json, GroupInput.class);
+                PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                this.scheduler.updateGroup(channel);
             }
         }
     }
 
     public static void main(String[] args) throws Exception {
-        SubmitInfo ri = new SubmitInfo();
+        SubmitInput ri = new SubmitInput();
         ri.setCommand(new String[]{"ls"});
         ri.setWorkingDirectory(new File("/tmp"));
         ri.setMaxRSS(500000);
