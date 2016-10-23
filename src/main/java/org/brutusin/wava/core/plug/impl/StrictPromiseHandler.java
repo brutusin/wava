@@ -29,7 +29,7 @@ public class StrictPromiseHandler extends PromiseHandler {
 
     @Override
     public void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException {
-        pi.getChannel().sendEvent(Event.exceed, pi.getChannel().getRequest().getMaxRSS());
+        pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
         LinuxCommands.getInstance().killTree(pi.getPid());
     }
 }

@@ -7,4 +7,4 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 export WAVA_HOME="$(dirname "$DIR")"
-java -jar $WAVA_HOME/lib/wava-${project.version}-executable.jar "$@" < /dev/stdin 1>&1 2>&2
+java -jar $WAVA_HOME/bin/wava-${project.version}.jar "$@" < /dev/stdin 1>&1 2>&2

@@ -8,8 +8,8 @@
     </formats>
     <files>
         <file>
-            <source>target/${pom.artifactId}-${pom.version}-executable.jar</source>
-            <outputDirectory>lib/</outputDirectory>
+            <source>target/${pom.artifactId}-${pom.version}.jar</source>
+            <outputDirectory>bin/</outputDirectory>
         </file>
         <file>
             <source>README.md</source>
@@ -29,4 +29,13 @@
             </includes>
         </fileSet>
     </fileSets>
+    <dependencySets>
+        <dependencySet>
+            <outputDirectory>/lib</outputDirectory>
+            <unpack>false</unpack>
+            <excludes>
+                <exclude>${artifact}</exclude>
+            </excludes>
+        </dependencySet>
+    </dependencySets>
 </assembly>
