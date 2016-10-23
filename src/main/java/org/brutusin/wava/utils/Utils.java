@@ -91,7 +91,7 @@ public final class Utils {
             throw new RuntimeException(ex);
         }
     }
-    
+
     public static String getBuildDate() {
         try {
             return Miscellaneous.toString(WavaMain.class.getClassLoader().getResourceAsStream("build-date.txt"), "UTF-8");
@@ -100,11 +100,10 @@ public final class Utils {
         }
     }
 
-
     public static String getLogo() {
         try {
-            String version = "[W]hen [AVA]ilable scheduler " + getVersion();
-            String line = Miscellaneous.append("_", version.length());
+            String version = getVersion();
+            String line = Miscellaneous.append("_", 29 + version.length());
             StringBuilder sb = new StringBuilder(line);
             sb.append("\n");
             sb.append(ANSICode.GREEN.getCode());
@@ -112,7 +111,15 @@ public final class Utils {
             sb.append(ANSICode.RESET.getCode());
             sb.append("\n");
             sb.append("\n");
+            sb.append(ANSICode.GREEN.getCode());
+            sb.append("[W]");
             sb.append(ANSICode.CYAN.getCode());
+            sb.append("hen ");
+            sb.append(ANSICode.GREEN.getCode());
+            sb.append("[AVA]");
+            sb.append(ANSICode.CYAN.getCode());
+            sb.append("ilable scheduler ");
+            sb.append(ANSICode.RED.getCode());
             sb.append(version);
             sb.append(ANSICode.RESET.getCode());
             sb.append("\n");
@@ -254,5 +261,9 @@ public final class Utils {
         outThread.join();
         errThread.join();
         return retCode.getValue();
+    }
+
+    public static void main(String[] args) {
+        System.out.println(("[W]hen [AVA]ilable scheduler ").length());
     }
 }

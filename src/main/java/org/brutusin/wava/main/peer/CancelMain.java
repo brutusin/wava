@@ -31,14 +31,16 @@ import org.brutusin.wava.core.OpName;
  */
 public class CancelMain {
 
+     public static final String DESCRIPTION = "Cancel a running or enqueued job";
+             
     private static CancelInput getRequest(String[] args) {
         Options options = new Options();
-        Option jOpt = Option.builder("j")
+        Option kOpt = Option.builder("k")
                 .argName("job id")
                 .hasArg()
                 .required()
                 .build();
-        options.addOption(jOpt);
+        options.addOption(kOpt);
 
         try {
             CommandLineParser parser = new DefaultParser();
@@ -46,9 +48,9 @@ public class CancelMain {
 
             int id;
             try {
-                id = Integer.valueOf(cl.getOptionValue("j"));
+                id = Integer.valueOf(cl.getOptionValue(kOpt.getOpt()));
             } catch (NumberFormatException ex) {
-                throw new ParseException("Invalid memory (-j) value");
+                throw new ParseException("Invalid job id value");
             }
             CancelInput ci = new CancelInput();
             ci.setId(id);
@@ -61,7 +63,7 @@ public class CancelMain {
     }
 
     private static void showHelp(Options options) {
-        Utils.showHelp(options, "wava-cancel.sh [options] [command]\nCancel a running or enqueued job");
+        Utils.showHelp(options, "wava.sh -k <job-id>\n" + DESCRIPTION);
     }
 
     public static void main(String[] args) throws Exception {

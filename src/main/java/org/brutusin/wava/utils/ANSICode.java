@@ -62,4 +62,9 @@ public enum ANSICode {
             return "";
         }
     }
+
+    @Override
+    public String toString() {
+        return getCode();
+    }
 }

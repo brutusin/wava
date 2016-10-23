@@ -61,6 +61,10 @@ public class WavaMain {
                 .longOpt("group")
                 .desc(GroupMain.DESCRIPTION)
                 .build();
+        Option kOpt = Option.builder("k")
+                .longOpt("kill")
+                .desc(CancelMain.DESCRIPTION)
+                .build();
 
         options.addOption(aOpt);
         options.addOption(hOpt);
@@ -90,6 +94,8 @@ public class WavaMain {
                     GroupMain.main(subArgs);
                 } else if (cl.hasOption(sOpt.getOpt())) {
                     SubmitMain.main(subArgs);
+                } else if (cl.hasOption(kOpt.getOpt())) {
+                    SubmitMain.main(args);
                 }
             } else {
                 showHelp(options);

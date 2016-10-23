@@ -36,7 +36,7 @@ import org.brutusin.wava.input.SubmitInput;
  */
 public class SubmitMain {
 
-    public static final String DESCRIPTION = "Enqueues a command to be executed [W]hen enough RSS memory is [AVA]ilable";
+    public static final String DESCRIPTION = "enqueues a command to be executed when enough RSS memory is available";
 
     private static void showHelp(Options options) {
         Utils.showHelp(options, "wava.sh -s [options] [command]\n" + DESCRIPTION);

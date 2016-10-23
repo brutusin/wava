@@ -17,6 +17,7 @@ package org.brutusin.wava.main;
 
 import java.io.File;
 import org.brutusin.wava.core.Environment;
+import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.Utils;
 
 /**
@@ -27,9 +28,9 @@ public class AboutMain {
 
     public static void main(String[] args) throws Exception {
         System.err.println(Utils.getLogo());
-        System.err.println("Version:\n\t" + Utils.getVersion() + " (" + Utils.getBuildDate() + ")");
-        System.err.println("Project site:\n\thttp://wava.brutusin.org");
-        System.err.println("Created by:\n\tIgnacio del Valle Alles");
-        System.err.println("Offline help:\n\tmore " + new File(Environment.ROOT, "README").getAbsolutePath());
+        System.err.println(ANSICode.CYAN.getCode() + "Version:\n\t" + ANSICode.RESET.getCode() + Utils.getVersion() + " (" + Utils.getBuildDate() + ")");
+        System.err.println(ANSICode.CYAN.getCode() + "Project site:\n\t" + ANSICode.RESET.getCode() + "http://wava.brutusin.org");
+        System.err.println(ANSICode.CYAN.getCode() + "Created by:\n\t" + ANSICode.RESET.getCode() + "Ignacio del Valle Alles");
+        System.err.println(ANSICode.CYAN.getCode() + "Offline help:\n\t" + ANSICode.RESET.getCode() + "more " + new File(Environment.ROOT, "README").getAbsolutePath());
     }
 }

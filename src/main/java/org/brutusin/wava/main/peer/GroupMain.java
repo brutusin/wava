@@ -31,7 +31,7 @@ import org.brutusin.wava.input.GroupInput;
  */
 public class GroupMain {
 
-    public static final String DESCRIPTION = "Creates a new priority group or updates an existing one";
+    public static final String DESCRIPTION = "creates a new priority group or updates an existing one";
 
     private static void showHelp(Options options) {
         Utils.showHelp(options, "wava.sh -g [options]\n" + DESCRIPTION);
@@ -65,7 +65,7 @@ public class GroupMain {
 
         options.addOption(dOpt);
         options.addOption(nOpt);
-        options.addOption(nOpt);
+        options.addOption(pOpt);
         options.addOption(tOpt);
 
         try {
