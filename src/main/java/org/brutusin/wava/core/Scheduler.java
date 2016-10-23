@@ -267,17 +267,17 @@ public class Scheduler {
             header.append(ANSICode.MOVE_TO_TOP.getCode());
             header.append(ANSICode.BLACK.getCode());
             header.append(ANSICode.BG_GREEN.getCode());
-            header.append(StringUtils.leftPad("PID", 8));
-            header.append(" ");
-            header.append(StringUtils.leftPad("QUEUE", 5));
+            header.append(StringUtils.leftPad("JOB_ID", 8));
             header.append(" ");
             header.append(StringUtils.rightPad("GROUP", 8));
             header.append(" ");
+            header.append(StringUtils.rightPad("USER", 8));
+            header.append(" ");
             header.append(StringUtils.leftPad("PRIORITY", 8));
             header.append(" ");
-            header.append(StringUtils.leftPad("JOB", 8));
+            header.append(StringUtils.leftPad("QUEUE", 5));
             header.append(" ");
-            header.append(StringUtils.rightPad("USER", 8));
+            header.append(StringUtils.leftPad("PID", 8));
             header.append(" ");
             header.append(StringUtils.leftPad("NICE", 4));
             header.append(" ");
@@ -294,17 +294,17 @@ public class Scheduler {
                     for (ProcessInfo pi : processMap.values()) {
                         GroupInfo gi = groupMap.get(pi.getChannel().getRequest().getGroupName());
                         StringBuilder line = new StringBuilder();
-                        line.append(StringUtils.leftPad(String.valueOf(pi.getPid()), 8));
-                        line.append(" ");
-                        line.append(StringUtils.leftPad("", 5));
+                        line.append(StringUtils.leftPad(String.valueOf(pi.getId()), 8));
                         line.append(" ");
                         line.append(StringUtils.rightPad(String.valueOf(gi.getGroupName()), 8));
                         line.append(" ");
+                        line.append(StringUtils.rightPad(pi.getChannel().getUser(), 8));
+                        line.append(" ");
                         line.append(StringUtils.leftPad(String.valueOf(gi.getPriority()), 8));
                         line.append(" ");
-                        line.append(StringUtils.leftPad(String.valueOf(pi.getId()), 8));
+                        line.append(StringUtils.leftPad("", 5));
                         line.append(" ");
-                        line.append(StringUtils.rightPad(pi.getChannel().getUser(), 8));
+                        line.append(StringUtils.leftPad(String.valueOf(pi.getPid()), 8));
                         line.append(" ");
                         line.append(StringUtils.leftPad(String.valueOf(pi.getNiceness()), 4));
                         line.append(" ");
@@ -327,17 +327,17 @@ public class Scheduler {
                     PeerChannel<SubmitInput> submitChannel = jobMap.get(key.getId());
                     StringBuilder line = new StringBuilder();
                     line.append(ANSICode.YELLOW.getCode());
-                    line.append(StringUtils.leftPad("", 8));
-                    line.append(" ");
-                    line.append(StringUtils.leftPad(String.valueOf(position), 5));
+                    line.append(StringUtils.leftPad(String.valueOf(key.getId()), 8));
                     line.append(" ");
                     line.append(StringUtils.rightPad(String.valueOf(submitChannel.getRequest().getGroupName()), 8));
                     line.append(" ");
+                    line.append(StringUtils.rightPad(submitChannel.getUser(), 8));
+                    line.append(" ");
                     line.append(StringUtils.leftPad(String.valueOf(key.getPriority()), 8));
                     line.append(" ");
-                    line.append(StringUtils.leftPad(String.valueOf(key.getId()), 8));
+                    line.append(StringUtils.leftPad(String.valueOf(position), 5));
                     line.append(" ");
-                    line.append(StringUtils.rightPad(submitChannel.getUser(), 8));
+                    line.append(StringUtils.leftPad("", 8));
                     line.append(" ");
                     line.append(StringUtils.leftPad("", 4));
                     line.append(" ");
@@ -433,16 +433,18 @@ public class Scheduler {
                 if (newPriority != null && newPriority != gi.getPriority()) {
                     synchronized (gi.getJobs()) {
                         for (Integer id : gi.getJobs()) {
-                            PeerChannel<SubmitInput> submitChannel;
+                            PeerChannel<SubmitInput> submitChannel = null;
                             Key key = new Key(gi.getPriority(), gi.getGroupId(), id);
                             Key newKey = new Key(newPriority, gi.getGroupId(), id);
+                            boolean enqueded;
                             synchronized (jobQueue) {
-                                submitChannel = jobMap.remove(id);
-                                if (submitChannel != null) {
+                                enqueded = jobQueue.remove(key);
+                                if (enqueded) {
+                                    submitChannel = jobMap.get(id);
                                     jobQueue.add(newKey);
                                 }
                             }
-                            if (submitChannel == null) {
+                            if (!enqueded) {
                                 synchronized (processMap) {
                                     ProcessInfo pi = processMap.remove(key);
                                     if (pi != null) {
@@ -460,7 +462,7 @@ public class Scheduler {
                     channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' priority updated successfully");
                 }
                 Integer newTimetoIdleSeconds = channel.getRequest().getTimetoIdleSeconds();
-                if (newTimetoIdleSeconds!=null && newTimetoIdleSeconds!=gi.getTimeToIdelSeconds()) {
+                if (newTimetoIdleSeconds != null && newTimetoIdleSeconds != gi.getTimeToIdelSeconds()) {
                     gi.setTimeToIdelSeconds(newTimetoIdleSeconds);
                     channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' time-to-idle updated successfully");
                 }
@@ -675,7 +677,7 @@ public class Scheduler {
         public void setTimeToIdelSeconds(int timeToIdelSeconds) {
             this.timeToIdelSeconds = timeToIdelSeconds;
         }
-        
+
         public int getPriority() {
             return priority;
         }

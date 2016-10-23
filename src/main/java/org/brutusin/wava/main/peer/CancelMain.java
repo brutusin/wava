@@ -31,7 +31,7 @@ import org.brutusin.wava.core.OpName;
  */
 public class CancelMain {
 
-     public static final String DESCRIPTION = "Cancel a running or enqueued job";
+     public static final String DESCRIPTION = "cancel a running or enqueued job";
              
     private static CancelInput getRequest(String[] args) {
         Options options = new Options();

@@ -72,6 +72,7 @@ public class WavaMain {
         options.addOption(sOpt);
         options.addOption(gOpt);
         options.addOption(jOpt);
+        options.addOption(kOpt);
         try {
             if (args.length > 0) {
                 CommandLineParser parser = new DefaultParser();
@@ -95,7 +96,7 @@ public class WavaMain {
                 } else if (cl.hasOption(sOpt.getOpt())) {
                     SubmitMain.main(subArgs);
                 } else if (cl.hasOption(kOpt.getOpt())) {
-                    SubmitMain.main(args);
+                    CancelMain.main(args);
                 }
             } else {
                 showHelp(options);
