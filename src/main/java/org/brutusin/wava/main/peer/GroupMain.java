@@ -44,11 +44,14 @@ public class GroupMain {
                 .argName("group name")
                 .desc("name of the group to be created or updated.")
                 .hasArg()
-                .required()
                 .build();
         Option dOpt = Option.builder("d")
                 .longOpt("delete")
                 .desc("deletes an existing empty group")
+                .build();
+        Option lOpt = Option.builder("l")
+                .longOpt("list")
+                .desc("list existing groups")
                 .build();
         Option pOpt = Option.builder("p")
                 .longOpt("priority")
@@ -67,6 +70,7 @@ public class GroupMain {
         options.addOption(nOpt);
         options.addOption(pOpt);
         options.addOption(tOpt);
+        options.addOption(lOpt);
 
         try {
             CommandLineParser parser = new DefaultParser();
@@ -89,6 +93,8 @@ public class GroupMain {
             }
             if (cl.hasOption(dOpt.getOpt())) {
                 gi.setDelete(true);
+            } else if (cl.hasOption(lOpt.getOpt())) {
+                gi.setList(true);
             }
 
             return gi;

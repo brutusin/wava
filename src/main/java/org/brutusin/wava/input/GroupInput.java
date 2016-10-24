@@ -6,6 +6,7 @@ public class GroupInput {
     private Integer priority;
     private Integer timetoIdleSeconds;
     private boolean delete;
+     private boolean list;
 
     public String getGroupName() {
         return groupName;
@@ -37,5 +38,13 @@ public class GroupInput {
 
     public void setDelete(boolean delete) {
         this.delete = delete;
+    }
+
+    public boolean isList() {
+        return list;
+    }
+
+    public void setList(boolean list) {
+        this.list = list;
     }
 }

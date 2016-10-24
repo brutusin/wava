@@ -45,12 +45,12 @@ public class WavaMain {
                 .longOpt("about")
                 .desc("information about the program")
                 .build();
-        Option cOpt = Option.builder("c")
-                .longOpt("core")
+        Option cOpt = Option.builder("s")
+                .longOpt("start")
                 .desc("start core scheduler process")
                 .build();
-        Option sOpt = Option.builder("s")
-                .longOpt("submit")
+        Option sOpt = Option.builder("r")
+                .longOpt("run")
                .desc(SubmitMain.DESCRIPTION)
                 .build();
         Option jOpt = Option.builder("j")
@@ -59,10 +59,10 @@ public class WavaMain {
                 .build();
         Option gOpt = Option.builder("g")
                 .longOpt("group")
-                .desc(GroupMain.DESCRIPTION)
+                .desc("group management commands")
                 .build();
-        Option kOpt = Option.builder("k")
-                .longOpt("kill")
+        Option kOpt = Option.builder("c")
+                .longOpt("cancel")
                 .desc(CancelMain.DESCRIPTION)
                 .build();
 

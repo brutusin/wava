@@ -127,8 +127,13 @@ public class RequestHandler {
                 this.scheduler.listJobs(channel);
             } else if (opName == OpName.group) {
                 GroupInput input = JsonCodec.getInstance().parse(json, GroupInput.class);
-                PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
-                this.scheduler.updateGroup(channel);
+                if (input.isList()) {
+                    PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.ROOT, "/streams/" + id));
+                    this.scheduler.listGroups(channel);
+                } else {
+                    PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                    this.scheduler.updateGroup(channel);
+                }
             }
         }
     }
