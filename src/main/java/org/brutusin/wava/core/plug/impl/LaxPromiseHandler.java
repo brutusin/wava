@@ -25,12 +25,18 @@ import org.brutusin.wava.core.plug.LinuxCommands;
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class StrictPromiseHandler extends PromiseHandler {
+public class LaxPromiseHandler extends PromiseHandler {
 
     @Override
     public boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException {
-        pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
-        LinuxCommands.getInstance().killTree(pi.getPid());
-        return false;
+        if (!pi.isAllowed()) {
+            pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
+        }
+        if (availableMemory <= 0) {
+            LinuxCommands.getInstance().killTree(pi.getPid());
+            return false;
+        } else {
+            return true;
+        }
     }
 }

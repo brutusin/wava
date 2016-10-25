@@ -17,7 +17,7 @@ package org.brutusin.wava.core.plug;
 
 import java.io.IOException;
 import org.brutusin.wava.core.Scheduler;
-import org.brutusin.wava.core.plug.impl.StrictPromiseHandler;
+import org.brutusin.wava.core.cfg.Config;
 
 /**
  *
@@ -25,11 +25,29 @@ import org.brutusin.wava.core.plug.impl.StrictPromiseHandler;
  */
 public abstract class PromiseHandler {
 
-    private static final PromiseHandler INSTANCE = new StrictPromiseHandler();
+    private static final PromiseHandler INSTANCE;
+
+    static {
+        try {
+            INSTANCE = (PromiseHandler) Class.forName(Config.getInstance().getPromiseHandlerClassName()).newInstance();
+        } catch (Exception ex) {
+            throw new Error(ex);
+        }
+    }
 
     public static PromiseHandler getInstance() {
         return INSTANCE;
     }
 
-    public abstract void promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException;
+    /**
+     *
+     * @param availableMemory
+     * @param pi
+     * @param treeRSS
+     * @return true if the process is allowed to continue executing, false
+     * otherwise
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    public abstract boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException;
 }

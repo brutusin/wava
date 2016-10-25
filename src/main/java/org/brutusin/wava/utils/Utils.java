@@ -30,8 +30,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.brutusin.commons.Bean;
@@ -193,6 +191,8 @@ public final class Utils {
                                     if (evt == Event.id || evt == Event.running) {
                                         color = ANSICode.GREEN;
                                     } else if (evt == Event.queued) {
+                                        color = ANSICode.YELLOW;
+                                    } else if (evt == Event.cancelled) {
                                         color = ANSICode.YELLOW;
                                     } else if (evt == Event.retcode) {
                                         if (retCode.getValue() == 0) {

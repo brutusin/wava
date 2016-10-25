@@ -15,19 +15,24 @@
  */
 package org.brutusin.wava.core.cfg;
 
+import org.brutusin.json.spi.JsonCodec;
+import org.brutusin.wava.core.plug.PromiseHandler;
+import org.brutusin.wava.core.plug.impl.StrictPromiseHandler;
+
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class ConfigImpl {
 
+    private String promiseHandlerClassName = StrictPromiseHandler.class.getName();
     private boolean ansiColors = true;
     private int pollingSecs = 5;
     private int maxTotalRSSBytes = -1;
     private int commandTTLCacheSecs = 2;
     private int sigKillDelaySecs = 5;
     private int dynamicGroupIdleSeconds = 10;
-    private int[] nicenessRange = {-20,19};
+    private int[] nicenessRange = {-20, 19};
     private String cpuAfinity = "0-" + (Runtime.getRuntime().availableProcessors() - 1);
 
     public boolean isAnsiColors() {
@@ -48,6 +53,14 @@ public class ConfigImpl {
 
     public int getMaxTotalRSSBytes() {
         return maxTotalRSSBytes;
+    }
+
+    public String getPromiseHandlerClassName() {
+        return promiseHandlerClassName;
+    }
+
+    public void setPromiseHandlerClassName(String promiseHandlerClassName) {
+        this.promiseHandlerClassName = promiseHandlerClassName;
     }
 
     public void setMaxTotalRSSBytes(int maxTotalRSSBytes) {

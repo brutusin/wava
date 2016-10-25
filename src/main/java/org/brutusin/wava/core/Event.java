@@ -26,6 +26,7 @@ public enum Event {
     running,
     niceness,
     retcode,
+    cancelled,
     ping,
     error,
     exceed,

@@ -225,7 +225,12 @@ public class Scheduler {
                                 pi.setMaxSeenRSS(treeRSS);
                             }
                             if (pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS() < treeRSS) {
-                                PromiseHandler.getInstance().promiseFailed(availableMemory, pi, treeRSS);
+                                boolean allowed = PromiseHandler.getInstance().promiseFailed(availableMemory, pi, treeRSS);
+                                if (allowed) {
+                                    availableMemory = availableMemory + pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS() - treeRSS;
+                                    pi.getJobInfo().getSubmitChannel().getRequest().setMaxRSS(treeRSS);
+                                    pi.setAllowed(true);
+                                }
                             }
                         }
                     }
@@ -422,7 +427,7 @@ public class Scheduler {
                 Key key = new Key(gi.getPriority(), gi.groupId, cancelChannel.getRequest().getId());
                 boolean queued = queueOrder.remove(key);
                 if (queued) {
-                    ji.getSubmitChannel().log(ANSICode.YELLOW, "Cancelled by user '" + cancelChannel.getUser() + "'");
+                    ji.getSubmitChannel().sendEvent(Event.retcode.cancelled, cancelChannel.getUser());
                     ji.getSubmitChannel().sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                     ji.getSubmitChannel().close();
                     cancelChannel.log(ANSICode.GREEN, "enqueued job sucessfully cancelled");
@@ -770,6 +775,7 @@ public class Scheduler {
         private final int pId;
         private long maxSeenRSS;
         private int niceness = Integer.MAX_VALUE;
+        private boolean allowed;
 
         public ProcessInfo(JobInfo jobInfo, int pId) {
             this.jobInfo = jobInfo;
@@ -798,6 +804,14 @@ public class Scheduler {
 
         public int getpId() {
             return pId;
+        }
+
+        public boolean isAllowed() {
+            return allowed;
+        }
+
+        public void setAllowed(boolean allowed) {
+            this.allowed = allowed;
         }
 
         public void setNiceness(int niceness) throws IOException, InterruptedException {
