@@ -108,14 +108,21 @@ public class Scheduler {
         return null;
     }
 
+    /**
+     * Returns pIds of jobs in decreasing priority
+     *
+     * @return
+     */
     private int[] getPIds() {
         synchronized (processMap) {
             int[] ret = new int[processMap.size()];
             int i = 0;
-            for (ProcessInfo pi : processMap.values()) {
-                ret[i++] = pi.getPid();
+            synchronized (runningOrder) {
+                for (Key key : runningOrder) {
+                    ret[i++] = processMap.get(key.getId()).getPid();
+                }
+                return ret;
             }
-            return ret;
         }
     }
 
@@ -217,19 +224,22 @@ public class Scheduler {
                 long[] treeRSSs = LinuxCommands.getInstance().getTreeRSS(pIds);
                 if (treeRSSs != null) {
                     int i = 0;
-                    for (ProcessInfo pi : processMap.values()) {
-                        long treeRSS = treeRSSs[i++];
-                        currentRSS += treeRSS;
-                        if (treeRSS != 0) {
-                            if (treeRSS > pi.getMaxSeenRSS()) {
-                                pi.setMaxSeenRSS(treeRSS);
-                            }
-                            if (pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS() < treeRSS) {
-                                boolean allowed = PromiseHandler.getInstance().promiseFailed(availableMemory, pi, treeRSS);
-                                if (allowed) {
-                                    availableMemory = availableMemory + pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS() - treeRSS;
-                                    pi.getJobInfo().getSubmitChannel().getRequest().setMaxRSS(treeRSS);
-                                    pi.setAllowed(true);
+                    synchronized (runningOrder) {
+                        for (Key key : runningOrder) {
+                            ProcessInfo pi = processMap.get(key.getId());
+                            long treeRSS = treeRSSs[i++];
+                            currentRSS += treeRSS;
+                            if (treeRSS != 0) {
+                                if (treeRSS > pi.getMaxSeenRSS()) {
+                                    pi.setMaxSeenRSS(treeRSS);
+                                }
+                                if (pi.getMaxRSS() < treeRSS) {
+                                    boolean allowed = PromiseHandler.getInstance().promiseFailed(availableMemory, pi, treeRSS);
+                                    if (allowed) {
+                                        availableMemory = availableMemory + pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS() - treeRSS;
+                                        pi.setMaxRSS(treeRSS);
+                                        pi.setAllowed(true);
+                                    }
                                 }
                             }
                         }
@@ -773,6 +783,7 @@ public class Scheduler {
 
         private final JobInfo jobInfo;
         private final int pId;
+        private long maxRSS;
         private long maxSeenRSS;
         private int niceness = Integer.MAX_VALUE;
         private boolean allowed;
@@ -780,6 +791,7 @@ public class Scheduler {
         public ProcessInfo(JobInfo jobInfo, int pId) {
             this.jobInfo = jobInfo;
             this.pId = pId;
+            this.maxRSS = jobInfo.getSubmitChannel().getRequest().getMaxRSS();
         }
 
         public int getPid() {
@@ -804,6 +816,14 @@ public class Scheduler {
 
         public int getpId() {
             return pId;
+        }
+
+        public long getMaxRSS() {
+            return maxRSS;
+        }
+
+        public void setMaxRSS(long maxRSS) {
+            this.maxRSS = maxRSS;
         }
 
         public boolean isAllowed() {
