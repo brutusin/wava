@@ -56,7 +56,7 @@ public enum ANSICode {
     }
 
     public String getCode() {
-        if (Config.getInstance().isAnsiColors()) {
+        if (Config.getInstance().getuICfg().isAnsiColors()) {
             return code;
         } else {
             return "";

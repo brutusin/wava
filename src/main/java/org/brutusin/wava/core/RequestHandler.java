@@ -37,6 +37,8 @@ import org.brutusin.wava.core.plug.LinuxCommands;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.input.SubmitInput;
+import org.brutusin.wava.utils.ANSICode;
+import org.brutusin.wava.utils.Utils;
 
 /**
  *
@@ -114,27 +116,47 @@ public class RequestHandler {
                 json = Miscellaneous.toString(fis, "UTF-8");
             }
             requestFile.delete();
-            if (opName == OpName.submit) {
-                SubmitInput input = JsonCodec.getInstance().parse(json, SubmitInput.class);
-                PeerChannel<SubmitInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
-                this.scheduler.submit(channel);
-            } else if (opName == OpName.cancel) {
-                CancelInput input = JsonCodec.getInstance().parse(json, CancelInput.class);
-                PeerChannel<CancelInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
-                this.scheduler.cancel(channel);
-            } else if (opName == OpName.jobs) {
-                PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.ROOT, "/streams/" + id));
-                this.scheduler.listJobs(channel);
-            } else if (opName == OpName.group) {
-                GroupInput input = JsonCodec.getInstance().parse(json, GroupInput.class);
-                if (input.isList()) {
+            PeerChannel ch = null;
+            try {
+                if (opName == OpName.submit) {
+                    SubmitInput input = JsonCodec.getInstance().parse(json, SubmitInput.class);
+                    PeerChannel<SubmitInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                    ch = channel;
+                    this.scheduler.submit(channel);
+                } else if (opName == OpName.cancel) {
+                    CancelInput input = JsonCodec.getInstance().parse(json, CancelInput.class);
+                    PeerChannel<CancelInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                    ch = channel;
+                    this.scheduler.cancel(channel);
+                } else if (opName == OpName.jobs) {
                     PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.ROOT, "/streams/" + id));
-                    this.scheduler.listGroups(channel);
-                } else {
-                    PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
-                    this.scheduler.updateGroup(channel);
+                    ch = channel;
+                    this.scheduler.listJobs(channel);
+                } else if (opName == OpName.group) {
+                    GroupInput input = JsonCodec.getInstance().parse(json, GroupInput.class);
+                    if (input.isList()) {
+                        PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.ROOT, "/streams/" + id));
+                        ch = channel;
+                        this.scheduler.listGroups(channel);
+                    } else {
+                        PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                        ch = channel;
+                        this.scheduler.updateGroup(channel);
+                    }
                 }
-            }
+            } catch (Throwable th) {
+                if (th instanceof IllegalArgumentException) {
+                    PeerChannel.println(ch.getStderrOs(), ANSICode.RED + "[wava] " + th.getMessage());
+                    ch.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
+                } else if (th instanceof InterruptedException) {
+                    throw (InterruptedException) th;
+                } else {
+                    PeerChannel.println(ch.getStderrOs(), ANSICode.RED + "[wava] An error has ocurred. See core process logs for more details");
+                    ch.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
+                    LOGGER.log(Level.SEVERE, th.getMessage(), th);
+                }
+                ch.close();
+            } 
         }
     }
 

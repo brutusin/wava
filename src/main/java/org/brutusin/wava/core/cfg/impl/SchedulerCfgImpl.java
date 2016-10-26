@@ -13,48 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.core.cfg;
+package org.brutusin.wava.core.cfg.impl;
 
-import org.brutusin.json.spi.JsonCodec;
-import org.brutusin.wava.core.plug.PromiseHandler;
+import org.brutusin.wava.core.cfg.SchedulerCfg;
 import org.brutusin.wava.core.plug.impl.StrictPromiseHandler;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class ConfigImpl {
+public class SchedulerCfgImpl implements SchedulerCfg {
 
     private String promiseHandlerClassName = StrictPromiseHandler.class.getName();
-    private boolean ansiColors = true;
     private int pollingSecs = 5;
     private int maxTotalRSSBytes = -1;
+    private int maxJobRSSBytes = -1;
     private int commandTTLCacheSecs = 2;
     private int sigKillDelaySecs = 5;
-    private int dynamicGroupIdleSeconds = 10;
-    private int[] nicenessRange = {-20, 19};
-    private String cpuAfinity = "0-" + (Runtime.getRuntime().availableProcessors() - 1);
 
-    public boolean isAnsiColors() {
-        return ansiColors;
-    }
-
-    public void setAnsiColors(boolean ansiColors) {
-        this.ansiColors = ansiColors;
-    }
-
-    public int getPollingSecs() {
-        return pollingSecs;
-    }
-
-    public void setPollingSecs(int pollingSecs) {
-        this.pollingSecs = pollingSecs;
-    }
-
-    public int getMaxTotalRSSBytes() {
-        return maxTotalRSSBytes;
-    }
-
+    @Override
     public String getPromiseHandlerClassName() {
         return promiseHandlerClassName;
     }
@@ -63,10 +40,34 @@ public class ConfigImpl {
         this.promiseHandlerClassName = promiseHandlerClassName;
     }
 
+    @Override
+    public int getPollingSecs() {
+        return pollingSecs;
+    }
+
+    public void setPollingSecs(int pollingSecs) {
+        this.pollingSecs = pollingSecs;
+    }
+
+    @Override
+    public int getMaxTotalRSSBytes() {
+        return maxTotalRSSBytes;
+    }
+
     public void setMaxTotalRSSBytes(int maxTotalRSSBytes) {
         this.maxTotalRSSBytes = maxTotalRSSBytes;
     }
 
+    @Override
+    public int getMaxJobRSSBytes() {
+        return maxJobRSSBytes;
+    }
+
+    public void setMaxJobRSSBytes(int maxJobRSSBytes) {
+        this.maxJobRSSBytes = maxJobRSSBytes;
+    }
+
+    @Override
     public int getCommandTTLCacheSecs() {
         return commandTTLCacheSecs;
     }
@@ -75,35 +76,12 @@ public class ConfigImpl {
         this.commandTTLCacheSecs = commandTTLCacheSecs;
     }
 
+    @Override
     public int getSigKillDelaySecs() {
         return sigKillDelaySecs;
     }
 
     public void setSigKillDelaySecs(int sigKillDelaySecs) {
         this.sigKillDelaySecs = sigKillDelaySecs;
-    }
-
-    public String getCpuAfinity() {
-        return cpuAfinity;
-    }
-
-    public void setCpuAfinity(String cpuAfinity) {
-        this.cpuAfinity = cpuAfinity;
-    }
-
-    public int getDynamicGroupIdleSeconds() {
-        return dynamicGroupIdleSeconds;
-    }
-
-    public void setDynamicGroupIdleSeconds(int dynamicGroupIdleSeconds) {
-        this.dynamicGroupIdleSeconds = dynamicGroupIdleSeconds;
-    }
-
-    public int[] getNicenessRange() {
-        return nicenessRange;
-    }
-
-    public void setNicenessRange(int[] nicenessRange) {
-        this.nicenessRange = nicenessRange;
     }
 }

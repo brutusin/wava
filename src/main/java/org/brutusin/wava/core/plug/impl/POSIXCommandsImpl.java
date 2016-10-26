@@ -16,9 +16,7 @@
 package org.brutusin.wava.core.plug.impl;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -79,7 +77,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             @Override
             public void run() {
                 try {
-                    Thread.sleep(1000 * Config.getInstance().getSigKillDelaySecs());
+                    Thread.sleep(1000 * Config.getInstance().getSchedulerCfg().getSigKillDelaySecs());
                     kill(visitedIds, 9); // SIGKILL
                 } catch (InterruptedException ex) {
                 }

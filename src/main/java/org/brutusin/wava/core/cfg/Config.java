@@ -1,13 +1,13 @@
 package org.brutusin.wava.core.cfg;
 
+import org.brutusin.wava.core.cfg.impl.ConfigImpl;
 import java.io.File;
 import java.io.FileInputStream;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.core.Environment;
-import org.brutusin.wava.core.plug.PromiseHandler;
 
-public final class Config {
+public class Config {
 
     private static final Config INSTANCE = new Config();
     private final ConfigImpl impl;
@@ -31,8 +31,8 @@ public final class Config {
         }
     }
 
-    public boolean isAnsiColors() {
-        return impl.isAnsiColors();
+    public static Config getInstance() {
+        return INSTANCE;
     }
 
     private ConfigImpl createDefaultCfg() {
@@ -40,39 +40,19 @@ public final class Config {
         return ret;
     }
 
-    public static Config getInstance() {
-        return INSTANCE;
+    public SchedulerCfg getSchedulerCfg() {
+        return impl.getSchedulerCfg();
     }
 
-    public String getPromiseHandlerClassName() {
-        return impl.getPromiseHandlerClassName();
+    public ProcessCfg getProcessCfg() {
+        return impl.getProcessCfg();
     }
 
-    public int getPollingSecs() {
-        return impl.getPollingSecs();
+    public GroupCfg getGroupCfg() {
+        return impl.getGroupCfg();
     }
-
-    public int getMaxTotalRSSBytes() {
-        return impl.getMaxTotalRSSBytes();
-    }
-
-    public int getCommandTTLCacheSecs() {
-        return impl.getCommandTTLCacheSecs();
-    }
-
-    public int getSigKillDelaySecs() {
-        return impl.getSigKillDelaySecs();
-    }
-
-    public String getCpuAfinity() {
-        return impl.getCpuAfinity();
-    }
-
-    public int getDynamicGroupIdleSeconds() {
-        return impl.getDynamicGroupIdleSeconds();
-    }
-
-    public int[] getNicenessRange() {
-        return impl.getNicenessRange();
+    
+     public UICfg getuICfg() {
+        return impl.getuICfg();
     }
 }

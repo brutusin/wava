@@ -17,7 +17,6 @@ package org.brutusin.wava.core.plug;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
 import org.brutusin.wava.core.plug.impl.CachingLinuxCommands;
 import org.brutusin.wava.core.plug.impl.POSIXCommandsImpl;
 

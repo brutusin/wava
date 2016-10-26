@@ -13,22 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.core.plug.impl;
+package org.brutusin.wava.core.cfg.impl;
 
-import java.io.IOException;
-import org.brutusin.wava.core.Event;
-import org.brutusin.wava.core.plug.PromiseHandler;
-import org.brutusin.wava.core.Scheduler;
+import org.brutusin.wava.core.cfg.GroupCfg;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class StrictPromiseHandler extends PromiseHandler {
+public class GroupCfgImpl implements GroupCfg {
+
+    private int dynamicGroupIdleSeconds = 10;
 
     @Override
-    public boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException {
-        pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
-        return false;
+    public int getDynamicGroupIdleSeconds() {
+        return dynamicGroupIdleSeconds;
+    }
+
+    public void setDynamicGroupIdleSeconds(int dynamicGroupIdleSeconds) {
+        this.dynamicGroupIdleSeconds = dynamicGroupIdleSeconds;
     }
 }

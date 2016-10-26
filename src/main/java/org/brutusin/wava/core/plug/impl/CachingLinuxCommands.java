@@ -40,7 +40,7 @@ public class CachingLinuxCommands extends LinuxCommands {
         CacheManager cm = CacheManager.create();
         this.cache = new Cache(
                 new CacheConfiguration(CachingLinuxCommands.class.getName() + "-cache", 0)
-                .timeToLiveSeconds(Config.getInstance().getCommandTTLCacheSecs())
+                .timeToLiveSeconds(Config.getInstance().getSchedulerCfg().getCommandTTLCacheSecs())
                 .persistence(new PersistenceConfiguration().strategy(PersistenceConfiguration.Strategy.NONE)));
         cm.addCache(cache);
     }

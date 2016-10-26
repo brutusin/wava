@@ -29,7 +29,7 @@ public abstract class PromiseHandler {
 
     static {
         try {
-            INSTANCE = (PromiseHandler) Class.forName(Config.getInstance().getPromiseHandlerClassName()).newInstance();
+            INSTANCE = (PromiseHandler) Class.forName(Config.getInstance().getSchedulerCfg().getPromiseHandlerClassName()).newInstance();
         } catch (Exception ex) {
             throw new Error(ex);
         }

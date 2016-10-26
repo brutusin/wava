@@ -202,6 +202,8 @@ public final class Utils {
                                         }
                                     } else if (evt == Event.exceed) {
                                         color = ANSICode.RED;
+                                    } else if (evt == Event.exceedGlobal) {
+                                        color = ANSICode.RED;
                                     } else if (evt == Event.error) {
                                         color = ANSICode.RED;
                                         if (value != null) {

@@ -32,12 +32,12 @@ public class Scheduler {
     public final static int EVICTION_ETERNAL = -1;
 
     private final static Logger LOGGER = Logger.getLogger(Scheduler.class.getName());
-    private final static int NICENESS_RANGE = Config.getInstance().getNicenessRange()[1] - Config.getInstance().getNicenessRange()[0];
+    private final static int NICENESS_RANGE = Config.getInstance().getProcessCfg().getNicenessRange()[1] - Config.getInstance().getProcessCfg().getNicenessRange()[0];
     private final static long MAX_MANAGED_RSS;
 
     static {
-        if (Config.getInstance().getMaxTotalRSSBytes() > 0) {
-            MAX_MANAGED_RSS = Config.getInstance().getMaxTotalRSSBytes();
+        if (Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes() > 0) {
+            MAX_MANAGED_RSS = Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes();
         } else {
             try {
                 MAX_MANAGED_RSS = LinuxCommands.getInstance().getSystemRSSMemory();
@@ -76,7 +76,7 @@ public class Scheduler {
                         break;
                     }
                     try {
-                        Thread.sleep(Config.getInstance().getPollingSecs() * 1000);
+                        Thread.sleep(Config.getInstance().getSchedulerCfg().getPollingSecs() * 1000);
                         refresh();
                     } catch (Throwable th) {
                         LOGGER.log(Level.SEVERE, null, th);
@@ -208,7 +208,7 @@ public class Scheduler {
             int i = 0;
             for (ProcessInfo pi : processMap.values()) {
                 if (pId == null || pi.getPid() == pId) {
-                    pi.setNiceness(Config.getInstance().getNicenessRange()[0] + (i * NICENESS_RANGE) / (processMap.size() > 1 ? (processMap.size() - 1) : 1));
+                    pi.setNiceness(Config.getInstance().getProcessCfg().getNicenessRange()[0] + (i * NICENESS_RANGE) / (processMap.size() > 1 ? (processMap.size() - 1) : 1));
                 }
                 i++;
             }
@@ -239,6 +239,8 @@ public class Scheduler {
                                         availableMemory = availableMemory + pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS() - treeRSS;
                                         pi.setMaxRSS(treeRSS);
                                         pi.setAllowed(true);
+                                    } else {
+                                        LinuxCommands.getInstance().killTree(pi.getPid());
                                     }
                                 }
                             }
@@ -258,6 +260,12 @@ public class Scheduler {
             if (submitChannel == null) {
                 throw new IllegalArgumentException("Request info is required");
             }
+            if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && submitChannel.getRequest().getMaxRSS() > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes()) {
+                submitChannel.sendEvent(Event.exceedGlobal, Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
+                submitChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
+                submitChannel.close();
+                return;
+            }
             if (submitChannel.getRequest().getGroupName() == null) {
                 submitChannel.getRequest().setGroupName(DEFAULT_GROUP_NAME);
             }
@@ -266,7 +274,7 @@ public class Scheduler {
             synchronized (groupMap) {
                 gi = groupMap.get(submitChannel.getRequest().getGroupName());
                 if (gi == null) { // dynamic group
-                    gi = createGroupInfo(submitChannel.getRequest().getGroupName(), submitChannel.getUser(), 0, Config.getInstance().getDynamicGroupIdleSeconds());
+                    gi = createGroupInfo(submitChannel.getRequest().getGroupName(), submitChannel.getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds());
                 }
                 gi.getJobs().add(id);
             }
@@ -543,7 +551,7 @@ public class Scheduler {
                 if (Scheduler.this.runningUser.equals("root")) {
                     cmd = LinuxCommands.getInstance().getRunAsCommand(ji.getSubmitChannel().getUser(), cmd);
                 }
-                cmd = LinuxCommands.getInstance().decorateWithCPUAffinity(cmd, Config.getInstance().getCpuAfinity());
+                cmd = LinuxCommands.getInstance().decorateWithCPUAffinity(cmd, Config.getInstance().getProcessCfg().getCpuAfinity());
                 ProcessBuilder pb = new ProcessBuilder(cmd);
                 pb.environment().clear();
                 pb.directory(ji.getSubmitChannel().getRequest().getWorkingDirectory());

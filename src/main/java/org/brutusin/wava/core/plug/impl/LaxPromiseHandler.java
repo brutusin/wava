@@ -19,7 +19,7 @@ import java.io.IOException;
 import org.brutusin.wava.core.Event;
 import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.Scheduler;
-import org.brutusin.wava.core.plug.LinuxCommands;
+import org.brutusin.wava.core.cfg.Config;
 
 /**
  *
@@ -33,7 +33,9 @@ public class LaxPromiseHandler extends PromiseHandler {
             pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
         }
         if (availableMemory <= 0) {
-            LinuxCommands.getInstance().killTree(pi.getPid());
+            return false;
+        } else if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && treeRSS > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes()) {
+            pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceedGlobal, Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
             return false;
         } else {
             return true;

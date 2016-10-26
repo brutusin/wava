@@ -13,22 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.core.plug.impl;
+package org.brutusin.wava.core.cfg.impl;
 
-import java.io.IOException;
-import org.brutusin.wava.core.Event;
-import org.brutusin.wava.core.plug.PromiseHandler;
-import org.brutusin.wava.core.Scheduler;
+import org.brutusin.wava.core.cfg.ProcessCfg;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class StrictPromiseHandler extends PromiseHandler {
+public class ProcessCfgImpl implements ProcessCfg {
+
+    private int[] nicenessRange = {-20, 19};
+    private String cpuAfinity = "0-" + (Runtime.getRuntime().availableProcessors() - 1);
 
     @Override
-    public boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException {
-        pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
-        return false;
+    public int[] getNicenessRange() {
+        return nicenessRange;
+    }
+
+    public void setNicenessRange(int[] nicenessRange) {
+        this.nicenessRange = nicenessRange;
+    }
+
+    @Override
+    public String getCpuAfinity() {
+        return cpuAfinity;
+    }
+
+    public void setCpuAfinity(String cpuAfinity) {
+        this.cpuAfinity = cpuAfinity;
     }
 }
