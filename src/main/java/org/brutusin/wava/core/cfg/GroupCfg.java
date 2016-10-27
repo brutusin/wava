@@ -22,4 +22,15 @@ package org.brutusin.wava.core.cfg;
 public interface GroupCfg {
 
     public int getDynamicGroupIdleSeconds();
+
+    public Group[] getPredefinedGroups();
+
+    public interface Group {
+
+        public String getName();
+
+        public int getPriority();
+
+        public int getTimeToIdleSeconds();
+    }
 }

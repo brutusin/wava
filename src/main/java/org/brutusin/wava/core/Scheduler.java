@@ -20,6 +20,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.brutusin.commons.utils.ErrorHandler;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
+import org.brutusin.wava.core.cfg.GroupCfg;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.input.SubmitInput;
@@ -64,6 +65,12 @@ public class Scheduler {
     public Scheduler() throws IOException, InterruptedException {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
         createGroupInfo(DEFAULT_GROUP_NAME, LinuxCommands.getInstance().getRunningUser(), 0, EVICTION_ETERNAL);
+        GroupCfg.Group[] predefinedGroups = Config.getInstance().getGroupCfg().getPredefinedGroups();
+        if (predefinedGroups != null) {
+            for (GroupCfg.Group group : predefinedGroups) {
+                createGroupInfo(group.getName(), LinuxCommands.getInstance().getRunningUser(), group.getPriority(), group.getTimeToIdleSeconds());
+            }
+        }
         remakeFolder(new File(Environment.ROOT, "streams/"));
         remakeFolder(new File(Environment.ROOT, "state/"));
         remakeFolder(new File(Environment.ROOT, "request/"));
@@ -486,6 +493,15 @@ public class Scheduler {
                     channel.sendEvent(Event.retcode, 0);
                     return;
                 } else if (channel.getRequest().isDelete()) {
+                    if (!channel.getUser().equals("root") && !channel.getUser().equals(gi.getUser())) {
+                        if (gi.getUser().equals("root")) {
+                            channel.log(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' can only be updated by user 'root'");
+                        } else {
+                            channel.log(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' can only be updated by users 'root' and '" + gi.getUser() + "'");
+                        }
+                        channel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
+                        return;
+                    }
                     if (gi.getJobs().isEmpty()) {
                         channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' deleted successfully");
                         groupMap.remove(channel.getRequest().getGroupName());

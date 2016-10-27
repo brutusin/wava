@@ -31,7 +31,7 @@ import org.brutusin.wava.input.GroupInput;
  */
 public class GroupMain {
 
-    public static final String DESCRIPTION = "creates a new priority group or updates an existing one";
+    public static final String DESCRIPTION = "group management commands";
 
     private static void showHelp(Options options) {
         Utils.showHelp(options, "wava.sh -g [options]\n" + DESCRIPTION);
@@ -76,27 +76,32 @@ public class GroupMain {
             CommandLineParser parser = new DefaultParser();
             CommandLine cl = parser.parse(options, args);
             GroupInput gi = new GroupInput();
-            gi.setGroupName(cl.getOptionValue(nOpt.getOpt()));
-            if (cl.hasOption(pOpt.getOpt())) {
-                try {
-                    gi.setPriority(Integer.valueOf(cl.getOptionValue(pOpt.getOpt())));
-                } catch (NumberFormatException ex) {
-                    throw new ParseException("Invalid " + pOpt.getOpt() + " value");
+            if (cl.hasOption(nOpt.getOpt())) {
+                gi.setGroupName(cl.getOptionValue(nOpt.getOpt()));
+                if (cl.hasOption(dOpt.getOpt())) {
+                    gi.setDelete(true);
+                } else {
+                    if (cl.hasOption(pOpt.getOpt())) {
+                        try {
+                            gi.setPriority(Integer.valueOf(cl.getOptionValue(pOpt.getOpt())));
+                        } catch (NumberFormatException ex) {
+                            throw new ParseException("Invalid " + pOpt.getOpt() + " value");
+                        }
+                    }
+                    if (cl.hasOption(tOpt.getOpt())) {
+                        try {
+                            gi.setTimetoIdleSeconds(Integer.valueOf(cl.getOptionValue(tOpt.getOpt())));
+                        } catch (NumberFormatException ex) {
+                            throw new ParseException("Invalid " + tOpt.getOpt() + " value");
+                        }
+                    }
                 }
-            }
-            if (cl.hasOption(tOpt.getOpt())) {
-                try {
-                    gi.setTimetoIdleSeconds(Integer.valueOf(cl.getOptionValue(tOpt.getOpt())));
-                } catch (NumberFormatException ex) {
-                    throw new ParseException("Invalid " + tOpt.getOpt() + " value");
-                }
-            }
-            if (cl.hasOption(dOpt.getOpt())) {
-                gi.setDelete(true);
             } else if (cl.hasOption(lOpt.getOpt())) {
                 gi.setList(true);
+            } else {
+                showHelp(options);
+                return null;
             }
-
             return gi;
         } catch (ParseException exp) {
             System.err.println("Parsing failed.  Reason: " + exp.getMessage() + "\n");

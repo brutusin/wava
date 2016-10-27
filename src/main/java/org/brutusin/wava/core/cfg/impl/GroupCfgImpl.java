@@ -24,6 +24,7 @@ import org.brutusin.wava.core.cfg.GroupCfg;
 public class GroupCfgImpl implements GroupCfg {
 
     private int dynamicGroupIdleSeconds = 10;
+    public GroupImpl[] predefinedGroups = {new GroupImpl("high", -10, -1), new GroupImpl("low", 10, -1)};
 
     @Override
     public int getDynamicGroupIdleSeconds() {
@@ -32,5 +33,57 @@ public class GroupCfgImpl implements GroupCfg {
 
     public void setDynamicGroupIdleSeconds(int dynamicGroupIdleSeconds) {
         this.dynamicGroupIdleSeconds = dynamicGroupIdleSeconds;
+    }
+
+    @Override
+    public GroupImpl[] getPredefinedGroups() {
+        return predefinedGroups;
+    }
+
+    public void setPredefinedGroups(GroupImpl[] predefinedGroups) {
+        this.predefinedGroups = predefinedGroups;
+    }
+
+    public static class GroupImpl implements GroupCfg.Group {
+
+        private String name;
+        private int priority;
+        private int timeToIdleSeconds;
+
+        public GroupImpl() {
+        }
+
+        public GroupImpl(String name, int priority, int timeToIdleSeconds) {
+            this.name = name;
+            this.priority = priority;
+            this.timeToIdleSeconds = timeToIdleSeconds;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public int getPriority() {
+            return priority;
+        }
+
+        public void setPriority(int priority) {
+            this.priority = priority;
+        }
+
+        @Override
+        public int getTimeToIdleSeconds() {
+            return timeToIdleSeconds;
+        }
+
+        public void setTimeToIdleSeconds(int timeToIdleSeconds) {
+            this.timeToIdleSeconds = timeToIdleSeconds;
+        }
     }
 }
