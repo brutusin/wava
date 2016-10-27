@@ -4,7 +4,7 @@
 
 `wava.sh` allows to enqueue batch jobs (submitted with a maximum physical memory usage promise) to be executed when enough physical memory ([RSS](https://en.wikipedia.org/wiki/Resident_set_size)) is available in the system.
 
-This scheduler has been created originally to run a high number of batch jobs in machines with a large amount of RAM, avoiding memory paging and swapping, in order to not penalize the performance of other services running in the system.
+This scheduler has been created originally to run a high number of batch jobs in machines with a large amount of RAM, avoiding memory paging and swapping and not penalize the performance of other services running in the system.
 
 (... to be continued)
 
