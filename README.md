@@ -12,6 +12,7 @@ This scheduler has been created originally to run a high number of batch jobs in
 
 (... to be continued)
 
+
 ## Support bugs and requests
 https://github.com/brutusin/linux-scheduler/issues
 
