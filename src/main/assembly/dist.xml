@@ -25,6 +25,7 @@
             <directory>src/main/scripts</directory>
             <outputDirectory>bin</outputDirectory>
             <includes>
+                <include>*</include>
                 <include>*.*</include>
             </includes>
         </fileSet>
