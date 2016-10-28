@@ -8,7 +8,7 @@
     <img src="https://github.com/brutusin/wava/raw/master/img/wava.gif" alt="wava shiny logo">
 </p>
 
-This scheduler has been created originally to run a high number of batch jobs in machines with a large amount of RAM, avoiding memory paging and swapping and not penalize the performance of other services running in the system.
+This scheduler has been created originally to enqueue a high number of jobs in machines with a large amount of RAM, running concurrently the largest number of them but avoiding memory paging and swapping in order to not penalize the performance of other services running in the system.
 
 (... to be continued)
 
