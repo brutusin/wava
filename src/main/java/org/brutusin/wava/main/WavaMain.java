@@ -32,7 +32,7 @@ import org.apache.commons.cli.ParseException;
 public class WavaMain {
 
     private static void showHelp(Options options) {
-        Utils.showHelp(options, "wava option");
+        Utils.showHelp(options, "wava [option]");
     }
 
     public static void main(String[] args) throws Exception {
