@@ -34,7 +34,7 @@ public class GroupMain {
     public static final String DESCRIPTION = "group management commands";
 
     private static void showHelp(Options options) {
-        Utils.showHelp(options, "wava.sh -g [options]\n" + DESCRIPTION);
+        Utils.showHelp(options, "wava -g [options]\n" + DESCRIPTION);
     }
 
     private static GroupInput getRequest(String[] args) {

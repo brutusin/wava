@@ -63,7 +63,7 @@ public class CancelMain {
     }
 
     private static void showHelp(Options options) {
-        Utils.showHelp(options, "wava.sh -k <job-id>\n" + DESCRIPTION);
+        Utils.showHelp(options, "wava -k <job-id>\n" + DESCRIPTION);
     }
 
     public static void main(String[] args) throws Exception {

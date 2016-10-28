@@ -39,7 +39,7 @@ public class SubmitMain {
     public static final String DESCRIPTION = "enqueue a job to be executed when enough RSS memory is available";
 
     private static void showHelp(Options options) {
-        Utils.showHelp(options, "wava.sh -s [options] [command]\n" + DESCRIPTION);
+        Utils.showHelp(options, "wava -s [options] [command]\n" + DESCRIPTION);
     }
 
     private static int getCommandStart(String[] args) {
