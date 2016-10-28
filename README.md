@@ -12,6 +12,14 @@ This scheduler has been created originally to enqueue a high number of jobs in m
 
 (... to be continued)
 
+## Requirements
+JRE 8+
+
+## Installation
+
+## Configuration
+
+## Priority groups
 
 ## Support bugs and requests
 https://github.com/brutusin/linux-scheduler/issues
