@@ -28,6 +28,7 @@
                 <include>*</include>
                 <include>*.*</include>
             </includes>
+            <lineEnding>unix</lineEnding>
         </fileSet>
     </fileSets>
     <dependencySets>
