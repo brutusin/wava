@@ -9,7 +9,7 @@
     <groupId>org.brutusin</groupId>
     <artifactId>wava</artifactId>
     <packaging>jar</packaging>   
-    <version>1.0.2</version>
+    <version>1.0.3-SNAPSHOT</version>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>A RSS-memory-aware scheduler for Linux batch processes</description>
     
