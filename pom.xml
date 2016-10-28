@@ -37,7 +37,7 @@
         <maven.build.timestamp.format>dd/MM/yyyy HH:mm:ss</maven.build.timestamp.format>
         <buildNumber>${maven.build.timestamp}</buildNumber>
         
-        <brutusin-commons-version>1.5.3-SNAPSHOT</brutusin-commons-version>
+        <brutusin-commons-version>1.6.0</brutusin-commons-version>
         <brutusin-json-version>1.4.1</brutusin-json-version>
         <brutusin-json-provider-version>2.5.3</brutusin-json-provider-version>
         <maven.compiler.source>1.8</maven.compiler.source>
