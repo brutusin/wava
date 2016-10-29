@@ -11,8 +11,8 @@
 This scheduler has been created originally to enqueue a high number of jobs in machines with a large amount of RAM, running concurrently the largest number of them but avoiding memory paging and swapping in order to not penalize the performance of other services running in the system.
 
 <p align="center">
-    <img src="https://github.com/brutusin/wava/raw/master/img/wava-while.gif" alt="wava example">
-    <img src="https://github.com/brutusin/wava/raw/master/img/wava-ls.gif" alt="wava example">
+    <img src="https://github.com/brutusin/wava/raw/master/img/wava-example1.gif" alt="wava example">
+    <img src="https://github.com/brutusin/wava/raw/master/img/wava-example2.gif" alt="wava example">
 </p>
 
 (... to be continued)
