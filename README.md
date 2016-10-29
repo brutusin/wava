@@ -40,6 +40,11 @@ $WAVA_HOME/bin/wava
 ## Configuration
 Configuration is set in file `$WAVA_HOME/cfg/wava.json`.
 ### Default configuration
+At startup, the `wava` process writes to disk the default configuration the following way:
+- To `$WAVA_HOME/cfg/wava.json` in case this file doesn't exist
+- To `$WAVA_HOME/cfg/wava.json.default` always
+
+
 ```javascript
 {
   "uICfg" : {
