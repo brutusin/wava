@@ -63,15 +63,18 @@ public class CancelMain {
     }
 
     private static void showHelp(Options options) {
-        Utils.showHelp(options, "wava -k <job-id>\n" + DESCRIPTION);
+        Utils.showHelp(options, "wava -c <job-id>\n" + DESCRIPTION);
     }
 
     public static void main(String[] args) throws Exception {
         Utils.validateCoreRunning();
         CancelInput ci = getRequest(args);
-        Integer retCode = Utils.executeRequest(OpName.cancel, ci, null, false);
+        Integer retCode = null;
+        if (ci != null) {
+            retCode = Utils.executeRequest(OpName.cancel, ci, null, false);
+        }
         if (retCode == null) {
-            retCode = 1;
+            retCode = Utils.WAVA_ERROR_RETCODE;
         }
         System.exit(retCode);
     }

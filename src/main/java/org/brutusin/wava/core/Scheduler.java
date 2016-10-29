@@ -452,7 +452,7 @@ public class Scheduler {
                 Key key = new Key(gi.getPriority(), gi.groupId, cancelChannel.getRequest().getId());
                 boolean queued = queueOrder.remove(key);
                 if (queued) {
-                    ji.getSubmitChannel().sendEvent(Event.retcode.cancelled, cancelChannel.getUser());
+                    ji.getSubmitChannel().sendEvent(Event.cancelled, cancelChannel.getUser());
                     ji.getSubmitChannel().sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                     ji.getSubmitChannel().close();
                     cancelChannel.log(ANSICode.GREEN, "enqueued job sucessfully cancelled");
@@ -466,6 +466,7 @@ public class Scheduler {
                     GroupInfo gi = groupMap.get(pi.getJobInfo().getSubmitChannel().getRequest().getGroupName());
                     Key key = new Key(gi.getPriority(), gi.groupId, cancelChannel.getRequest().getId());
                     runningOrder.remove(key);
+                    pi.getJobInfo().getSubmitChannel().sendEvent(Event.cancelled, cancelChannel.getUser());
                     LinuxCommands.getInstance().killTree(pi.getPid());
                     cancelChannel.log(ANSICode.GREEN, "running job sucessfully cancelled");
                     cancelChannel.sendEvent(Event.retcode, 0);
