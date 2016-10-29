@@ -13,7 +13,7 @@ This scheduler has been created originally to enqueue a high number of jobs in m
 (... to be continued)
 
 ## Requirements
-JRE 8+
+`$JAVA_HOME` environment variable set pointing to a JRE 8+
 
 ## Installation
 ### 1. Download latest version:
@@ -24,18 +24,17 @@ wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/arti
 ```sh
 unzip wava-latest-dist.zip -d .
 ```
-### 3. Export version folder name into `$WAVA_LATEST` variable
+### 3. Export extract folder path into the `$WAVA_HOME` variable
 ```sh
-export WAVA_LATEST=`unzip -Z -1 wava-latest-dist.zip | head -n 1 | sed 's#/*$##;s#^/*##'`
+export WAVA_HOME=`pwd`/`unzip -Z -1 wava-latest-dist.zip | head -n 1 | sed 's#/*$##;s#^/*##'`
 ```
-### 3. Set extracted folder permissions to 755
+### 3. Set folder permissions to `755`
 ```sh
-sudo chmod -R 755 $WAVA_LATEST
+sudo chmod -R 755 $WAVA_HOME
 ```
-
-
 
 ## Configuration
+Configuration is 
 
 ## Priority groups
 
