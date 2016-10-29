@@ -32,9 +32,45 @@ export WAVA_HOME=`pwd`/`unzip -Z -1 wava-latest-dist.zip | head -n 1 | sed 's#/*
 ```sh
 sudo chmod -R 755 $WAVA_HOME
 ```
+### 4. Run to verify installation and generate default configuration file
+```sh
+$WAVA_HOME/bin/wava
+```
 
 ## Configuration
-Configuration is 
+Configuration is set in file `$WAVA_HOME/cfg/wava.json`.
+### Default configuration
+```javascript
+{
+  "uICfg" : {
+    "ansiColors" : true
+  },
+  "schedulerCfg" : {
+    "promiseHandlerClassName" : "org.brutusin.wava.core.plug.impl.StrictPromiseHandler",
+    "pollingSecs" : 5,
+    "maxTotalRSSBytes" : -1,
+    "maxJobRSSBytes" : -1,
+    "commandTTLCacheSecs" : 2,
+    "sigKillDelaySecs" : 5
+  },
+  "processCfg" : {
+    "nicenessRange" : [ -20, 19 ],
+    "cpuAfinity" : "0-63"
+  },
+  "groupCfg" : {
+    "dynamicGroupIdleSeconds" : 10,
+    "predefinedGroups" : [ {
+      "name" : "high",
+      "priority" : -10,
+      "timeToIdleSeconds" : -1
+    }, {
+      "name" : "low",
+      "priority" : 10,
+      "timeToIdleSeconds" : -1
+    } ]
+  }
+}
+```
 
 ## Priority groups
 
