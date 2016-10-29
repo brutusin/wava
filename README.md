@@ -8,10 +8,11 @@
 
 This scheduler has been created originally to enqueue a high number of jobs in machines with a large amount of RAM, running concurrently the largest number of them but avoiding memory paging and swapping in order to not penalize the performance of other services running in the system.
 
-<p align="center">
-    <img src="https://github.com/brutusin/wava/raw/master/img/wava-example1.gif" alt="wava example">
-    <img src="https://github.com/brutusin/wava/raw/master/img/wava-example2.gif" alt="wava example">
-</p>
+Running `ls` with a promise of max memory of 100 B
+![wava example 1](https://github.com/brutusin/wava/raw/master/img/wava-example1.gif)
+
+Running a loop that prints date each 1 second with a promise of max memory of 100000000 B
+![wava example 2](https://github.com/brutusin/wava/raw/master/img/wava-example2.gif)
 
 (... to be continued)
 
