@@ -20,6 +20,12 @@ JRE 8+
 ```sh
 curl -O -J -L "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=LATEST"
 ```
+2. Decompress the distribution zip
+```
+unzip wava-*-dist.zip -d .
+```
+
+
 
 ## Configuration
 
