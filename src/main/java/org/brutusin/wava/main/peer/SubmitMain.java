@@ -39,7 +39,7 @@ public class SubmitMain {
     public static final String DESCRIPTION = "enqueue a job to be executed when enough RSS memory is available";
 
     private static void showHelp(Options options) {
-        Utils.showHelp(options, "wava -s [options] [command]\n" + DESCRIPTION);
+        Utils.showHelp(options, "wava -r [options] [command]\n" + DESCRIPTION);
     }
 
     private static int getCommandStart(String[] args) {
@@ -56,7 +56,7 @@ public class SubmitMain {
         Option hOpt = new Option("h", "print this message");
         Option mOpt = Option.builder("m").argName("bytes number")
                 .hasArg()
-                .desc("maximum RSS memory to be demanded by the process")
+                .desc("maximum RSS memory to be allocated by the process at any time")
                 .required()
                 .build();
         Option eOpt = Option.builder("e").argName("file")

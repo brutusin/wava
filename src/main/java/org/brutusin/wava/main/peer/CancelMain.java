@@ -31,16 +31,16 @@ import org.brutusin.wava.core.OpName;
  */
 public class CancelMain {
 
-     public static final String DESCRIPTION = "cancel a running or enqueued job";
-             
+    public static final String DESCRIPTION = "cancel a running or enqueued job. Sends SIGTERM signal to the job process tree and after a configurable period of time sends a SIGKILL signal";
+
     private static CancelInput getRequest(String[] args) {
         Options options = new Options();
-        Option kOpt = Option.builder("k")
+        Option cOpt = Option.builder("c")
                 .argName("job id")
                 .hasArg()
                 .required()
                 .build();
-        options.addOption(kOpt);
+        options.addOption(cOpt);
 
         try {
             CommandLineParser parser = new DefaultParser();
@@ -48,7 +48,7 @@ public class CancelMain {
 
             int id;
             try {
-                id = Integer.valueOf(cl.getOptionValue(kOpt.getOpt()));
+                id = Integer.valueOf(cl.getOptionValue(cOpt.getOpt()));
             } catch (NumberFormatException ex) {
                 throw new ParseException("Invalid job id value");
             }
