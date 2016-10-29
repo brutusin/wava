@@ -72,6 +72,8 @@ Configuration is set in file `$WAVA_HOME/cfg/wava.json`.
 }
 ```
 
+## Running modes
+
 ## Priority groups
 
 ## Support bugs and requests
