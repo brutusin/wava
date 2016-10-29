@@ -24,7 +24,7 @@ wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/arti
 ```sh
 unzip wava-latest-dist.zip -d .
 ```
-### 3. Export version folder name into $WAVA_LATEST variable
+### 3. Export version folder name into `$WAVA_LATEST` variable
 ```sh
 export WAVA_LATEST=`unzip -Z -1 wava-latest-dist.zip | head -n 1 | sed 's#/*$##;s#^/*##'`
 ```
