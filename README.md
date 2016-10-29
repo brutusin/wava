@@ -18,11 +18,15 @@ JRE 8+
 ## Installation
 ### 1. Download latest version:
 ```sh
-curl -O -J -L "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=LATEST"
+wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=LATEST"
 ```
 ### 2. Decompress the distribution zip
+```sh
+unzip wava-latest-dist.zip -d .
 ```
-unzip wava-*-dist.zip -d .
+### 3. Set extracted folder permissions to 755
+```sh
+sudo chmod -R 755 `unzip -Z -1 wava-latest-dist.zip | head -n 1`
 ```
 
 
