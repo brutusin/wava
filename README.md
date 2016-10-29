@@ -16,11 +16,11 @@ This scheduler has been created originally to enqueue a high number of jobs in m
 JRE 8+
 
 ## Installation
-1. Download latest version:
+### 1. Download latest version:
 ```sh
 curl -O -J -L "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=LATEST"
 ```
-2. Decompress the distribution zip
+### 2. Decompress the distribution zip
 ```
 unzip wava-*-dist.zip -d .
 ```
