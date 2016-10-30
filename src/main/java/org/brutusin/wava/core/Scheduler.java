@@ -33,20 +33,6 @@ public class Scheduler {
     public final static int EVICTION_ETERNAL = -1;
 
     private final static Logger LOGGER = Logger.getLogger(Scheduler.class.getName());
-    private final static int NICENESS_RANGE = Config.getInstance().getProcessCfg().getNicenessRange()[1] - Config.getInstance().getProcessCfg().getNicenessRange()[0];
-    private final static long MAX_MANAGED_RSS;
-
-    static {
-        if (Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes() > 0) {
-            MAX_MANAGED_RSS = Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes();
-        } else {
-            try {
-                MAX_MANAGED_RSS = LinuxCommands.getInstance().getSystemRSSMemory();
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        }
-    }
 
     private final Map<Integer, JobInfo> jobMap = Collections.synchronizedMap(new HashMap<Integer, JobInfo>());
     private final Map<Integer, ProcessInfo> processMap = Collections.synchronizedMap(new HashMap<Integer, ProcessInfo>());
@@ -59,10 +45,20 @@ public class Scheduler {
     private final AtomicInteger groupCounter = new AtomicInteger();
     private final Thread processingThread;
 
+    private final long maxManagedRss;
     private final String runningUser;
     private boolean closed;
 
     public Scheduler() throws IOException, InterruptedException {
+        if (Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes() > 0) {
+            this.maxManagedRss = Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes();
+        } else {
+            try {
+                this.maxManagedRss = LinuxCommands.getInstance().getSystemRSSMemory();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
         createGroupInfo(DEFAULT_GROUP_NAME, LinuxCommands.getInstance().getRunningUser(), 0, EVICTION_ETERNAL);
         GroupCfg.Group[] predefinedGroups = Config.getInstance().getGroupCfg().getPredefinedGroups();
@@ -177,7 +173,7 @@ public class Scheduler {
     private void refresh() throws IOException, InterruptedException {
         cleanStalePeers();
         updateNiceness();
-        long availableMemory = MAX_MANAGED_RSS - getMaxPromisedMemory();
+        long availableMemory = maxManagedRss - getMaxPromisedMemory();
         checkPromises(availableMemory);
         long freeRSS = LinuxCommands.getInstance().getSystemRSSFreeMemory();
         if (availableMemory > freeRSS) {
@@ -215,10 +211,22 @@ public class Scheduler {
             int i = 0;
             for (ProcessInfo pi : processMap.values()) {
                 if (pId == null || pi.getPid() == pId) {
-                    pi.setNiceness(Config.getInstance().getProcessCfg().getNicenessRange()[0] + (i * NICENESS_RANGE) / (processMap.size() > 1 ? (processMap.size() - 1) : 1));
+                    pi.setNiceness(getNiceness(i, processMap.size(), Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
                 }
                 i++;
             }
+        }
+    }
+
+    static int getNiceness(int i, int total, int minNiceness, int maxNiceness) {
+        int s = maxNiceness - minNiceness + 1;
+        int r = (total - 1) / s + 1;
+        int c = total - (s * (r - 1));
+        int l = c * r;
+        if (i + 1 <= l) {
+            return minNiceness + i / r;
+        } else {
+            return minNiceness + c + (i - l) / (r - 1);
         }
     }
 
