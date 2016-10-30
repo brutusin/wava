@@ -24,25 +24,25 @@ This scheduler has been created originally to enqueue a high number of jobs in m
 ```sh
 wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=LATEST"
 ```
-### 2. Decompress the distribution zip
+### 2. Decompress the distribution zip:
 ```sh
 unzip wava-latest-dist.zip -d .
 ```
-### 3. Export extract folder path into the `$WAVA_HOME` variable
+### 3. Export extracted folder path into the `$WAVA_HOME` variable:
 ```sh
 export WAVA_HOME=`pwd`/`unzip -Z -1 wava-latest-dist.zip | head -n 1 | sed 's#/*$##;s#^/*##'`
 ```
-### 3. Set folder permissions to `755`
+### 3. Set folder permissions to `755`:
 ```sh
 sudo chmod -R 755 $WAVA_HOME
 ```
-### 4. Run to verify installation and generate default configuration file
+### 4. Run to verify installation and generate default configuration file:
 ```sh
 $WAVA_HOME/bin/wava
 ```
 
 ## Configuration
-Configuration is set in file `$WAVA_HOME/cfg/wava.json`.
+Configuration is set in file: `$WAVA_HOME/cfg/wava.json`.
 ### Default configuration
 At startup, the `wava` process writes to disk the default configuration the following way:
 - To `$WAVA_HOME/cfg/wava.json` in case this file doesn't exist
