@@ -32,9 +32,9 @@ unzip wava-latest-dist.zip -d .
 ```sh
 export WAVA_HOME=`pwd`/`unzip -Z -1 wava-latest-dist.zip | head -n 1 | awk -F "/" '{print $1}'`
 ```
-### 3. Set folder permissions to `755`:
+### 3. Set folder permissions to `777`:
 ```sh
-sudo chmod -R 755 $WAVA_HOME
+sudo chmod -R 777 $WAVA_HOME
 ```
 ### 4. Run to verify installation and generate default configuration file:
 ```sh
