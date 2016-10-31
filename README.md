@@ -41,7 +41,7 @@ sudo chmod -R 555 $WAVA_HOME/bin $WAVA_HOME/lib
 
 ### 5. Create symbolic link in `/usr/bin`:
 ```sh
-sudo ln -s $WAVA_HOME/bin/wava /usr/bin/wava
+sudo ln -sf $WAVA_HOME/bin/wava /usr/bin/wava
 ```
 
 ### 6. Run to verify installation and generate default configuration file:
