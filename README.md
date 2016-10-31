@@ -38,9 +38,15 @@ export WAVA_HOME=`pwd`/`unzip -Z -1 wava-latest-dist.zip | head -n 1 | awk -F "/
 sudo chmod 777 $WAVA_HOME
 sudo chmod -R 555 $WAVA_HOME/bin $WAVA_HOME/lib
 ```
-### 5. Run to verify installation and generate default configuration file:
+
+### 5. Create symbolic link in `/usr/bin`:
 ```sh
-$WAVA_HOME/bin/wava
+sudo ln -s $WAVA_HOME/bin/wava /usr/bin/wava
+```
+
+### 6. Run to verify installation and generate default configuration file:
+```sh
+wava
 ```
 
 ## Configuration
