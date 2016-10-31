@@ -35,9 +35,8 @@ export WAVA_HOME=`pwd`/`unzip -Z -1 wava-latest-dist.zip | head -n 1 | awk -F "/
 *This `$WAVA_HOME` variable has been created only for installation purposes and doesn't need to be persisted for future sessions*
 ### 4. Set appropriate file permissions:
 ```sh
-sudo chmod -R 777 $WAVA_HOME
-sudo chmod -R 555 $WAVA_HOME/bin $WAVA_HOME/lib
-sudo chmod -R 444 $WAVA_HOME/README $WAVA_HOME/LICENSE
+sudo chmod -R 555 $WAVA_HOME
+sudo chmod 777 $WAVA_HOME/tmp
 ```
 
 ### 5. Create symbolic link in `/usr/bin`:
