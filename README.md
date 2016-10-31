@@ -30,7 +30,7 @@ unzip wava-latest-dist.zip -d .
 ```
 ### 3. Export extracted folder path into the `$WAVA_HOME` variable:
 ```sh
-export WAVA_HOME=`pwd`/`unzip -Z -1 wava-latest-dist.zip | head -n 1 | sed 's#/*$##;s#^/*##'`
+export WAVA_HOME=`pwd`/`unzip -Z -1 wava-latest-dist.zip | head -n 1 | awk -F "/" '{print $1}'`
 ```
 ### 3. Set folder permissions to `755`:
 ```sh
