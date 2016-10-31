@@ -32,6 +32,7 @@ unzip wava-latest-dist.zip -d .
 ```sh
 export WAVA_HOME=`pwd`/`unzip -Z -1 wava-latest-dist.zip | head -n 1 | awk -F "/" '{print $1}'`
 ```
+*This `$WAVA_HOME` variable is used only for installation purposes and doesn't need to be persisted for future sessions
 ### 4. Set appropriate file permissions:
 ```sh
 sudo chmod 777 $WAVA_HOME
