@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.ParseException;
 import org.brutusin.json.spi.JsonCodec;
+import static org.brutusin.wava.core.Environment.TEMP;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
@@ -68,7 +69,7 @@ public class RequestHandler {
 
     public RequestHandler(Scheduler scheduler) throws IOException {
         this.scheduler = scheduler;
-        this.requestFolder = new File(Environment.ROOT, "request");
+        this.requestFolder = new File(Environment.TEMP, "request");
         if (!requestFolder.exists()) {
             Miscellaneous.createDirectory(requestFolder);
         }
@@ -120,26 +121,26 @@ public class RequestHandler {
             try {
                 if (opName == OpName.submit) {
                     SubmitInput input = JsonCodec.getInstance().parse(json, SubmitInput.class);
-                    PeerChannel<SubmitInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                    PeerChannel<SubmitInput> channel = new PeerChannel(user, input, new File(Environment.TEMP, "/streams/" + id));
                     ch = channel;
                     this.scheduler.submit(channel);
                 } else if (opName == OpName.cancel) {
                     CancelInput input = JsonCodec.getInstance().parse(json, CancelInput.class);
-                    PeerChannel<CancelInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                    PeerChannel<CancelInput> channel = new PeerChannel(user, input, new File(Environment.TEMP, "/streams/" + id));
                     ch = channel;
                     this.scheduler.cancel(channel);
                 } else if (opName == OpName.jobs) {
-                    PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.ROOT, "/streams/" + id));
+                    PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.TEMP, "/streams/" + id));
                     ch = channel;
                     this.scheduler.listJobs(channel);
                 } else if (opName == OpName.group) {
                     GroupInput input = JsonCodec.getInstance().parse(json, GroupInput.class);
                     if (input.isList()) {
-                        PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.ROOT, "/streams/" + id));
+                        PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.TEMP, "/streams/" + id));
                         ch = channel;
                         this.scheduler.listGroups(channel);
                     } else {
-                        PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(Environment.ROOT, "/streams/" + id));
+                        PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(Environment.TEMP, "/streams/" + id));
                         ch = channel;
                         this.scheduler.updateGroup(channel);
                     }

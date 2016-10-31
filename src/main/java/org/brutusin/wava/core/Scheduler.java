@@ -67,9 +67,9 @@ public class Scheduler {
                 createGroupInfo(group.getName(), LinuxCommands.getInstance().getRunningUser(), group.getPriority(), group.getTimeToIdleSeconds());
             }
         }
-        remakeFolder(new File(Environment.ROOT, "streams/"));
-        remakeFolder(new File(Environment.ROOT, "state/"));
-        remakeFolder(new File(Environment.ROOT, "request/"));
+        remakeFolder(new File(Environment.TEMP, "streams/"));
+        remakeFolder(new File(Environment.TEMP, "state/"));
+        remakeFolder(new File(Environment.TEMP, "request/"));
 
         this.processingThread = new Thread(this.threadGroup, "processingThread") {
             @Override

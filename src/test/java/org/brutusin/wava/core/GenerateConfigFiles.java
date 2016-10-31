@@ -16,27 +16,19 @@
 package org.brutusin.wava.core;
 
 import java.io.File;
-import org.brutusin.wava.utils.Utils;
+import org.brutusin.commons.utils.Miscellaneous;
+import org.brutusin.json.spi.JsonCodec;
+import org.brutusin.wava.core.cfg.impl.ConfigImpl;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public final class Environment {
+public class GenerateConfigFiles {
 
-    public static final File ROOT;
-    public static final File TEMP;
-    private static final String WAVA_HOME = "WAVA_HOME";
-
-    static {
-        String value = System.getenv(WAVA_HOME);
-        if (value == null) {
-            throw new Error("Enviroment variable not found: " + WAVA_HOME);
-        }
-        ROOT = new File(value);
-        TEMP = new File(ROOT, "tmp");
-    }
-
-    private Environment() {
+    public static void main(String[] args) throws Exception {
+        File cfgFile = new File("target/cfg.json");
+        ConfigImpl defaultImpl = new ConfigImpl();
+        Miscellaneous.writeStringToFile(cfgFile, JsonCodec.getInstance().prettyPrint(JsonCodec.getInstance().transform(defaultImpl)), "UTF-8");
     }
 }

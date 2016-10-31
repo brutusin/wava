@@ -18,6 +18,16 @@
         <file>
             <source>LICENSE</source>
         </file>
+        <file>
+            <source>target/cfg.json</source>
+            <outputDirectory>cfg/</outputDirectory>
+            <destName>wava.json</destName>
+        </file>
+        <file>
+            <source>target/cfg.json</source>
+            <outputDirectory>cfg/</outputDirectory>
+            <destName>wava.json.default</destName>
+        </file>
     </files>
     <fileSets>
         <fileSet>
@@ -29,6 +39,13 @@
                 <include>*.*</include>
             </includes>
             <lineEnding>unix</lineEnding>
+        </fileSet>
+        <fileSet>
+            <directory>.</directory>
+            <outputDirectory>tmp</outputDirectory>
+            <excludes>
+                <exclude>*/**</exclude>
+            </excludes>
         </fileSet>
     </fileSets>
     <dependencySets>

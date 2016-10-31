@@ -18,6 +18,7 @@ package org.brutusin.wava.main;
 import org.brutusin.wava.utils.ANSICode;
 import java.io.File;
 import java.nio.channels.FileLock;
+import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.RequestHandler;
 import org.brutusin.wava.core.Scheduler;
@@ -31,13 +32,16 @@ import static org.brutusin.wava.utils.Utils.WAVA_ERROR_RETCODE;
 public class CoreMain {
 
     public static void main(String[] args) throws Exception {
-        File lockFile = new File(Environment.ROOT, ".lock");
+        File lockFile = new File(Environment.TEMP, ".lock");
         FileLock lock = Utils.tryLock(lockFile);
         if (lock == null) {
             System.err.println(ANSICode.RED.getCode() + "Another WAVA core process is running!" + ANSICode.RESET.getCode());
             System.exit(WAVA_ERROR_RETCODE);
         }
         try {
+            Miscellaneous.deleteDirectory(new File(Environment.TEMP, "request"));
+            Miscellaneous.deleteDirectory(new File(Environment.TEMP, "state"));
+            Miscellaneous.deleteDirectory(new File(Environment.TEMP, "streams"));
             Scheduler scheduler = new Scheduler();
             RequestHandler requestHandler = new RequestHandler(scheduler);
             requestHandler.start();

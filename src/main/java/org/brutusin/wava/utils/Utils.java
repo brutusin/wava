@@ -137,7 +137,7 @@ public final class Utils {
     }
 
     public static void validateCoreRunning() throws IOException {
-        FileLock lock = Utils.tryLock(new File(Environment.ROOT, ".lock"));
+        FileLock lock = Utils.tryLock(new File(Environment.TEMP, ".lock"));
         if (lock != null) {
             System.err.println(ANSICode.RED.getCode() + "WAVA core process is not running!" + ANSICode.RESET.getCode());
             System.exit(WAVA_ERROR_RETCODE);
@@ -145,11 +145,11 @@ public final class Utils {
     }
 
     public static Integer executeRequest(OpName opName, Object input, final OutputStream eventStream, boolean prettyEvents) throws IOException, InterruptedException {
-        File counterFile = new File(Environment.ROOT, "state/.seq");
+        File counterFile = new File(Environment.TEMP, "state/.seq");
         long id = Miscellaneous.getGlobalAutoIncremental(counterFile);
         String json = JsonCodec.getInstance().transform(input);
-        File requestFile = new File(Environment.ROOT, "request/" + id + "-" + opName);
-        File streamRoot = new File(Environment.ROOT, "streams/" + id);
+        File requestFile = new File(Environment.TEMP, "request/" + id + "-" + opName);
+        File streamRoot = new File(Environment.TEMP, "streams/" + id);
         Miscellaneous.createDirectory(streamRoot);
         File eventsNamedPipe = new File(streamRoot, PeerChannel.NamedPipe.events.name());
         File stdoutNamedPipe = new File(streamRoot, PeerChannel.NamedPipe.stdout.name());
