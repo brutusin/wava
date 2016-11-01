@@ -99,7 +99,7 @@ public class JobSet {
     }
 
     private Key getKey(int id) {
-        Key key = keyMap.remove(id);
+        Key key = keyMap.get(id);
         if (key == null) {
             throw new IllegalArgumentException("Id " + id + " is not in job set");
         }
@@ -116,7 +116,7 @@ public class JobSet {
     }
 
     public synchronized void remove(int id) {
-        Key key = this.keyMap.get(id);
+        Key key = this.keyMap.remove(id);
         if (key == null) {
             return;
         }
