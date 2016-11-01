@@ -492,7 +492,7 @@ public class Scheduler {
                     cancelChannel.log(ANSICode.RED, "job not found");
                     cancelChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
                 } else if (state == JobSet.State.queued) {
-                    JobInfo ji = jobMap.remove(id);
+                    JobInfo ji = jobMap.get(id);
                     if (ji != null) {
                         if (!cancelChannel.getUser().equals("root") && !cancelChannel.getUser().equals(ji.getSubmitChannel().getUser())) {
                             cancelChannel.log(ANSICode.RED, "user '" + cancelChannel.getUser() + "' is not allowed to cancel a job from user '" + ji.getSubmitChannel().getUser() + "'");
@@ -507,11 +507,12 @@ public class Scheduler {
                         GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                         gi.getJobs().remove(id);
                         jobSet.remove(id);
+                        jobMap.remove(id);
                     } else {
                         throw new AssertionError();
                     }
                 } else if (state == JobSet.State.running) {
-                    ProcessInfo pi = processMap.remove(id);
+                    ProcessInfo pi = processMap.get(id);
                     if (pi != null) {
                         if (!cancelChannel.getUser().equals("root") && !cancelChannel.getUser().equals(pi.getJobInfo().getSubmitChannel().getUser())) {
                             cancelChannel.log(ANSICode.RED, "user '" + cancelChannel.getUser() + "' is not allowed to cancel a job from user '" + pi.getJobInfo().getSubmitChannel().getUser() + "'");
@@ -657,7 +658,7 @@ public class Scheduler {
                             jobSet.remove(id);
                             jobMap.remove(id);
                             processMap.remove(id);
-                            GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
+                            final GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                             gi.getJobs().remove(id);
                             if (gi.getJobs().isEmpty()) {
                                 if (gi.getTimeToIdelSeconds() == 0) {
@@ -668,15 +669,13 @@ public class Scheduler {
                                         public void run() {
                                             try {
                                                 Thread.sleep(1000 * gi.getTimeToIdelSeconds());
-                                                synchronized (groupMap) {
+                                                synchronized (jobSet) {
                                                     if (gi.getJobs().isEmpty()) {
                                                         groupMap.remove(gi.getGroupName());
-
                                                     }
                                                 }
                                             } catch (InterruptedException ex) {
-                                                Logger.getLogger(Scheduler.class
-                                                        .getName()).log(Level.SEVERE, null, ex);
+                                                Logger.getLogger(Scheduler.class.getName()).log(Level.SEVERE, null, ex);
                                             }
                                         }
                                     };
