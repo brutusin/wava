@@ -147,7 +147,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         String[] cmd = {"ps", "axo", "pid,ppid,rss", "--no-headers", "--sort=start_time"};
         Process p = Runtime.getRuntime().exec(cmd);
-        String stdout = null;
+        String stdout;
         try {
             stdout = ProcessUtils.execute(p)[0];
         } catch (RuntimeException ex) {

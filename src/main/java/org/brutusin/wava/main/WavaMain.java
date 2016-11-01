@@ -24,6 +24,8 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.brutusin.wava.utils.ANSICode;
+import org.brutusin.wava.utils.NonRootUserException;
 
 /**
  *
@@ -51,7 +53,7 @@ public class WavaMain {
                 .build();
         Option sOpt = Option.builder("r")
                 .longOpt("run")
-               .desc(SubmitMain.DESCRIPTION)
+                .desc(SubmitMain.DESCRIPTION)
                 .build();
         Option jOpt = Option.builder("j")
                 .longOpt("jobs")
@@ -102,8 +104,15 @@ public class WavaMain {
                 showHelp(options);
             }
         } catch (ParseException exp) {
-            System.err.println("Parsing failed.  Reason: " + exp.getMessage() + "\n");
+            System.err.println(ANSICode.RED + "Parsing failed.  Reason: " + exp.getMessage() + ANSICode.RESET + "\n");
             showHelp(options);
+            System.exit(Utils.WAVA_ERROR_RETCODE);
+        } catch (NonRootUserException nex) {
+            System.err.println(ANSICode.RED + "Only 'root' user can run this command" + ANSICode.RESET);
+            System.exit(Utils.WAVA_ERROR_RETCODE);
+        } catch (Error err) {
+            System.err.println(ANSICode.RED + "Severe error: " + err.getMessage() + ANSICode.RESET);
+            System.exit(Utils.WAVA_ERROR_RETCODE);
         }
     }
 }
