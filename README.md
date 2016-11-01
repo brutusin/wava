@@ -21,8 +21,8 @@ This scheduler has been created originally to enqueue a high number of jobs in m
 
 ## Installation
 ### 1. Download latest version:
-export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava/maven-metadata.xml | grep '<latest>' | grep -Eow '[0-9\.]*'`
 ```sh
+export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava/maven-metadata.xml | grep '<latest>' | grep -Eow '[0-9\.]*'`
 wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=$WAVA_VERSION"
 ```
 *This `$WAVA_VERSION` variable has been created only for installation purposes and doesn't need to be persisted for future sessions*
