@@ -22,7 +22,7 @@ This scheduler has been created originally to enqueue a high number of jobs in m
 ## Installation
 ### 1. Download latest version:
 ```sh
-wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava/maven-metadata.xml | grep '<latest>' |grep -Eow '[0-9\.]*'`"
+wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava/maven-metadata.xml | grep '<latest>' | grep -Eow '[0-9\.]*'`"
 ```
 ### 2. Decompress the distribution zip:
 ```sh
@@ -35,8 +35,8 @@ export WAVA_HOME=`pwd`/`unzip -Z -1 wava-latest-dist.zip | head -n 1 | awk -F "/
 *This `$WAVA_HOME` variable has been created only for installation purposes and doesn't need to be persisted for future sessions*
 ### 4. Set appropriate file permissions:
 ```sh
-sudo chmod -R 555 $WAVA_HOME
-sudo chmod 777 $WAVA_HOME/tmp
+chmod -R 555 $WAVA_HOME
+chmod 777 $WAVA_HOME/tmp
 ```
 
 ### 5. Create symbolic link in `/usr/bin`:
@@ -52,10 +52,6 @@ wava
 ## Configuration
 Configuration is set in file: `$WAVA_HOME/cfg/wava.json`.
 ### Default configuration
-At startup, the `wava` process writes to disk the default configuration the following way:
-- To `$WAVA_HOME/cfg/wava.json` in case this file doesn't exist
-- To `$WAVA_HOME/cfg/wava.json.default` always
-
 
 ```javascript
 {
