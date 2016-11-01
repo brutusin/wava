@@ -21,27 +21,26 @@ This scheduler has been created originally to enqueue a high number of jobs in m
 
 ## Installation
 ### 1. Download latest version:
+export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava/maven-metadata.xml | grep '<latest>' | grep -Eow '[0-9\.]*'`
 ```sh
-wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava/maven-metadata.xml | grep '<latest>' | grep -Eow '[0-9\.]*'`"
+wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=$WAVA_VERSION"
 ```
+*This `$WAVA_VERSION` variable has been created only for installation purposes and doesn't need to be persisted for future sessions*
 ### 2. Decompress the distribution zip:
 ```sh
 unzip wava-latest-dist.zip -d .
 ```
-### 3. Export extracted folder path into the `$WAVA_HOME` variable:
+### 3. Set appropriate file permissions:
 ```sh
-export WAVA_HOME=`pwd`/`unzip -Z -1 wava-latest-dist.zip | head -n 1 | awk -F "/" '{print $1}'`
-```
-*This `$WAVA_HOME` variable has been created only for installation purposes and doesn't need to be persisted for future sessions*
-### 4. Set appropriate file permissions:
-```sh
-chmod -R 555 $WAVA_HOME
-chmod 777 $WAVA_HOME/tmp
+chmod -R 555 wava-$WAVA_VERSION
+chmod 777 wava-$WAVA_VERSION/tmp
 ```
 
-### 5. Create symbolic link in `/usr/bin`:
+### 5. Move and create symbolic links:
 ```sh
-sudo ln -sf $WAVA_HOME/bin/wava /usr/bin/wava
+sudo mkdir -p /opt/wava
+sudo mv wava-$WAVA_VERSION /opt/wava
+sudo ln -sf /opt/wava/wava-$WAVA_VERSION/bin/wava usr/local/bin/wava
 ```
 
 ### 6. Run to verify installation and generate default configuration file:
