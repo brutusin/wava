@@ -22,7 +22,7 @@ This scheduler has been created originally to enqueue a high number of jobs in m
 ## Installation
 ### 1. Download latest version:
 ```sh
-wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=LATEST"
+wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=`wget -O - -o /dev/null https://oss.sonatype.org/content/repositories/releases/org/brutusin/wava/maven-metadata.xml | grep '<latest>' |grep -Eow '[0-9\.]*'`"
 ```
 ### 2. Decompress the distribution zip:
 ```sh
