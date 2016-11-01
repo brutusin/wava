@@ -40,7 +40,7 @@ chmod 777 wava-$WAVA_VERSION/tmp
 ```sh
 sudo mkdir -p /opt/wava
 sudo mv wava-$WAVA_VERSION /opt/wava
-sudo ln -sf /opt/wava/wava-$WAVA_VERSION/bin/wava usr/local/bin/wava
+sudo ln -sf /opt/wava/wava-$WAVA_VERSION/bin/wava /usr/local/bin/wava
 ```
 
 ### 6. Run to verify installation and generate default configuration file:
