@@ -12,6 +12,8 @@ This scheduler has been created originally to enqueue a high number of long-runn
 
 The scheduler runs as a centralized process (`wava -s`) and the processes of rest of the commands communicate with the scheduler via named pipes. In particular job submissions are performed by separate peer processes (`wava -r`) that serve as lightweight placeholders of the real jobs executed by the scheduler. Peer and job processes have their lifecycle bound to each other. If one dies the other dies too.
 
+![wava menu](https://github.com/brutusin/wava/raw/master/img/diagram.png)
+
 The scheduler pipes job stderr and stdout to the respective streams of their peers. Aditionally it pipes scheduler events to the peer stderr unless an [event](#events) file has been specified in submission (`wava -r -e <file>`).
 
 ![wava example 1](https://github.com/brutusin/wava/raw/master/img/wava-example1.gif)
