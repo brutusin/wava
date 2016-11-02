@@ -2,7 +2,7 @@
 
 **[W]hen [AVA]ilable Linux scheduler**: A RSS-memory-aware scheduler for Linux batch processes. 
 
-`wava` allows to enqueue batch jobs (submitted with a maximum physical memory usage promise) to be executed when enough physical memory ([RSS](https://en.wikipedia.org/wiki/Resident_set_size)) is available in the system.
+`wava` allows to enqueue batch jobs (submitted with a maximum [RSS](https://en.wikipedia.org/wiki/Resident_set_size) usage promise) to be executed when enough physical memory is available in the system.
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/wava-menu.gif)
 
@@ -10,7 +10,7 @@
 
 This scheduler has been created originally to enqueue a high number of long-running jobs in machines with a large amount of RAM, and run as most of them concurrently, avoiding memory paging and swapping in order to not penalize the performance of other services running in the system.
 
-The scheduler runs as a centralized process (`wava -s`) and the processes of rest of the commands communicate with the scheduler via named pipes. In particular job submissions are performed by separate peer processes (`wava -r`) that serve as lightweight placeholders of the real jobs executed by the scheduler. Peer and job processes have their lifecycle bound to each other. If one dies the other dies too.
+The scheduler runs as a centralized process (`wava -s`) and the processes of the rest of the commands communicate with the scheduler via named pipes. In particular job submissions are performed by separate peer processes (`wava -r`) that serve as lightweight placeholders of the real jobs executed by the scheduler. Peer and job processes have their lifecycle bound to each other. If one dies the other dies too.
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/process-diagram.png)
 
