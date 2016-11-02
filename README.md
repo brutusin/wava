@@ -10,7 +10,9 @@
 
 This scheduler has been created originally to enqueue a high number of long-running jobs in machines with a large amount of RAM, and run as most of them concurrently, avoiding memory paging and swapping in order to not penalize the performance of other services running in the system.
 
-The scheduler runs as a centralized process (`wava -s`) and the processes of rest of the commands communicate with the scheduler via named pipes. In particular job submissions are performed by separate processes (`wava -r`) that serve as lightweight placeholders of the real jobs executed by the scheduler.   
+The scheduler runs as a centralized process (`wava -s`) and the processes of rest of the commands communicate with the scheduler via named pipes. In particular job submissions are performed by separate peer processes (`wava -r`) that serve as lightweight placeholders of the real jobs executed by the scheduler. Peer and job processes have their lifecycle bound to each other. If one dies the other dies too.
+
+The scheduler pipes job stderr and stdout to the respective streams of their peers. Aditionally it pipes scheduler events to the peer stderr unless an event file has been specified in submission (`wava -r -e`).
 
 ![wava example 1](https://github.com/brutusin/wava/raw/master/img/wava-example1.gif)
 *Running `ls` with a promise of max memory of 100 B*
