@@ -6,6 +6,8 @@
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/wava-menu.gif)
 
+## Overview
+
 This scheduler has been created originally to enqueue a high number of long-running jobs in machines with a large amount of RAM, and run as most of them concurrently, avoiding memory paging and swapping in order to not penalize the performance of other services running in the system.
 
 ![wava example 1](https://github.com/brutusin/wava/raw/master/img/wava-example1.gif)
@@ -48,6 +50,9 @@ sudo ln -sf /opt/wava/wava-$WAVA_VERSION/bin/wava /usr/bin/wava
 wava
 ```
 
+### 7. Run on startup
+Optinally, create a service to run the following command at startup by the "root" user: `wava -s`. Details are not given here since it varies depending on the Linux distribution.
+
 ## Configuration
 Configuration is set in file: `$WAVA_HOME/cfg/wava.json`.
 ### Default configuration
@@ -83,10 +88,8 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`.
   }
 }
 ```
-
-## Running modes
-
-## Priority groups
+## Priority and groups
+All submitted jobs belong to a group that determines their priority 
 
 ## Support bugs and requests
 https://github.com/brutusin/linux-scheduler/issues
