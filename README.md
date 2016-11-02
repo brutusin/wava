@@ -10,6 +10,8 @@
 
 This scheduler has been created originally to enqueue a high number of long-running jobs in machines with a large amount of RAM, and run as most of them concurrently, avoiding memory paging and swapping in order to not penalize the performance of other services running in the system.
 
+The scheduler runs as a centralized service (`wava -s`) and job submissions are performed by separate lightweight processes (`wava -r`) that serve as placeholders of the real jobs executed by the scheduler.   
+
 ![wava example 1](https://github.com/brutusin/wava/raw/master/img/wava-example1.gif)
 *Running `ls` with a promise of max memory of 100 B*
 
