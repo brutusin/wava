@@ -14,7 +14,7 @@ The scheduler runs as a centralized process (`wava -s`) and the processes of res
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/process-diagram.png)
 
-The scheduler pipes job stderr and stdout to the respective streams of their peers. Aditionally it pipes scheduler events to the peer stderr unless an [event](#events) file has been specified in submission (`wava -r -e <file>`).
+The scheduler pipes job `stderr` and `stdout` to the respective streams of their peers. Aditionally it pipes scheduler events to the peer `stderr` unless an [event](#events) file has been specified in submission (`wava -r -e <file>`).
 
 ![wava example 1](https://github.com/brutusin/wava/raw/master/img/wava-example1.gif)
 *Running `ls` with a promise of max memory of 100 B*
