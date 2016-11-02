@@ -5,12 +5,13 @@ import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
-import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -157,6 +158,8 @@ public class Scheduler {
                 if (!ji.getSubmitChannel().ping()) {
                     it.remove();
                     jobMap.remove(id);
+                    GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
+                    gi.getJobs().remove(id);
                 }
             }
 
@@ -311,7 +314,7 @@ public class Scheduler {
             JobInfo ji = new JobInfo(id, submitChannel);
             jobMap.put(id, ji);
             submitChannel.sendEvent(Event.id, id);
-            jobSet.queue(id, gi.getPriority());
+            jobSet.queue(id, gi.getPriority(), gi.getGroupId());
             submitChannel.sendEvent(Event.priority, gi.getPriority());
             refresh();
         }
@@ -336,7 +339,8 @@ public class Scheduler {
             header.append(ANSICode.RESET.getCode());
             PeerChannel.println(channel.getStdoutOs(), header.toString());
             synchronized (jobSet) {
-                for (GroupInfo gi : groupMap.values()) {
+                TreeSet<GroupInfo> groups = new TreeSet<>(groupMap.values());
+                for (GroupInfo gi : groups) {
                     StringBuilder line = new StringBuilder();
                     line.append(StringUtils.rightPad(String.valueOf(gi.getGroupName()), 8));
                     line.append(" ");
@@ -568,7 +572,7 @@ public class Scheduler {
                 if (newPriority != gi.getPriority()) {
                     synchronized (gi.getJobs()) {
                         for (Integer id : gi.getJobs()) {
-                            jobSet.setPriority(id, newPriority);
+                            jobSet.setPriority(id, newPriority, gi.getGroupId());
                             JobInfo ji = jobMap.get(id);
                             ji.getSubmitChannel().sendEvent(Event.priority, newPriority);
                         }
@@ -701,7 +705,7 @@ public class Scheduler {
         }
     }
 
-    public class GroupInfo {
+    public class GroupInfo implements Comparable<GroupInfo> {
 
         private final String groupName;
         private final int groupId;
@@ -748,6 +752,18 @@ public class Scheduler {
 
         public int getTimeToIdelSeconds() {
             return timeToIdelSeconds;
+        }
+
+        @Override
+        public int compareTo(GroupInfo o) {
+            if (o == null) {
+                return 1;
+            }
+            int ret = Integer.compare(priority, o.getPriority());
+            if (ret == 0) {
+                ret = Integer.compare(groupId, o.getGroupId());
+            }
+            return ret;
         }
     }
 

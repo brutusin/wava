@@ -106,11 +106,11 @@ public class JobSet {
         return key;
     }
 
-    public synchronized void queue(int id, int priority) {
+    public synchronized void queue(int id, int majorPriority, int minorPriority) {
         if (keyMap.containsKey(id)) {
             throw new IllegalArgumentException("Id " + id + " already is in job set");
         }
-        Key key = new Key(id, priority);
+        Key key = new Key(id, majorPriority, minorPriority);
         keyMap.put(id, key);
         queueTree.add(key);
     }
@@ -134,9 +134,9 @@ public class JobSet {
         }
     }
 
-    public synchronized void setPriority(int id, int priority) {
+    public synchronized void setPriority(int id, int majorPriority, int minorPriority) {
         Key key = getKey(id);
-        if (key.getPriority() == priority) {
+        if (key.getMajorPriority() == majorPriority && key.getMinorPriority() == minorPriority) {
             return;
         }
         TreeSet<Key> tree;
@@ -147,7 +147,8 @@ public class JobSet {
         } else {
             throw new AssertionError();
         }
-        key.setPriority(priority);
+        key.setMajorPriority(majorPriority);
+        key.setMinorPriority(minorPriority);
         tree.add(key);
     }
 
@@ -177,19 +178,29 @@ public class JobSet {
     public class Key implements Comparable<Key> {
 
         private final int id;
-        private int priority;
+        private int majorPriority;
+        private int minorPriority;
 
-        public Key(int id, int priority) {
-            this.priority = priority;
+        public Key(int id, int majorPriority, int minorPriority) {
+            this.majorPriority = majorPriority;
+            this.minorPriority = minorPriority;
             this.id = id;
         }
 
-        public int getPriority() {
-            return priority;
+        public int getMajorPriority() {
+            return majorPriority;
         }
 
-        public void setPriority(int priority) {
-            this.priority = priority;
+        public void setMajorPriority(int majorPriority) {
+            this.majorPriority = majorPriority;
+        }
+
+        public int getMinorPriority() {
+            return minorPriority;
+        }
+
+        public void setMinorPriority(int minorPriority) {
+            this.minorPriority = minorPriority;
         }
 
         public int getId() {
@@ -198,9 +209,12 @@ public class JobSet {
 
         @Override
         public int compareTo(Key o) {
-            int ret = Integer.compare(priority, o.priority);
+            int ret = Integer.compare(majorPriority, o.majorPriority);
             if (ret == 0) {
-                ret = Integer.compare(id, o.id);
+                ret = Integer.compare(minorPriority, o.minorPriority);
+                if (ret == 0) {
+                    ret = Integer.compare(id, o.id);
+                }
             }
             return ret;
         }
