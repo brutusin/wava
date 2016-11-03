@@ -16,7 +16,7 @@ In particular job submissions are performed by separate peer processes (`wava -r
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/process-diagram.png)
 
-The scheduler pipes job `stderr` and `stdout` to the respective streams of their peers. Aditionally it pipes scheduler [events](#events) to the peer `stderr` unless an event file has been specified in submission (`wava -r -e <file>`).
+The scheduler pipes job `stderr` and `stdout` to the respective streams of their peers. Additionally, it pipes scheduler [events](#events) to the peer `stderr` unless an event file has been specified in submission (`wava -r -e <file>`).
 
 ### Memory promises
 Each job is submitted with a promise of maximum RSS usage, and enqueued according to specific [ordering](#job-order) rules. The scheduler keeps track of these needs in order to guarantee that the set of running jobs never exceed a ([configurable](#configuration-description)) total amount of physical memory.
@@ -126,8 +126,8 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
 ### Configuration description
 Property                               | Description
 --------                               | -----------
-`uICfg.ansiColors`                     |  Use ANSI escape code sequences to highlight UI.
-`schedulerCfg.promiseHandlerClassName` | [`PromiseHandler`](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java) implementation class name to use.
+`uICfg.ansiColors`                     | Use ANSI escape code sequences to highlight UI.
+`schedulerCfg.promiseHandlerClassName` | FQN of the [`PromiseHandler`](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java) implementation  to use.
 `schedulerCfg.pollingSecs`             | Time interval between promises verification and peer keepalives.
 `schedulerCfg.maxTotalRSSBytes`        | Maximum amount of physical memory permitted for all jobs. If `-1` the total amount of physical memory is considered.
 `schedulerCfg.maxJobRSSBytes`          | Maximum permitted RSS promise for a job. If `-1` there is no limit.
