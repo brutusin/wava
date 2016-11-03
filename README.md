@@ -116,10 +116,15 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`.
 }
 ```
 ### Description
-Property | Description
------------- | --------
-`uICfg.ansiColors` |  Use ANSI escape code sequences to highlight UI
+Property                               | Description
+--------                               | -----------
+`uICfg.ansiColors`                     |  Use ANSI escape code sequences to highlight UI.
 `schedulerCfg.promiseHandlerClassName` | [PromiseHandler](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java) implementation class name to use.
+`schedulerCfg.pollingSecs`             | Time interval between promises verification and peer keepalives.
+`schedulerCfg.maxTotalRSSBytes`        | Maximum amount of physical memory permitted for all jobs. If `-1` the total amount of physical memory is considered.
+`schedulerCfg.maxJobRSSBytes`          | Maximum permitted RSS promise for a job. If `-1` there is no limit.
+`schedulerCfg.commandTTLCacheSecs`     | Cache TTL in seconds, for some commands used to query information to the system.
+`schedulerCfg.sigKillDelaySecs`        | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
 
 ## Support bugs and requests
 https://github.com/brutusin/linux-scheduler/issues
