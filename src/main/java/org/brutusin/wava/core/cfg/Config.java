@@ -19,10 +19,22 @@ public class Config {
                 throw new Error("Config file not found " + cfgFile.getAbsolutePath());
             }
             String str = Miscellaneous.toString(new FileInputStream(cfgFile), "UTF-8");
-            this.impl = JsonCodec.getInstance().parse(str, ConfigImpl.class);
+            this.impl = JsonCodec.getInstance().parse(replaceEnvEntries(str), ConfigImpl.class);
         } catch (Exception ex) {
             throw new Error(ex);
         }
+    }
+
+    private static String replaceEnvEntries(String str) {
+        StringBuilder sb = new StringBuilder(str);
+        for (String envEntry : System.getenv().keySet()) {
+            String entryName = "$" + envEntry;
+            int i = sb.indexOf(entryName);
+            if (i >= 0) {
+                sb.replace(i, i + entryName.length(), System.getenv().get(envEntry));
+            }
+        }
+        return sb.toString();
     }
 
     public static Config getInstance() {

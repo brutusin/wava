@@ -23,8 +23,11 @@ import org.brutusin.wava.core.cfg.ProcessCfg;
  */
 public class ProcessCfgImpl implements ProcessCfg {
 
+    private static String DEFAULT_CPU_AFINITY_ENV = "DEFAULT_CPU_AFINITY";
+
     private int[] nicenessRange = {-20, 19};
-    private String cpuAfinity = "0-" + (Runtime.getRuntime().availableProcessors() - 1);
+
+    private String cpuAfinity = "$" + DEFAULT_CPU_AFINITY_ENV;
 
     @Override
     public int[] getNicenessRange() {
