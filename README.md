@@ -30,7 +30,20 @@ Of course promises might be wrong, so the scheduler periodically verifies them f
 ![wava example 2](https://github.com/brutusin/wava/raw/master/img/wava-example2.gif)
 *Running a loop that prints the date each 1 second with an excesive promise of max memory of 100000000 B that makes the command to be  temporary queued*
 
-(... to be continued)
+## Priority and groups
+
+All submitted jobs belong to a priority group that determines their global ordering, used for positioning in the queue and assigning a process niceness when running.
+
+Jobs are ordered by the following rules:
+- First by group priority (lower value means higher priority)
+- Then by group id (incremental). In case of same priority, jobs of the oldest group go first.
+- Finally, by job id (incremental). For jobs inside the same group, FIFO ordering.
+
+### Niceness
+The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range (set in the configution)
+
+
+## Events
 
 ## Requirements
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
@@ -102,21 +115,6 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`.
   }
 }
 ```
-## Priority and groups
-
-All submitted jobs belong to a priority group that determines their global ordering, used for positioning in the queue and assigning a process niceness when running.
-
-Jobs are ordered by the following rules:
-- First by group priority (lower value means higher priority)
-- Then by group id (incremental). In case of same priority, jobs of the oldest group go first.
-- Finally, by job id (incremental). For jobs inside the same group, FIFO ordering.
-
-### Niceness
-The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range (set in the configution)
-
-
-## Events
-
 ## Support bugs and requests
 https://github.com/brutusin/linux-scheduler/issues
 
