@@ -2,7 +2,7 @@
 
 **[W]hen [AVA]ilable Linux scheduler**: A RSS-memory-aware scheduler for Linux batch processes. 
 
-`wava` is a simple Linux command line tool that allows to enqueue batch jobs (submitted with a maximum [RSS](https://en.wikipedia.org/wiki/Resident_set_size) usage promise) to be executed when enough physical memory is available in the system, and once running, manages their process nicenesses.
+`wava` is a simple Linux command-line tool that allows to enqueue batch jobs (submitted with a maximum [RSS](https://en.wikipedia.org/wiki/Resident_set_size) usage promise) to be executed when enough physical memory is available in the system, and once running, manages their process nicenesses.
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/wava-menu.gif)
 
@@ -16,10 +16,10 @@ In particular job submissions are performed by separate peer processes (`wava -r
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/process-diagram.png)
 
-The scheduler pipes job `stderr` and `stdout` to the respective streams of their peers. Aditionally it pipes scheduler events to the peer `stderr` unless an [event](#events) file has been specified in submission (`wava -r -e <file>`).
+The scheduler pipes job `stderr` and `stdout` to the respective streams of their peers. Aditionally it pipes scheduler [events](#events) to the peer `stderr` unless an event file has been specified in submission (`wava -r -e <file>`).
 
 ### Memory promises
-Each job is submitted with a promise of maximum RSS usage, and enqueued according to specific ordering rules. The scheduler keeps track of these needs in order to guarantee that the set of running jobs never exceed a (configurable) amount of total physical memory.
+Each job is submitted with a promise of maximum RSS usage, and enqueued according to specific [ordering](#job-order) rules. The scheduler keeps track of these needs in order to guarantee that the set of running jobs never exceed a (configurable) amount of total physical memory.
 
 Of course promises might be wrong, so the scheduler periodically verifies them for the running jobs, and in case of failing, a (configurable) action is performed, by default: killing the job process tree.
 
@@ -33,6 +33,8 @@ Of course promises might be wrong, so the scheduler periodically verifies them f
 ## Priority and groups
 
 All submitted jobs belong to a priority group that determines their global ordering, used for positioning in the queue and assigning a process niceness when running.
+
+### Job order
 
 Jobs are ordered by the following rules:
 - First by group priority (lower value means higher priority)
