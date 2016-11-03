@@ -34,16 +34,18 @@ Of course promises might be wrong, so the scheduler periodically verifies them f
 
 All submitted jobs belong to a priority group that determines their global ordering, used for positioning in the queue and assigning a process niceness when running.
 
+Besides `priority` groups also have a `timeToIdleSeconds` property. This is the time elapsed between the last job finishes and the group is removed. If this value is set to `-1`, the group is eternal.
+
+Jobs that do not specify a group at submit time are assigned to the `default` group (`priority=0`, `timeToIdleSeconds=-1`).
+
+Jobs that specify a non-existing group create at submit-time a *dynamic* group (`priority=0`, `timeToIdleSeconds` specified at [configuration](#configuration-description)).
+
 ### Job order
 
 Jobs are ordered by the following rules:
 - First by group priority (lower value means higher priority)
 - Then by group id (incremental). In case of same priority, jobs of the oldest group go first.
 - Finally, by job id (incremental). For jobs inside the same group, FIFO ordering.
-
-Besides `priority` groups also have a `timeToIdleSeconds` property. This is the time elapsed between the last job finishes and the group is removed. If this value is set to `-1`, the group is eternal.
-
-Jobs that does not specify a group at submit time are assigned to the `default` group (`priority=0`, `timeToIdleSeconds=-1`).
 
 ### Niceness
 The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range (set in the [configuration](#configuration-description))
@@ -133,7 +135,7 @@ Property                               | Description
 `schedulerCfg.sigKillDelaySecs`        | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
 `processCfg.nicenessRange`             | Minimum (most favorable) and maximum (less favorable) niceness to be assigned to a job process tree
 `processCfg.cpuAfinity`                | CPU affinity to be set to the job processes. In a format supported by the `-c` parameter of [taskset](http://linuxcommand.org/man_pages/taskset1.html).
-`groupCfg.dynamicGroupIdleSeconds`     | Idle time for dynamic groups in seconds.
+`groupCfg.dynamicGroupIdleSeconds`     | Idle time for [dynamic groups](#priority-and-groups) in seconds.
 `groupCfg.predefinedGroups`            | Set of groups to be available since startup.
 ## Support bugs and requests
 https://github.com/brutusin/linux-scheduler/issues
