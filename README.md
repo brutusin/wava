@@ -111,6 +111,10 @@ Jobs are ordered by the following rules:
 - Then by group id (incremental). In case of same priority, jobs of the oldest group go first.
 - Finally, by job id (incremental). For jobs inside the same group, FIFO ordering.
 
+### Niceness
+The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range (set in the configution)
+
+
 ## Events
 
 ## Support bugs and requests
