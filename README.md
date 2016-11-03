@@ -126,8 +126,9 @@ Property                               | Description
 `schedulerCfg.commandTTLCacheSecs`     | Cache TTL in seconds, for some commands used to query information to the system.
 `schedulerCfg.sigKillDelaySecs`        | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
 `processCfg.nicenessRange`             | Minimum (most favorable) and maximum (less favorable) niceness to be assigned to a job process tree
-`processCfg.cpuAfinity`                | CPU affinity to be set to the job processes. In a format supported by the `-c` parameter of [taskset](http://linuxcommand.org/man_pages/taskset1.html)
-
+`processCfg.cpuAfinity`                | CPU affinity to be set to the job processes. In a format supported by the `-c` parameter of [taskset](http://linuxcommand.org/man_pages/taskset1.html).
+`groupCfg.dynamicGroupIdleSeconds`     | Idle time for dynamic groups in seconds.
+`groupCfg.predefinedGroups`            | Set of groups to be available since startup.
 ## Support bugs and requests
 https://github.com/brutusin/linux-scheduler/issues
 
