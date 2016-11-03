@@ -104,11 +104,12 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`.
 ```
 ## Priority and groups
 
-All submitted jobs belong to a priority group that determines their position in the queue or their niceness when running.
-Jobs are ordered by the following properites:
-- Group priority (lower value means higher priority)
-- Group id (incremental). In case of same priority, jobs of the oldest group go first.
-- Job id (incremental). For jobs inside the same group, FIFO ordering.
+All submitted jobs belong to a priority group that determines their global ordering, used for positioning in the queue and assigning a process niceness when running.
+
+Jobs are ordered by the following rules:
+- First by group priority (lower value means higher priority)
+- Then by group id (incremental). In case of same priority, jobs of the oldest group go first.
+- Finally, by job id (incremental). For jobs inside the same group, FIFO ordering.
 
 ## Events
 
