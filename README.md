@@ -40,7 +40,7 @@ Jobs are ordered by the following rules:
 - Finally, by job id (incremental). For jobs inside the same group, FIFO ordering.
 
 ### Niceness
-The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range (set in the configution)
+The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range (set in the [configution](#configuration-description))
 
 
 ## Events
@@ -115,7 +115,7 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`.
   }
 }
 ```
-### Description
+### Configuration description
 Property                               | Description
 --------                               | -----------
 `uICfg.ansiColors`                     |  Use ANSI escape code sequences to highlight UI.
