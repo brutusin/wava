@@ -21,7 +21,7 @@ The scheduler pipes job `stderr` and `stdout` to the respective streams of their
 ### Memory promises
 Each job is submitted with a promise of maximum RSS usage, and enqueued according to specific [ordering](#job-order) rules. The scheduler keeps track of these needs in order to guarantee that the set of running jobs never exceed a ([configurable](#configuration-description)) total amount of physical memory.
 
-Of course promises might be wrong, so the scheduler periodically verifies them for the running jobs, and in case of failing, an action is performed (configurable implementation of `[PromiseHandler](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java)`); by default: killing the job process tree.
+Of course promises might be wrong, so the scheduler periodically verifies them for the running jobs, and in case of failing, an action is performed (configurable implementation of [`PromiseHandler`](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java)); by default: killing the job process tree.
 
 
 ![wava example 1](https://github.com/brutusin/wava/raw/master/img/wava-example1.gif)
