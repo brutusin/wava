@@ -125,7 +125,7 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
 Property                               | Description
 --------                               | -----------
 `uICfg.ansiColors`                     |  Use ANSI escape code sequences to highlight UI.
-`schedulerCfg.promiseHandlerClassName` | `[PromiseHandler](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java)` implementation class name to use.
+`schedulerCfg.promiseHandlerClassName` | [`PromiseHandler`](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java) implementation class name to use.
 `schedulerCfg.pollingSecs`             | Time interval between promises verification and peer keepalives.
 `schedulerCfg.maxTotalRSSBytes`        | Maximum amount of physical memory permitted for all jobs. If `-1` the total amount of physical memory is considered.
 `schedulerCfg.maxJobRSSBytes`          | Maximum permitted RSS promise for a job. If `-1` there is no limit.
