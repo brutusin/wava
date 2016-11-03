@@ -39,6 +39,10 @@ Jobs are ordered by the following rules:
 - Then by group id (incremental). In case of same priority, jobs of the oldest group go first.
 - Finally, by job id (incremental). For jobs inside the same group, FIFO ordering.
 
+Besides `priority` groups also have a `timeToIdleSeconds` property. This is the time elapsed between the last job finishes and the group is removed. If this value is set to `-1`, the group is eternal.
+
+Jobs that does not specify a group at submit time are assigned to the `default` group (`priority=0`, `timeToIdleSeconds=-1`).
+
 ### Niceness
 The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range (set in the [configuration](#configuration-description))
 
