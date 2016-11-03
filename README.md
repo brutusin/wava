@@ -8,7 +8,7 @@
 
 ## Overview
 
-This scheduler is specially suited for enqueuing a high number of heterogeneous (in terms of memory demands) long-running jobs and run as many of them as possible concurrently without exhausting physical memory (avoiding memory paging and swapping) in order to not penalize the performance of other services running in the system.
+This scheduler is specially suited for enqueuing a high number of heterogeneous (in terms of memory demands) long-running jobs and run as many of them as possible concurrently without exhausting physical memory (avoiding virtual memory paging and swapping) in order to not penalize the performance of other services running in the system.
 
 The scheduler runs as a centralized process (`wava -s`) and all interaction with it is performed by separated client processes started when invoking the other command options.  
 
