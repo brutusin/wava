@@ -115,6 +115,12 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`.
   }
 }
 ```
+### Description
+Property | Description
+------------ | --------
+`uICfg.ansiColors` |  Use ANSI escape code sequences to highlight UI
+`schedulerCfg.promiseHandlerClassName` | [PromiseHandler](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java) implementation class name to use.
+
 ## Support bugs and requests
 https://github.com/brutusin/linux-scheduler/issues
 
