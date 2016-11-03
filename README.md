@@ -81,7 +81,7 @@ wava
 Optinally, create a service to run the following command at startup by the "root" user: `wava -s`. Details are not given here since it varies depending on the Linux distribution.
 
 ## Configuration
-Configuration is set in file: `$WAVA_HOME/cfg/wava.json`.
+Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables can be used in this file.
 ### Default configuration
 
 ```javascript
@@ -99,7 +99,7 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`.
   },
   "processCfg" : {
     "nicenessRange" : [ -20, 19 ],
-    "cpuAfinity" : "0-63"
+    "cpuAfinity" : "$DEFAULT_CPU_AFINITY"
   },
   "groupCfg" : {
     "dynamicGroupIdleSeconds" : 10,
