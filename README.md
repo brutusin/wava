@@ -10,7 +10,7 @@
 
 This scheduler is specially suited for enqueuing a high number of heterogeneous (in terms of memory demands) long-running jobs in machines with a large amount of RAM, and run as many of them as possible concurrently without exhausting physical memory (avoiding memory paging and swapping) in order to not penalize the performance of other services running in the system.
 
-The scheduler runs as a centralized process (`wava -s`). All comunication with it is performed by separated client processes started when invoking the other command options.  
+The scheduler runs as a centralized process (`wava -s`) and all interaction with it is performed by separated client processes started when invoking the other command options.  
 
 In particular job submissions are performed by separate peer processes (`wava -r`) that serve as lightweight placeholders of the real jobs executed by the scheduler. Peer and job processes have their lifecycle bound to each other. If one dies the other dies too.
 
