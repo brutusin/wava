@@ -19,7 +19,7 @@ In particular job submissions are performed by separate peer processes (`wava -r
 The scheduler pipes job `stderr` and `stdout` to the respective streams of their peers. Aditionally it pipes scheduler [events](#events) to the peer `stderr` unless an event file has been specified in submission (`wava -r -e <file>`).
 
 ### Memory promises
-Each job is submitted with a promise of maximum RSS usage, and enqueued according to specific [ordering](#job-order) rules. The scheduler keeps track of these needs in order to guarantee that the set of running jobs never exceed a (configurable) amount of total physical memory.
+Each job is submitted with a promise of maximum RSS usage, and enqueued according to specific [ordering](#job-order) rules. The scheduler keeps track of these needs in order to guarantee that the set of running jobs never exceed a ([configurable](#configuration-description)) total amount of physical memory.
 
 Of course promises might be wrong, so the scheduler periodically verifies them for the running jobs, and in case of failing, a (configurable) action is performed, by default: killing the job process tree.
 
