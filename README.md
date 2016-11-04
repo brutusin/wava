@@ -99,6 +99,7 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
   },
   "schedulerCfg" : {
     "promiseHandlerClassName" : "org.brutusin.wava.core.plug.impl.StrictPromiseHandler",
+    "nicenessHandlerClassName" : "org.brutusin.wava.core.plug.impl.HomogeneusSpreadNicenessHandler",
     "pollingSecs" : 5,
     "maxTotalRSSBytes" : -1,
     "maxJobRSSBytes" : -1,
@@ -128,6 +129,7 @@ Property                               | Description
 --------                               | -----------
 `uICfg.ansiColors`                     | Use ANSI escape code sequences to highlight UI.
 `schedulerCfg.promiseHandlerClassName` | FQN of the [`PromiseHandler`](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java) implementation  to use.
+`schedulerCfg.nicenessHandlerClassName` | FQN of the [`NicenessHandler`](src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation  to use.
 `schedulerCfg.pollingSecs`             | Time interval between promises verification and peer keepalives.
 `schedulerCfg.maxTotalRSSBytes`        | Maximum amount of physical memory permitted for all jobs. If `-1` the total amount of physical memory is considered.
 `schedulerCfg.maxJobRSSBytes`          | Maximum permitted RSS promise for a job. If `-1` there is no limit.
