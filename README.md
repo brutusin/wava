@@ -69,7 +69,18 @@ The scheduler core process sends to client processes a series of categorized mes
 
 Event type (from [Events.java](src/main/java/org/brutusin/wava/core/Event.java)) | Value | Description
 ---- | ---- | -----
-
+`id` |   |  
+`queued` |   |  
+`priority` |   |  
+`running` |   |  
+`niceness` |   |  
+`retcode` |   |  
+`cancelled` |   |  
+`ping` |   |  
+`error` |   |  
+`exceed` |   |  
+`exceedGlobal,
+`maxrss` |   |  
 
 ## Requirements
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
