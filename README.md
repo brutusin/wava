@@ -6,6 +6,7 @@
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/wava-menu.gif)
 
+**Table of contents**
 - [Overview](#overview)
   * [Memory promises](#memory-promises)
 - [Priority and groups](#priority-and-groups)
