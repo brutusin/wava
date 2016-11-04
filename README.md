@@ -6,6 +6,28 @@
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/wava-menu.gif)
 
+- [Overview](#overview)
+  * [Memory promises](#memory-promises)
+- [Priority and groups](#priority-and-groups)
+  * [Job order](#job-order)
+  * [Niceness](#niceness)
+- [Events](#events)
+- [Requirements](#requirements)
+- [Installation](#installation)
+  * [1. Download latest version:](#1-download-latest-version-)
+  * [2. Decompress the distribution zip:](#2-decompress-the-distribution-zip-)
+  * [3. Set appropriate file permissions:](#3-set-appropriate-file-permissions-)
+  * [5. Move and create symbolic links:](#5-move-and-create-symbolic-links-)
+  * [6. Run to verify installation and generate default configuration file:](#6-run-to-verify-installation-and-generate-default-configuration-file-)
+  * [7. Run on startup](#7-run-on-startup)
+- [Configuration](#configuration)
+  * [Default configuration](#default-configuration)
+  * [Configuration description](#configuration-description)
+- [Support bugs and requests](#support-bugs-and-requests)
+- [Authors](#authors)
+- [License](#license)
+
+
 ## Overview
 
 This scheduler is specially suited for enqueuing a high number of heterogeneous (in terms of memory demands) long-running jobs and run as many of them as possible concurrently without exhausting physical memory (avoiding virtual memory paging and swapping) in order to not penalize the performance of other services running in the system.
