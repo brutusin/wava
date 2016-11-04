@@ -15,6 +15,7 @@
  */
 package org.brutusin.wava.main;
 
+import java.io.File;
 import org.brutusin.wava.main.peer.*;
 import org.brutusin.wava.utils.Utils;
 import java.util.Arrays;
@@ -24,6 +25,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.NonRootUserException;
 
@@ -47,11 +49,15 @@ public class WavaMain {
                 .longOpt("about")
                 .desc("information about the program")
                 .build();
-        Option cOpt = Option.builder("s")
+        Option sOpt = Option.builder("s")
                 .longOpt("start")
                 .desc("start core scheduler process")
                 .build();
-        Option sOpt = Option.builder("r")
+        Option uOpt = Option.builder("u")
+                .longOpt("update")
+                .desc("update to lastest version")
+                .build();
+        Option rOpt = Option.builder("r")
                 .longOpt("run")
                 .desc(SubmitMain.DESCRIPTION)
                 .build();
@@ -70,11 +76,12 @@ public class WavaMain {
 
         options.addOption(aOpt);
         options.addOption(hOpt);
-        options.addOption(cOpt);
         options.addOption(sOpt);
+        options.addOption(rOpt);
         options.addOption(gOpt);
         options.addOption(jOpt);
         options.addOption(kOpt);
+        options.addOption(uOpt);
         try {
             if (args.length > 0) {
                 CommandLineParser parser = new DefaultParser();
@@ -89,16 +96,18 @@ public class WavaMain {
                     AboutMain.main(subArgs);
                 } else if (cl.hasOption(hOpt.getOpt())) {
                     showHelp(options);
-                } else if (cl.hasOption(cOpt.getOpt())) {
+                } else if (cl.hasOption(sOpt.getOpt())) {
                     CoreMain.main(subArgs);
                 } else if (cl.hasOption(jOpt.getOpt())) {
                     ListJobsMain.main(subArgs);
                 } else if (cl.hasOption(gOpt.getOpt())) {
                     GroupMain.main(subArgs);
-                } else if (cl.hasOption(sOpt.getOpt())) {
+                } else if (cl.hasOption(rOpt.getOpt())) {
                     SubmitMain.main(subArgs);
                 } else if (cl.hasOption(kOpt.getOpt())) {
                     CancelMain.main(args);
+                } else if (cl.hasOption(uOpt.getOpt())) {
+                    System.err.println("run the following script for updating: " + ANSICode.CYAN + new File(Environment.ROOT, "bin/wava-update").getAbsolutePath() + ANSICode.RESET);
                 }
             } else {
                 showHelp(options);
