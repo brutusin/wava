@@ -67,24 +67,24 @@ The scheduler sets the niceness of process tree of the running jobs according to
 ## Events
 Besides `stderr` and `stdout`, the scheduler process maintains a dedicated channel (named pipe) for communicating events to client processes. These events are serialized in the form:
 ```
-${time-millis}${event-type}[:${event-value}]
+${time-millis}:${event-type}[:${event-value}]
 ```
 For peer processes these events are output to `stderr` after being formatted as `[wava] [date] [${event-type}:${event-value}]` unless a file is specified (`wava -r -e <file>`) for redirecting them.
 
-Event type ([`Events.java`](src/main/java/org/brutusin/wava/core/Event.java)) | Value | Description
+Event type ([`Events.java`](src/main/java/org/brutusin/wava/core/Event.java)) | Valued | Description
 ------------- | --- | -----
-`id`          | yes |  
-`queued`      | yes |  
-`priority`    | yes |  
-`running`     | yes |  
-`niceness`    | yes |  
-`retcode`     | yes |  
-`cancelled`   | yes |  
-`ping`        | no  |  
-`error`       | yes |  
-`exceed`      | yes |  
-`exceedGlobal`| yes |  
-`maxrss`      | yes |  
+`id`          | yes | (Only for submit command) Id assigned to the job.
+`queued`      | yes | (Only for submit command) Position in the queue, if the job is queued.
+`priority`    | yes | (Only for submit command) Piority of the job, given by its group. 
+`running`     | yes | (Only for submit command) Root pId of the job process when started.  
+`niceness`    | yes | (Only for submit command) Niceness set to the job process.   
+`cancelled`   | yes | (Only for submit command) User cancelling the job. 
+`ping`        | no  | (Only for submit command) Send periodically to detect stale peers.
+`exceed`      | yes | (Only for submit command) Memory promise failed. 
+`exceedGlobal`| yes | (Only for submit command) Memory promise too high. 
+`maxrss`      | yes | (Only for submit command) Max RSS used by a finished job process (and their decendents).
+`error`       | yes | To send information about an error.
+`retcode`     | yes | Return code for the client process to use.
 
 ## Requirements
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
