@@ -307,24 +307,28 @@ public class Scheduler {
         }
     }
 
-    public void listGroups(PeerChannel<Void> channel) throws IOException, InterruptedException {
+    public void listGroups(PeerChannel<Void> channel, boolean noHeaders) throws IOException, InterruptedException {
         try {
-            StringBuilder header = new StringBuilder(ANSICode.CLEAR.getCode());
-            header.append(ANSICode.MOVE_TO_TOP.getCode());
-            header.append(ANSICode.BLACK.getCode());
-            header.append(ANSICode.BG_GREEN.getCode());
-            header.append(StringUtils.rightPad("GROUP", 8));
-            header.append(" ");
-            header.append(StringUtils.rightPad("USER", 8));
-            header.append(" ");
-            header.append(StringUtils.leftPad("PRIORITY", 8));
-            header.append(" ");
-            header.append(StringUtils.leftPad("IDLE_TIME", 9));
-            header.append(" ");
-            header.append(StringUtils.leftPad("JOBS", 5));
-            header.append(ANSICode.END_OF_LINE.getCode());
-            header.append(ANSICode.RESET.getCode());
-            PeerChannel.println(channel.getStdoutOs(), header.toString());
+            if (!noHeaders) {
+                StringBuilder header = new StringBuilder(ANSICode.CLEAR.getCode());
+                header.append(ANSICode.MOVE_TO_TOP.getCode());
+                header.append(ANSICode.BLACK.getCode());
+                header.append(ANSICode.BG_GREEN.getCode());
+                header.append(StringUtils.rightPad("GROUP", 8));
+                header.append(" ");
+                header.append(StringUtils.rightPad("USER", 8));
+                header.append(" ");
+                header.append(StringUtils.leftPad("PRIORITY", 8));
+                header.append(" ");
+                header.append(StringUtils.leftPad("IDLE_TIME", 9));
+                header.append(" ");
+                header.append(StringUtils.leftPad("JOBS", 5));
+                header.append(ANSICode.END_OF_LINE.getCode());
+                header.append(ANSICode.RESET.getCode());
+                PeerChannel.println(channel.getStdoutOs(), header.toString());
+            } else {
+                ANSICode.setActive(false);
+            }
             synchronized (jobSet) {
                 TreeSet<GroupInfo> groups = new TreeSet<>(groupMap.values());
                 for (GroupInfo gi : groups) {
@@ -342,39 +346,44 @@ public class Scheduler {
                 }
             }
         } finally {
+            ANSICode.setActive(true);
             channel.sendEvent(Event.retcode, 0);
             channel.close();
         }
     }
 
-    public void listJobs(PeerChannel<Void> channel) throws IOException, InterruptedException {
+    public void listJobs(PeerChannel<Void> channel, boolean noHeaders) throws IOException, InterruptedException {
         try {
-            StringBuilder header = new StringBuilder(ANSICode.CLEAR.getCode());
-            header.append(ANSICode.MOVE_TO_TOP.getCode());
-            header.append(ANSICode.BLACK.getCode());
-            header.append(ANSICode.BG_GREEN.getCode());
-            header.append(StringUtils.leftPad("JOB_ID", 8));
-            header.append(" ");
-            header.append(StringUtils.rightPad("GROUP", 8));
-            header.append(" ");
-            header.append(StringUtils.rightPad("USER", 8));
-            header.append(" ");
-            header.append(StringUtils.leftPad("PRIORITY", 8));
-            header.append(" ");
-            header.append(StringUtils.leftPad("QUEUE", 5));
-            header.append(" ");
-            header.append(StringUtils.leftPad("PID", 8));
-            header.append(" ");
-            header.append(StringUtils.leftPad("NICE", 4));
-            header.append(" ");
-            header.append(StringUtils.leftPad("MAX_EXP_RSS", 12));
-            header.append(" ");
-            header.append(StringUtils.leftPad("MAX_SEEN_RSS", 12));
-            header.append(" ");
-            header.append("CMD");
-            header.append(ANSICode.END_OF_LINE.getCode());
-            header.append(ANSICode.RESET.getCode());
-            PeerChannel.println(channel.getStdoutOs(), header.toString());
+            if (!noHeaders) {
+                StringBuilder header = new StringBuilder(ANSICode.CLEAR.getCode());
+                header.append(ANSICode.MOVE_TO_TOP.getCode());
+                header.append(ANSICode.BLACK.getCode());
+                header.append(ANSICode.BG_GREEN.getCode());
+                header.append(StringUtils.leftPad("JOB_ID", 8));
+                header.append(" ");
+                header.append(StringUtils.rightPad("GROUP", 8));
+                header.append(" ");
+                header.append(StringUtils.rightPad("USER", 8));
+                header.append(" ");
+                header.append(StringUtils.leftPad("PRIORITY", 8));
+                header.append(" ");
+                header.append(StringUtils.leftPad("QUEUE", 5));
+                header.append(" ");
+                header.append(StringUtils.leftPad("PID", 8));
+                header.append(" ");
+                header.append(StringUtils.leftPad("NICE", 4));
+                header.append(" ");
+                header.append(StringUtils.leftPad("MAX_EXP_RSS", 12));
+                header.append(" ");
+                header.append(StringUtils.leftPad("MAX_SEEN_RSS", 12));
+                header.append(" ");
+                header.append("CMD");
+                header.append(ANSICode.END_OF_LINE.getCode());
+                header.append(ANSICode.RESET.getCode());
+                PeerChannel.println(channel.getStdoutOs(), header.toString());
+            } else {
+                ANSICode.setActive(false);
+            }
             synchronized (jobSet) {
                 JobSet.RunningIterator runningIterator = jobSet.getRunning();
                 while (runningIterator.hasNext()) {
@@ -466,6 +475,7 @@ public class Scheduler {
                 }
             }
         } finally {
+            ANSICode.setActive(true);
             channel.sendEvent(Event.retcode, 0);
             channel.close();
         }

@@ -7,6 +7,7 @@ public class GroupInput {
     private int timetoIdleSeconds;
     private boolean delete;
     private boolean list;
+    private boolean noHeaders;
 
     public String getGroupName() {
         return groupName;
@@ -34,6 +35,14 @@ public class GroupInput {
 
     public boolean isDelete() {
         return delete;
+    }
+
+    public boolean isNoHeaders() {
+        return noHeaders;
+    }
+
+    public void setNoHeaders(boolean noHeaders) {
+        this.noHeaders = noHeaders;
     }
 
     public void setDelete(boolean delete) {

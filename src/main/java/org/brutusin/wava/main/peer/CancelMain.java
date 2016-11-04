@@ -24,7 +24,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.core.OpName;
-import org.brutusin.wava.core.cfg.Config;
 
 /**
  *
@@ -32,7 +31,7 @@ import org.brutusin.wava.core.cfg.Config;
  */
 public class CancelMain {
 
-    public static final String DESCRIPTION = "cancel a running or enqueued job. If running, a SIGTERM signal is sent to the whole job process tree followed by a SIGKILL round after " + Config.getInstance().getSchedulerCfg().getSigKillDelaySecs() + " seconds";
+    public static final String DESCRIPTION = "cancel a running or enqueued job";
 
     private static CancelInput getRequest(String[] args) {
         Options options = new Options();

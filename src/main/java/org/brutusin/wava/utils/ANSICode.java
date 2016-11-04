@@ -51,12 +51,29 @@ public enum ANSICode {
 
     private final String code;
 
+    private static final ThreadLocal<Boolean> ACTIVE = new ThreadLocal<Boolean>() {
+
+        @Override
+        protected Boolean initialValue() {
+            return Config.getInstance().getuICfg().isAnsiColors();
+        }
+
+    };
+
     ANSICode(String code) {
         this.code = code;
     }
 
+    public static void setActive(boolean active) {
+        ACTIVE.set(active && Config.getInstance().getuICfg().isAnsiColors());
+    }
+
+    public static boolean isActive() {
+        return ACTIVE.get();
+    }
+
     public String getCode() {
-        if (Config.getInstance().getuICfg().isAnsiColors()) {
+        if (isActive()) {
             return code;
         } else {
             return "";

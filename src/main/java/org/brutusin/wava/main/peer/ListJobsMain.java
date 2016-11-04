@@ -26,7 +26,8 @@ public class ListJobsMain {
 
     public static void main(String[] args) throws Exception {
         Utils.validateCoreRunning();
-        Integer retCode = Utils.executeRequest(OpName.jobs, null, null, false);
+        boolean noHeaders = args.length > 0 && (args[0].equals("-h") || args[0].equals("--no-headers"));
+        Integer retCode = Utils.executeRequest(OpName.jobs, noHeaders, null, false);
         if (retCode == null) {
             retCode = 1;
         }

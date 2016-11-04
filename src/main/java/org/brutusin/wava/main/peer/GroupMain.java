@@ -53,6 +53,10 @@ public class GroupMain {
                 .longOpt("list")
                 .desc("list existing groups")
                 .build();
+        Option hOpt = Option.builder("h")
+                .longOpt("no-headers")
+                .desc("do not output headers")
+                .build();
         Option pOpt = Option.builder("p")
                 .longOpt("priority")
                 .argName("integer")
@@ -71,6 +75,7 @@ public class GroupMain {
         options.addOption(pOpt);
         options.addOption(tOpt);
         options.addOption(lOpt);
+        options.addOption(hOpt);
 
         try {
             CommandLineParser parser = new DefaultParser();
@@ -100,6 +105,9 @@ public class GroupMain {
                 }
             } else if (cl.hasOption(lOpt.getOpt())) {
                 gi.setList(true);
+                if (cl.hasOption(hOpt.getOpt())) {
+                    gi.setNoHeaders(true);
+                }
             } else {
                 showHelp(options);
                 return null;

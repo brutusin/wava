@@ -33,7 +33,6 @@ import java.util.regex.Pattern;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.ParseException;
 import org.brutusin.json.spi.JsonCodec;
-import static org.brutusin.wava.core.Environment.TEMP;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
@@ -130,15 +129,16 @@ public class RequestHandler {
                     ch = channel;
                     this.scheduler.cancel(channel);
                 } else if (opName == OpName.jobs) {
+                    Boolean noHeaders = JsonCodec.getInstance().parse(json, Boolean.class);
                     PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.TEMP, "/streams/" + id));
                     ch = channel;
-                    this.scheduler.listJobs(channel);
+                    this.scheduler.listJobs(channel, noHeaders);
                 } else if (opName == OpName.group) {
                     GroupInput input = JsonCodec.getInstance().parse(json, GroupInput.class);
                     if (input.isList()) {
                         PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.TEMP, "/streams/" + id));
                         ch = channel;
-                        this.scheduler.listGroups(channel);
+                        this.scheduler.listGroups(channel, input.isNoHeaders());
                     } else {
                         PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(Environment.TEMP, "/streams/" + id));
                         ch = channel;
@@ -157,7 +157,7 @@ public class RequestHandler {
                     LOGGER.log(Level.SEVERE, th.getMessage(), th);
                 }
                 ch.close();
-            } 
+            }
         }
     }
 
