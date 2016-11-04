@@ -65,7 +65,7 @@ wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/arti
 *This `$WAVA_VERSION` variable has been created only for installation purposes and doesn't need to be persisted for future sessions*
 ### 2. Decompress the distribution zip:
 ```sh
-unzip wava-latest-dist.zip -d .
+unzip -o wava-latest-dist.zip -d .
 ```
 ### 3. Set appropriate file permissions:
 ```sh
