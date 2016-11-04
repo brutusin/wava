@@ -16,6 +16,7 @@
 package org.brutusin.wava.core.cfg.impl;
 
 import org.brutusin.wava.core.cfg.SchedulerCfg;
+import org.brutusin.wava.core.plug.impl.HomogeneusSpreadNicenessHandler;
 import org.brutusin.wava.core.plug.impl.StrictPromiseHandler;
 
 /**
@@ -25,6 +26,8 @@ import org.brutusin.wava.core.plug.impl.StrictPromiseHandler;
 public class SchedulerCfgImpl implements SchedulerCfg {
 
     private String promiseHandlerClassName = StrictPromiseHandler.class.getName();
+    private String nicenessHandlerClassName = HomogeneusSpreadNicenessHandler.class.getName();
+
     private int pollingSecs = 5;
     private int maxTotalRSSBytes = -1;
     private int maxJobRSSBytes = -1;
@@ -38,6 +41,15 @@ public class SchedulerCfgImpl implements SchedulerCfg {
 
     public void setPromiseHandlerClassName(String promiseHandlerClassName) {
         this.promiseHandlerClassName = promiseHandlerClassName;
+    }
+
+    @Override
+    public String getNicenessHandlerClassName() {
+        return nicenessHandlerClassName;
+    }
+
+    public void setNicenessHandlerClassName(String nicenessHandlerClassName) {
+        this.nicenessHandlerClassName = nicenessHandlerClassName;
     }
 
     @Override

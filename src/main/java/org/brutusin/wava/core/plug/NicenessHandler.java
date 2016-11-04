@@ -15,24 +15,22 @@
  */
 package org.brutusin.wava.core.plug;
 
-import java.io.IOException;
-import org.brutusin.wava.core.Scheduler;
 import org.brutusin.wava.core.cfg.Config;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public abstract class PromiseHandler {
+public abstract class NicenessHandler {
 
-    private volatile static PromiseHandler instance;
+    private volatile static NicenessHandler instance;
 
-    public static PromiseHandler getInstance() {
+    public static NicenessHandler getInstance() {
         if (instance == null) {
             synchronized (NicenessHandler.class) {
                 if (instance == null) {
                     try {
-                        instance = (PromiseHandler) Class.forName(Config.getInstance().getSchedulerCfg().getPromiseHandlerClassName()).newInstance();
+                        instance = (NicenessHandler) Class.forName(Config.getInstance().getSchedulerCfg().getNicenessHandlerClassName()).newInstance();
                     } catch (Exception ex) {
                         throw new Error(ex);
                     }
@@ -41,16 +39,6 @@ public abstract class PromiseHandler {
         }
         return instance;
     }
-
-    /**
-     *
-     * @param availableMemory
-     * @param pi
-     * @param treeRSS
-     * @return true if the process is allowed to continue executing, false
-     * otherwise
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    public abstract boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException;
+    
+    public abstract int getNiceness(int i, int total, int minNiceness, int maxNiceness);
 }

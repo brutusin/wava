@@ -20,6 +20,7 @@ import org.brutusin.commons.utils.ErrorHandler;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.core.cfg.GroupCfg;
+import org.brutusin.wava.core.plug.NicenessHandler;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.input.SubmitInput;
@@ -224,23 +225,11 @@ public class Scheduler {
                 ProcessInfo pi = processMap.get(id);
                 if (pi != null) {
                     if (pId == null || pi.getPid() == pId) {
-                        pi.setNiceness(getNiceness(i, processMap.size(), Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
+                        pi.setNiceness(NicenessHandler.getInstance().getNiceness(i, processMap.size(), Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
                     }
                 }
                 i++;
             }
-        }
-    }
-
-    static int getNiceness(int i, int total, int minNiceness, int maxNiceness) {
-        int s = maxNiceness - minNiceness + 1;
-        int r = (total - 1) / s + 1;
-        int c = total - (s * (r - 1));
-        int l = c * r;
-        if (i + 1 <= l) {
-            return minNiceness + i / r;
-        } else {
-            return minNiceness + c + (i - l) / (r - 1);
         }
     }
 

@@ -13,25 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.core.cfg;
+package org.brutusin.wava.core.plug.impl;
+
+import org.brutusin.wava.core.plug.NicenessHandler;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public interface SchedulerCfg {
+public class HomogeneusSpreadNicenessHandler extends NicenessHandler {
 
-    public String getPromiseHandlerClassName();
-    
-    public String getNicenessHandlerClassName();
-
-    public int getPollingSecs();
-
-    public int getMaxTotalRSSBytes();
-
-    public int getMaxJobRSSBytes();
-
-    public int getCommandTTLCacheSecs();
-
-    public int getSigKillDelaySecs();
+    @Override
+    public int getNiceness(int i, int total, int minNiceness, int maxNiceness) {
+        int s = maxNiceness - minNiceness + 1;
+        int r = (total - 1) / s + 1;
+        int c = total - (s * (r - 1));
+        int l = c * r;
+        if (i + 1 <= l) {
+            return minNiceness + i / r;
+        } else {
+            return minNiceness + c + (i - l) / (r - 1);
+        }
+    }
 }

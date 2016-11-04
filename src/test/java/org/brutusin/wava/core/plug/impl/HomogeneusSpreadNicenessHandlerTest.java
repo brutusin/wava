@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.core;
+package org.brutusin.wava.core.plug.impl;
 
 import org.junit.Test;
 
@@ -21,19 +21,20 @@ import org.junit.Test;
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class SchedulerTest {
+public class HomogeneusSpreadNicenessHandlerTest {
 
-    public SchedulerTest() {
+    public HomogeneusSpreadNicenessHandlerTest() {
     }
 
     @Test
     public void testGetNiceness() {
+        HomogeneusSpreadNicenessHandler handler = new HomogeneusSpreadNicenessHandler();
         int minNiceness = -20;
         int maxNiceness = 19;
         for (int total = 0; total < 100; total++) {
             System.out.print(total + ":");
             for (int i = 0; i < total; i++) {
-                System.out.print(" " + Scheduler.getNiceness(i, total, minNiceness, maxNiceness));
+                System.out.print(" " + handler.getNiceness(i, total, minNiceness, maxNiceness));
             }
             System.out.println();
         }
