@@ -69,7 +69,7 @@ The scheduler core process sends to client processes a series of categorized mes
 
 Event type ([`Events.java`](src/main/java/org/brutusin/wava/core/Event.java)) | Value | Description
 ---- | ---- | -----
-`id` |   |  
+`id` | :heavy_check_mark:  |  
 `queued` |   |  
 `priority` |   |  
 `running` |   |  
