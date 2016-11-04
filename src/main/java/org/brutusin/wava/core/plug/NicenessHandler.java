@@ -39,6 +39,16 @@ public abstract class NicenessHandler {
         }
         return instance;
     }
-    
+
+    /**
+     * Returns the niceness of the i-th process out of a total of {@code total}
+     *
+     * @param i from {@code 0} to {@code total -1}, in decreasing order of
+     * priority
+     * @param total total number of running processes
+     * @param minNiceness
+     * @param maxNiceness
+     * @return
+     */
     public abstract int getNiceness(int i, int total, int minNiceness, int maxNiceness);
 }
