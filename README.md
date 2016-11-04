@@ -65,7 +65,11 @@ Jobs are ordered by the following rules:
 The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range (set in the [configuration](#configuration-description))
 
 ## Events
-The scheduler core process sends to client processes a series of categorized messages called events:
+Besides `stderr` and `stdout`, the scheduler process maintains a dedicated channel (named pipe) for communicating events to client processes. These events are serialized in the form:
+```
+${time-millis}${event-type}[:${event-value}]
+```
+For peer processes these events are output to `stderr` after being formatted as `[wava] [date] [${event-type}:${event-value}]` unless a file is specified (`wava -r -e <file>`) for redirecting them.
 
 Event type ([`Events.java`](src/main/java/org/brutusin/wava/core/Event.java)) | Value | Description
 ------------- | --- | -----
