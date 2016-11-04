@@ -67,7 +67,7 @@ The scheduler sets the niceness of process tree of the running jobs according to
 ## Events
 The scheduler core process sends to client processes a series of categorized messages called events:
 
-Event type (from [Events.java](src/main/java/org/brutusin/wava/core/Event.java)) | Value | Description
+Event type ([`Events.java`](src/main/java/org/brutusin/wava/core/Event.java)) | Value | Description
 ---- | ---- | -----
 `id` |   |  
 `queued` |   |  
