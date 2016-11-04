@@ -64,8 +64,12 @@ Jobs are ordered by the following rules:
 ### Niceness
 The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range (set in the [configuration](#configuration-description))
 
-
 ## Events
+The scheduler core process sends to client processes a series of categorized messages called events:
+
+Event type (from [Events.java](src/main/java/org/brutusin/wava/core/Event.java)) | Value | Description
+---- | ---- | -----
+
 
 ## Requirements
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
