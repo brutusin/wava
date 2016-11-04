@@ -68,19 +68,19 @@ The scheduler sets the niceness of process tree of the running jobs according to
 The scheduler core process sends to client processes a series of categorized messages called events:
 
 Event type ([`Events.java`](src/main/java/org/brutusin/wava/core/Event.java)) | Value | Description
----- | ---- | -----
-`id` | :heavy_check_mark:  |  
-`queued` |   |  
-`priority` |   |  
-`running` |   |  
-`niceness` |   |  
-`retcode` |   |  
-`cancelled` |   |  
-`ping` |   |  
-`error` |   |  
-`exceed` |   |  
-`exceedGlobal` |   |  
-`maxrss` |   |  
+------------- | --- | -----
+`id`          | yes |  
+`queued`      | yes |  
+`priority`    | yes |  
+`running`     | yes |  
+`niceness`    | yes |  
+`retcode`     | yes |  
+`cancelled`   | yes |  
+`ping`        | no  |  
+`error`       | yes |  
+`exceed`      | yes |  
+`exceedGlobal`| yes |  
+`maxrss`      | yes |  
 
 ## Requirements
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
