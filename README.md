@@ -65,7 +65,7 @@ Jobs are ordered by the following rules:
 - Finally, by job id (incremental). For jobs inside the same group, FIFO ordering.
 
 ![wava job listing](https://github.com/brutusin/wava/raw/master/img/wava-jobs.gif)
-*Sample output of command `wava -j` for querying jobs (white: running, yellow: queued), scheduler has been configured to accept a maximum total RSS of 100000 B*
+*Sample output of command `wava -j` for querying jobs (white: running, yellow: queued). The scheduler has been configured to accept a maximum total RSS of 100000 B*
 
 ### Niceness
 The scheduler sets the niceness of the job processes according to their global ordering within the working niceness range. The concrete strategy is determined by the [`NicenessHandler`](src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation used (set the [configuration](#configuration-description)). 
