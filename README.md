@@ -103,7 +103,6 @@ unzip -o wava-latest-dist.zip -d .
 ### 3. Set appropriate file permissions:
 ```sh
 chmod -R 555 wava-$WAVA_VERSION
-chmod 777 wava-$WAVA_VERSION/tmp
 ```
 
 ### 5. Move and create symbolic links:
