@@ -18,6 +18,8 @@ package org.brutusin.wava.core.plug.impl;
 import org.brutusin.wava.core.plug.NicenessHandler;
 
 /**
+ * Chooses the most favorable niceness value from those values with the minimum
+ * multiplicity (collisions due to the pigeonhole principle)
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
