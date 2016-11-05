@@ -56,7 +56,7 @@ public class SubmitMain {
         Option hOpt = new Option("h", "print this message");
         Option mOpt = Option.builder("m").argName("bytes number")
                 .hasArg()
-                .desc("maximum RSS memory to be allocated by the process at any time")
+                .desc("Promised maximum RSS memory to be allocated by the process at any time")
                 .required()
                 .build();
         Option eOpt = Option.builder("e").argName("file")

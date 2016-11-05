@@ -373,7 +373,7 @@ public class Scheduler {
                 header.append(" ");
                 header.append(StringUtils.leftPad("NICE", 4));
                 header.append(" ");
-                header.append(StringUtils.leftPad("MAX_EXP_RSS", 12));
+                header.append(StringUtils.leftPad("PROMISED_RSS", 12));
                 header.append(" ");
                 header.append(StringUtils.leftPad("MAX_SEEN_RSS", 12));
                 header.append(" ");
