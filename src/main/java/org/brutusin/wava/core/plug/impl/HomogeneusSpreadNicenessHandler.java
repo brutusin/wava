@@ -23,7 +23,7 @@ import org.brutusin.wava.core.plug.NicenessHandler;
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class HomogeneusSpreadNicenessHandler extends NicenessHandler {
+public final class HomogeneusSpreadNicenessHandler extends NicenessHandler {
 
     @Override
     public int getNiceness(int i, int total, int minNiceness, int maxNiceness) {

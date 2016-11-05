@@ -25,7 +25,7 @@ import org.brutusin.wava.core.cfg.Config;
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class LaxPromiseHandler extends PromiseHandler {
+public final class LaxPromiseHandler extends PromiseHandler {
 
     @Override
     public boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException {

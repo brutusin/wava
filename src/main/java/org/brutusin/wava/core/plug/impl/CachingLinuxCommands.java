@@ -30,7 +30,7 @@ import org.brutusin.wava.core.plug.LinuxCommands;
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class CachingLinuxCommands extends LinuxCommands {
+public final class CachingLinuxCommands extends LinuxCommands {
 
     private final LinuxCommands commands;
     private final Cache cache;

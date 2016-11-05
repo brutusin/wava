@@ -32,7 +32,7 @@ import org.brutusin.wava.core.plug.LinuxCommands;
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class POSIXCommandsImpl extends LinuxCommands {
+public final class POSIXCommandsImpl extends LinuxCommands {
 
     private static String executeBashCommand(String command) throws IOException, InterruptedException {
         String[] cmd = {"/bin/bash", "-c", command};

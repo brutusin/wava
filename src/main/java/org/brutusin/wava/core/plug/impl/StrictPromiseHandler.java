@@ -21,10 +21,11 @@ import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.Scheduler;
 
 /**
+ * Disallow continuing executing jobs with failed promises
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class StrictPromiseHandler extends PromiseHandler {
+public final class StrictPromiseHandler extends PromiseHandler {
 
     @Override
     public boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException {
