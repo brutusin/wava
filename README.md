@@ -39,7 +39,7 @@ Of course promises might be wrong, so the scheduler periodically verifies them f
 
 
 ![wava example 1](https://github.com/brutusin/wava/raw/master/img/wava-example1.gif)
-*Running `ls` with a promise of max memory of 100 B*. The duration is of the job is too short for the scheduler detecting that it promised memory is too low*
+*Running `ls` with a promise of max memory of 100 B. The duration is of the job is too short for the scheduler detecting that it promised memory is too low*
 
 ![wava example 2](https://github.com/brutusin/wava/raw/master/img/wava-example2.gif)
 *Running a loop that prints the date each 1 second with an excesive promise of max memory of 100000000 B that makes the command to be  temporary queued*
@@ -65,10 +65,10 @@ Jobs are ordered by the following rules:
 - Finally, by job id (incremental). For jobs inside the same group, FIFO ordering.
 
 ![wava job listing](https://github.com/brutusin/wava/raw/master/img/wava-jobs.gif)
-*Sample output of command `wava -j` for querying jobs (white: running, yellow: queued).*
+*Sample output of command `wava -j` for querying jobs (white: running, yellow: queued), scheduler has been configured to accept a maximum total RSS of 100000 B*
 
 ### Niceness
-The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range (set in the [configuration](#configuration-description))
+The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range. The concrete strategy is determined by the [`NicenessHandler`](src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation used (set the [configuration](#configuration-description)). 
 
 ## Events
 Besides `stderr` and `stdout`, the scheduler process maintains a dedicated channel (named pipe) for communicating events to client processes. These events are serialized in the form:
