@@ -39,7 +39,7 @@ Of course promises might be wrong, so the scheduler periodically verifies them f
 
 
 ![wava example 1](https://github.com/brutusin/wava/raw/master/img/wava-example1.gif)
-*Running `ls` with a promise of max memory of 100 B*. The duration is of the job is too short for the scheduler detecting that it promised memory is too low. 
+*Running `ls` with a promise of max memory of 100 B*. The duration is of the job is too short for the scheduler detecting that it promised memory is too low*
 
 ![wava example 2](https://github.com/brutusin/wava/raw/master/img/wava-example2.gif)
 *Running a loop that prints the date each 1 second with an excesive promise of max memory of 100000000 B that makes the command to be  temporary queued*
@@ -54,12 +54,18 @@ Jobs that do not specify a group at submit time are assigned to the `default` gr
 
 Jobs that specify a non-existing group create at submit-time a *dynamic* group (`priority=0`, `timeToIdleSeconds` specified at [configuration](#configuration-description)).
 
+![wava group listing](https://github.com/brutusin/wava/raw/master/img/wava-groups.gif)
+*Sample output of command `wava -g -l` for querying groups*
+
 ### Job order
 
 Jobs are ordered by the following rules:
 - First by group priority (lower value means higher priority)
 - Then by group id (incremental). In case of same priority, jobs of the oldest group go first.
 - Finally, by job id (incremental). For jobs inside the same group, FIFO ordering.
+
+![wava job listing](https://github.com/brutusin/wava/raw/master/img/wava-jobs.gif)
+*Sample output of command `wava -j` for querying jobs (white: running, yellow: queued).*
 
 ### Niceness
 The scheduler sets the niceness of process tree of the running jobs according to their global ordering, and the working niceness range (set in the [configuration](#configuration-description))
