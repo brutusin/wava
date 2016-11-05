@@ -30,7 +30,6 @@ fi
 
 echo "Setting file permissions..."
 chmod -R 555 /tmp/wava-$WAVA_VERSION
-chmod 777 /tmp/wava-$WAVA_VERSION/tmp
 
 echo "Installing..."
 rm -rf /opt/wava-back

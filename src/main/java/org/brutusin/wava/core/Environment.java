@@ -33,7 +33,7 @@ public final class Environment {
             throw new Error("Enviroment variable not found: " + WAVA_HOME);
         }
         ROOT = new File(value);
-        TEMP = new File(ROOT, "tmp");
+        TEMP = new File("/dev/shm/wava");
     }
 
     private Environment() {

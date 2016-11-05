@@ -40,13 +40,6 @@
             </includes>
             <lineEnding>unix</lineEnding>
         </fileSet>
-        <fileSet>
-            <directory>.</directory>
-            <outputDirectory>tmp</outputDirectory>
-            <excludes>
-                <exclude>*/**</exclude>
-            </excludes>
-        </fileSet>
     </fileSets>
     <dependencySets>
         <dependencySet>
