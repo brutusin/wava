@@ -22,6 +22,8 @@ import org.brutusin.wava.core.Scheduler;
 import org.brutusin.wava.core.cfg.Config;
 
 /**
+ * Allows the execution of promise-failing jobs as long as the total-max-RSS and
+ * max-RSS-per-job thresholds are not overpassed.
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
