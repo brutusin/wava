@@ -22,4 +22,5 @@ package org.brutusin.wava.core.cfg;
 public interface UICfg {
 
     public boolean isAnsiColors();
+    public boolean issIMemoryUnits();
 }

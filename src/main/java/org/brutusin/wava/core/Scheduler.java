@@ -373,9 +373,9 @@ public class Scheduler {
                 header.append(" ");
                 header.append(StringUtils.leftPad("NICE", 4));
                 header.append(" ");
-                header.append(StringUtils.leftPad("PROMISED_RSS", 12));
+                header.append(StringUtils.leftPad("PROM_RSS", 10));
                 header.append(" ");
-                header.append(StringUtils.leftPad("MAX_SEEN_RSS", 12));
+                header.append(StringUtils.leftPad("SEEN_RSS", 10));
                 header.append(" ");
                 header.append("CMD");
                 header.append(ANSICode.END_OF_LINE.getCode());
@@ -407,12 +407,18 @@ public class Scheduler {
                         line.append(" ");
                         line.append(StringUtils.leftPad(String.valueOf(pi.getNiceness()), 4));
                         line.append(" ");
-                        line.append(StringUtils.leftPad(String.valueOf(ji.getSubmitChannel().getRequest().getMaxRSS()), 12));
+                        String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        line.append(StringUtils.leftPad(mem[0], 6));
+                        line.append(" ");
+                        line.append(StringUtils.rightPad(mem[1], 3));
                         line.append(" ");
                         if (pi.getMaxSeenRSS() > 0.9 * ji.getSubmitChannel().getRequest().getMaxRSS()) {
                             line.append(ANSICode.RED.getCode());
                         }
-                        line.append(StringUtils.leftPad(String.valueOf(pi.getMaxSeenRSS()), 12));
+                        mem = Miscellaneous.humanReadableByteCount(pi.getMaxSeenRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        line.append(StringUtils.leftPad(mem[0], 6));
+                        line.append(" ");
+                        line.append(StringUtils.rightPad(mem[1], 3));
                         line.append(ANSICode.RESET.getCode());
                         line.append(" ");
                         line.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
@@ -432,9 +438,12 @@ public class Scheduler {
                         line.append(" ");
                         line.append(StringUtils.leftPad("", 4));
                         line.append(" ");
-                        line.append(StringUtils.leftPad(String.valueOf(ji.getSubmitChannel().getRequest().getMaxRSS()), 12));
+                        String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        line.append(StringUtils.leftPad(mem[0], 6));
                         line.append(" ");
-                        line.append(StringUtils.leftPad("", 12));
+                        line.append(StringUtils.rightPad(mem[1], 3));
+                        line.append(" ");
+                        line.append(StringUtils.leftPad("", 10));
                         line.append(" ");
                         line.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
                         line.append(" ");
@@ -464,9 +473,12 @@ public class Scheduler {
                     line.append(" ");
                     line.append(StringUtils.leftPad("", 4));
                     line.append(" ");
-                    line.append(StringUtils.leftPad(String.valueOf(ji.getSubmitChannel().getRequest().getMaxRSS()), 12));
+                    String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                    line.append(StringUtils.leftPad(mem[0], 6));
                     line.append(" ");
-                    line.append(StringUtils.leftPad("", 12));
+                    line.append(StringUtils.rightPad(mem[1], 3));
+                    line.append(" ");
+                    line.append(StringUtils.leftPad("", 10));
                     line.append(" ");
                     line.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
                     line.append(" ");

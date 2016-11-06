@@ -27,6 +27,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.brutusin.commons.Pair;
+import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.wava.core.OpName;
 import org.brutusin.wava.input.SubmitInput;
 
@@ -54,9 +55,10 @@ public class SubmitMain {
     private static Pair<SubmitInput, File> getRequest(String[] args) {
         Options options = new Options();
         Option hOpt = new Option("h", "print this message");
-        Option mOpt = Option.builder("m").argName("bytes number")
+        Option mOpt = Option.builder("m")
+                .argName("mem value")
                 .hasArg()
-                .desc("Promised maximum RSS memory to be allocated by the process at any time")
+                .desc("promised maximum RSS memory to be allocated by the process at any time, in bytes, if no unit is specified")
                 .required()
                 .build();
         Option eOpt = Option.builder("e").argName("file")
@@ -97,8 +99,8 @@ public class SubmitMain {
 
             long memory;
             try {
-                memory = Long.valueOf(cl.getOptionValue(mOpt.getOpt()));
-            } catch (NumberFormatException ex) {
+                memory = Miscellaneous.parseHumanReadableByteCount(cl.getOptionValue(mOpt.getOpt()));
+            } catch (IllegalArgumentException ex) {
                 throw new ParseException("Invalid memory (-" + mOpt.getOpt() + ") value");
             }
             SubmitInput ri = new SubmitInput();

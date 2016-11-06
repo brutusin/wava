@@ -21,9 +21,10 @@ import org.brutusin.wava.core.cfg.UICfg;
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class UICfgImpl implements UICfg{
+public class UICfgImpl implements UICfg {
 
     private boolean ansiColors = true;
+    private boolean sIMemoryUnits = true;
 
     @Override
     public boolean isAnsiColors() {
@@ -32,5 +33,14 @@ public class UICfgImpl implements UICfg{
 
     public void setAnsiColors(boolean ansiColors) {
         this.ansiColors = ansiColors;
+    }
+
+    @Override
+    public boolean issIMemoryUnits() {
+        return sIMemoryUnits;
+    }
+
+    public void setsIMemoryUnits(boolean sIMemoryUnits) {
+        this.sIMemoryUnits = sIMemoryUnits;
     }
 }
