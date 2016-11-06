@@ -39,9 +39,6 @@ public class CoreMain {
             System.exit(WAVA_ERROR_RETCODE);
         }
         try {
-            Miscellaneous.deleteDirectory(new File(Environment.TEMP, "request"));
-            Miscellaneous.deleteDirectory(new File(Environment.TEMP, "state"));
-            Miscellaneous.deleteDirectory(new File(Environment.TEMP, "streams"));
             Scheduler scheduler = new Scheduler();
             RequestHandler requestHandler = new RequestHandler(scheduler);
             requestHandler.start();

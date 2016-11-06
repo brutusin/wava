@@ -51,6 +51,10 @@ public class Scheduler {
     private boolean closed;
 
     public Scheduler() throws NonRootUserException, IOException, InterruptedException {
+        this.runningUser = LinuxCommands.getInstance().getRunningUser();
+        if (!this.runningUser.equals("root")) {
+            throw new NonRootUserException();
+        }
         if (Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes() > 0) {
             this.maxManagedRss = Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes();
         } else {
@@ -59,10 +63,6 @@ public class Scheduler {
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
-        }
-        this.runningUser = LinuxCommands.getInstance().getRunningUser();
-        if (!this.runningUser.equals("root")) {
-            throw new NonRootUserException();
         }
         createGroupInfo(DEFAULT_GROUP_NAME, this.runningUser, 0, EVICTION_ETERNAL);
         GroupCfg.Group[] predefinedGroups = Config.getInstance().getGroupCfg().getPredefinedGroups();
