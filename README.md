@@ -133,7 +133,8 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
 ```javascript
 {
   "uICfg" : {
-    "ansiColors" : true
+    "ansiColors" : true,
+    "sIMemoryUnits" : true
   },
   "schedulerCfg" : {
     "promiseHandlerClassName" : "org.brutusin.wava.core.plug.impl.StrictPromiseHandler",
@@ -166,6 +167,7 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
 Property                               | Description
 --------                               | -----------
 `uICfg.ansiColors`                     | Use ANSI escape code sequences to highlight UI.
+`uICfg.sIMemoryUnits`                  | Use units from the International System for output memory values. `true`: kB based, `false`:[KiB](https://en.wikipedia.org/wiki/Kibibyte) based
 `schedulerCfg.promiseHandlerClassName` | FQN of the [`PromiseHandler`](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java) implementation (see [`impl`](https://github.com/brutusin/wava/tree/master/src/main/java/org/brutusin/wava/core/plug/impl) package) to use.
 `schedulerCfg.nicenessHandlerClassName` | FQN of the [`NicenessHandler`](src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation (see [`impl`](https://github.com/brutusin/wava/tree/master/src/main/java/org/brutusin/wava/core/plug/impl) package) to use.
 `schedulerCfg.pollingSecs`             | Polling time interval for promises verification and ping events.
