@@ -42,7 +42,7 @@ Since promises might be wrong, the scheduler periodically verifies them for the 
 *Running `ls` with a promise of max memory of 100 B. The duration is of the job is too short for the scheduler detecting that it promised memory is too low*
 
 ![wava example 2](https://github.com/brutusin/wava/raw/master/img/wava-example2.gif)
-*Running a loop that prints the date each 1 second with an excesive promise of max memory of 100000000 B that makes the command to be  temporary queued*
+*Running a loop that prints the date each 1 second with an excesive promise of max memory of 100 MB that makes the command to be  temporary queued. Observe also that this command runs untils user 'nacho' cancels it, returning a non-zero return code*
 
 ## Priority and groups
 
