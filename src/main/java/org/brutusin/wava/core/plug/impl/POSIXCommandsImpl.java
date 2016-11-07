@@ -190,13 +190,13 @@ public final class POSIXCommandsImpl extends LinuxCommands {
     @Override
     public long getSystemRSSFreeMemory() throws IOException, InterruptedException {
         String ouput = executeBashCommand("echo $((`cat /proc/meminfo | grep ^Cached:| awk '{print $2}'` + `cat /proc/meminfo | grep ^MemFree:| awk '{print $2}'` ))");
-        return Long.valueOf(ouput);
+        return Long.valueOf(ouput)*1000;
     }
 
     @Override
     public long getSystemRSSMemory() throws IOException, InterruptedException {
         String ouput = executeBashCommand("cat /proc/meminfo | grep ^MemTotal:| awk '{print $2}'");
-        return Long.valueOf(ouput);
+        return Long.valueOf(ouput)*1000;
     }
 
     @Override
