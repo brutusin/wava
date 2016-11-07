@@ -168,7 +168,7 @@ public final class POSIXCommandsImpl extends LinuxCommands {
                     }
                 }
                 if (index != null) {
-                    ret[index] += Integer.valueOf(cols[2]);
+                    ret[index] += Long.valueOf(cols[2])*1000;
                 }
             }
         }
