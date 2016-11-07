@@ -111,19 +111,19 @@ unzip -o wava-latest-dist.zip -d .
 chmod -R 555 wava-$WAVA_VERSION
 ```
 
-### 5. Move and create symbolic links:
+### 4. Move and create symbolic links:
 ```sh
 sudo mkdir -p /opt/wava
 sudo mv wava-$WAVA_VERSION /opt/wava
 sudo ln -sf /opt/wava/wava-$WAVA_VERSION/bin/wava /usr/bin/wava
 ```
 
-### 6. Run to verify installation and generate default configuration file:
+### 5. Run to verify installation and generate default configuration file:
 ```sh
 wava
 ```
 
-### 7. Run on startup
+### 6. Run on startup
 Optinally, create a service to run the following command at startup by the "root" user: `wava -s`. Details are not given here since it varies depending on the Linux distribution.
 
 ## Configuration
