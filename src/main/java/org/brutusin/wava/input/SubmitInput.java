@@ -6,13 +6,9 @@ import java.util.Map;
 public class SubmitInput {
 
     private String groupName;
-
     private String[] command;
-
-    private long maxRSS;
-    
-    private Map<String,String> environment;
-    
+    private long maxRSS;    
+    private Map<String,String> environment;    
     private File workingDirectory;
 
     public Map<String, String> getEnvironment() {
