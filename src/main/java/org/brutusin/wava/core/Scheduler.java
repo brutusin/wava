@@ -225,7 +225,7 @@ public class Scheduler {
                 ProcessInfo pi = processMap.get(id);
                 if (pi != null) {
                     if (pId == null || pi.getPid() == pId) {
-                        pi.setNiceness(NicenessHandler.getInstance().getNiceness(i, processMap.size(), Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
+                        pi.setNiceness(NicenessHandler.getInstance().getNiceness(i, jobSet.countRunning(), Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
                     }
                 }
                 i++;
@@ -391,7 +391,7 @@ public class Scheduler {
                     JobInfo ji = jobMap.get(id);
                     ProcessInfo pi = processMap.get(id);
                     GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
-                    StringBuilder line = new StringBuilder();
+                    StringBuilder line = new StringBuilder(ANSICode.NO_WRAP.getCode());
                     if (pi != null) {
                         line.append(StringUtils.leftPad(String.valueOf(id), 8));
                         line.append(" ");
@@ -448,6 +448,7 @@ public class Scheduler {
                         line.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
                         line.append(" ");
                     }
+                    line.append(ANSICode.WRAP.getCode());
                     PeerChannel.println(channel.getStdoutOs(), line.toString());
                 }
                 int position = 0;
@@ -458,6 +459,7 @@ public class Scheduler {
                     JobInfo ji = jobMap.get(id);
                     GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                     StringBuilder line = new StringBuilder();
+                    line.append(ANSICode.NO_WRAP.getCode());
                     line.append(ANSICode.YELLOW.getCode());
                     line.append(StringUtils.leftPad(String.valueOf(id), 8));
                     line.append(" ");
@@ -483,6 +485,7 @@ public class Scheduler {
                     line.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
                     line.append(" ");
                     line.append(ANSICode.RESET.getCode());
+                    line.append(ANSICode.WRAP.getCode());
                     PeerChannel.println(channel.getStdoutOs(), line.toString());
                 }
             }

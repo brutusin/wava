@@ -47,6 +47,8 @@ public enum ANSICode {
     INVISIBLE("\u001b[8m"),
     END_OF_LINE("\u001b[K"),
     MOVE_TO_TOP("\u001b[0;0f"),
+    NO_WRAP("\u001b[?7l"),
+    WRAP("\u001b[?7h"),
     CLEAR("\u001b[2J");
 
     private final String code;

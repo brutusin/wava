@@ -53,7 +53,7 @@ public final class POSIXCommandsImpl extends LinuxCommands {
             if (output != null) {
                 String[] childrenIds = output.split("\n");
                 for (String childrenId : childrenIds) {
-                    setNiceness(Integer.valueOf(childrenId), niceness);
+                    setNiceness(Integer.valueOf(childrenId.trim()), niceness);
                 }
             }
         } catch (ProcessException pe) {
@@ -98,7 +98,7 @@ public final class POSIXCommandsImpl extends LinuxCommands {
             if (output != null) {
                 String[] pIds = output.split("\n");
                 for (int i = 0; i < pIds.length; i++) {
-                    getAndStopTree(visited, Integer.valueOf(pIds[i]));
+                    getAndStopTree(visited, Integer.valueOf(pIds[i].trim()));
                 }
             }
         } catch (Exception ex) {
@@ -158,17 +158,17 @@ public final class POSIXCommandsImpl extends LinuxCommands {
             String[] lines = stdout.split("\n");
             for (String line : lines) {
                 String[] cols = line.trim().split("\\s+");
-                Integer pid = Integer.valueOf(cols[0]);
+                Integer pid = Integer.valueOf(cols[0].trim());
                 Integer index = indexes.get(pid);
                 if (index == null) {
-                    Integer ppid = Integer.valueOf(cols[1]);
+                    Integer ppid = Integer.valueOf(cols[1].trim());
                     index = indexes.get(ppid);
                     if (index != null) {
                         indexes.put(pid, index);
                     }
                 }
                 if (index != null) {
-                    ret[index] += Long.valueOf(cols[2])*1000;
+                    ret[index] += Long.valueOf(cols[2].trim())*1000;
                 }
             }
         }
@@ -190,13 +190,13 @@ public final class POSIXCommandsImpl extends LinuxCommands {
     @Override
     public long getSystemRSSFreeMemory() throws IOException, InterruptedException {
         String ouput = executeBashCommand("echo $((`cat /proc/meminfo | grep ^Cached:| awk '{print $2}'` + `cat /proc/meminfo | grep ^MemFree:| awk '{print $2}'` ))");
-        return Long.valueOf(ouput)*1000;
+        return Long.valueOf(ouput.trim())*1000;
     }
 
     @Override
     public long getSystemRSSMemory() throws IOException, InterruptedException {
         String ouput = executeBashCommand("cat /proc/meminfo | grep ^MemTotal:| awk '{print $2}'");
-        return Long.valueOf(ouput)*1000;
+        return Long.valueOf(ouput.trim())*1000;
     }
 
     @Override
