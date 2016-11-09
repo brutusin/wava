@@ -31,15 +31,17 @@ public final class LaxPromiseHandler extends PromiseHandler {
 
     @Override
     public boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException {
-        if (!pi.isAllowed()) {
-            pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
-        }
         if (availableMemory <= 0) {
+            pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_disallowed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
             return false;
         } else if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && treeRSS > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes()) {
-            pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceedGlobal, Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
+            pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_global, Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
+            pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_disallowed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
             return false;
         } else {
+            if (!pi.isAllowed()) {
+                pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_allowed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
+            }
             return true;
         }
     }
