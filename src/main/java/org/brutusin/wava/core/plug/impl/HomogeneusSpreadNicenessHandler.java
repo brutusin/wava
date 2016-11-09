@@ -18,8 +18,13 @@ package org.brutusin.wava.core.plug.impl;
 import org.brutusin.wava.core.plug.NicenessHandler;
 
 /**
- * Chooses the most favorable niceness value from those values with the minimum
- * multiplicity (collisions due to the pigeonhole principle)
+ * Distributes niceness among processes in such a way that:
+ * <pre>
+ * 1) {@code niceness(i+1)-1 <= niceness(i) <= niceness(i+1)}
+ * 2) {@code multiplicity(n) = m} for all niceness values {@code n}, or exists a niceness value {@code n0} such as: 
+ *    {@code multiplicity(n) = m} for {@code n <= n0} and 
+ *    {@code multiplicity(n) = m+1} for {@code n > n0}
+ * </pre>
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
