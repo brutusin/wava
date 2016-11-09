@@ -30,7 +30,8 @@ public enum Event {
     cancelled,
     ping,
     error,
-    exceed,
-    exceedGlobal,
-    maxrss
+    exceed_allowed,
+    exceed_disallowed,
+    exceed_global,
+    maxrss;
 }

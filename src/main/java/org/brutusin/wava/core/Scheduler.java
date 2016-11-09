@@ -280,7 +280,7 @@ public class Scheduler {
             throw new IllegalArgumentException("Request info is required");
         }
         if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && submitChannel.getRequest().getMaxRSS() > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes()) {
-            submitChannel.sendEvent(Event.exceedGlobal, Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
+            submitChannel.sendEvent(Event.exceed_global, Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
             submitChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
             submitChannel.close();
             return;

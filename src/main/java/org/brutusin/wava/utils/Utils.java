@@ -200,10 +200,12 @@ public final class Utils {
                                         } else {
                                             color = ANSICode.RED;
                                         }
-                                    } else if (evt == Event.exceed) {
+                                    } else if (evt == Event.exceed_allowed) {
+                                        color = ANSICode.YELLOW;
+                                    } else if (evt == Event.exceed_disallowed) {
                                         color = ANSICode.RED;
-                                    } else if (evt == Event.exceedGlobal) {
-                                        color = ANSICode.RED;
+                                    } else if (evt == Event.exceed_global) {
+                                        color = ANSICode.YELLOW;
                                     } else if (evt == Event.error) {
                                         color = ANSICode.RED;
                                         if (value != null) {
