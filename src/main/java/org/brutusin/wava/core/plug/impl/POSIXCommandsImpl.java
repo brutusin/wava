@@ -70,35 +70,49 @@ public final class POSIXCommandsImpl extends LinuxCommands {
 
     @Override
     public void killTree(int pId) throws IOException, InterruptedException {
-        final Set<Integer> visitedIds = new HashSet<>();
-        getAndStopTree(visitedIds, pId);
-        kill(visitedIds, 15); // SIGTERM
-        Thread t = new Thread() {
+        Thread t1 = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    Set<Integer> visitedIds = new HashSet<>();
+                    getTree(visitedIds, pId, false);
+                    kill(visitedIds, 15); // SIGTERM
+                } catch (InterruptedException ex) {
+                }
+            }
+        };
+        t1.setName("SIGTERM " + pId);
+        t1.start();
+        Thread t2 = new Thread() {
             @Override
             public void run() {
                 try {
                     Thread.sleep(1000 * Config.getInstance().getSchedulerCfg().getSigKillDelaySecs());
+                    Set<Integer> visitedIds = new HashSet<>();
+                    getTree(visitedIds, pId, true);
                     kill(visitedIds, 9); // SIGKILL
                 } catch (InterruptedException ex) {
                 }
             }
         };
-        t.setName("killtree " + pId);
-        t.start();
+        t2.setName("SIGKILL " + pId);
+        t2.start();
 
     }
 
-    public void getAndStopTree(Set<Integer> visited, int pId) throws InterruptedException {
+    public void getTree(Set<Integer> visited, int pId, boolean stop) throws InterruptedException {
         try {
-            // needed to stop quickly forking parent from producing children between child killing and parent killing
-            Process stopProcess = Runtime.getRuntime().exec(new String[]{"kill", "-stop", String.valueOf(pId)});
-            ProcessUtils.execute(stopProcess);
+            if (stop) {
+                // needed to stop quickly forking parent from producing children between child killing and parent killing
+                Process stopProcess = Runtime.getRuntime().exec(new String[]{"kill", "-stop", String.valueOf(pId)});
+                ProcessUtils.execute(stopProcess);
+            }
             Process getChildrenProcess = Runtime.getRuntime().exec(new String[]{"ps", "-o", "pid", "--no-headers", "--ppid", String.valueOf(pId)});
             String output = ProcessUtils.execute(getChildrenProcess)[0];
             if (output != null) {
                 String[] pIds = output.split("\n");
                 for (int i = 0; i < pIds.length; i++) {
-                    getAndStopTree(visited, Integer.valueOf(pIds[i].trim()));
+                    getTree(visited, Integer.valueOf(pIds[i].trim()), stop);
                 }
             }
         } catch (Exception ex) {
@@ -168,7 +182,7 @@ public final class POSIXCommandsImpl extends LinuxCommands {
                     }
                 }
                 if (index != null) {
-                    ret[index] += Long.valueOf(cols[2].trim())*1000;
+                    ret[index] += Long.valueOf(cols[2].trim()) * 1000;
                 }
             }
         }
@@ -190,13 +204,13 @@ public final class POSIXCommandsImpl extends LinuxCommands {
     @Override
     public long getSystemRSSFreeMemory() throws IOException, InterruptedException {
         String ouput = executeBashCommand("echo $((`cat /proc/meminfo | grep ^Cached:| awk '{print $2}'` + `cat /proc/meminfo | grep ^MemFree:| awk '{print $2}'` ))");
-        return Long.valueOf(ouput.trim())*1000;
+        return Long.valueOf(ouput.trim()) * 1000;
     }
 
     @Override
     public long getSystemRSSMemory() throws IOException, InterruptedException {
         String ouput = executeBashCommand("cat /proc/meminfo | grep ^MemTotal:| awk '{print $2}'");
-        return Long.valueOf(ouput.trim())*1000;
+        return Long.valueOf(ouput.trim()) * 1000;
     }
 
     @Override
