@@ -159,6 +159,11 @@ public class Scheduler {
                     jobMap.remove(id);
                     GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                     gi.getJobs().remove(id);
+                    try {
+                        ji.getSubmitChannel().close();
+                    } catch (IOException ex) {
+                        LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
+                    }
                 }
             }
 
