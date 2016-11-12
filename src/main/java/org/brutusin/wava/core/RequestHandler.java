@@ -94,7 +94,10 @@ public class RequestHandler {
                         continue;
                     }
                     handleRequest(dir.resolve(((WatchEvent<Path>) watchEvent).context()).toFile());
-                    key.reset();
+                }
+                if (!key.reset()) {
+                    LOGGER.log(Level.SEVERE, null, "Request directory is inaccessible");
+                    break;
                 }
             } catch (InterruptedException ie) {
                 break;
