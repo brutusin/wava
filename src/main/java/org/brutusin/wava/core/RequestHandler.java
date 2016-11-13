@@ -16,9 +16,9 @@
 package org.brutusin.wava.core;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
@@ -63,15 +63,22 @@ public class RequestHandler {
     }
 
     private final Scheduler scheduler;
-
     private final File requestFolder;
+    private final File streamsFolder;
 
     public RequestHandler(Scheduler scheduler) throws IOException {
         this.scheduler = scheduler;
         this.requestFolder = new File(Environment.TEMP, "request");
-        if (!requestFolder.exists()) {
-            Miscellaneous.createDirectory(requestFolder);
-        }
+        this.streamsFolder = new File(Environment.TEMP, "streams");
+        remakeFolder(requestFolder);
+        remakeFolder(streamsFolder);
+        remakeFolder(new File(Environment.TEMP, "temp"));
+        remakeFolder(new File(Environment.TEMP, "state"));
+    }
+
+    private static void remakeFolder(File f) throws IOException {
+        Miscellaneous.deleteDirectory(f);
+        Miscellaneous.createDirectory(f);
     }
 
     public void start() throws IOException {
@@ -89,11 +96,26 @@ public class RequestHandler {
                     if (Thread.interrupted()) {
                         break outer;
                     }
-                    if (watchEvent.kind() == StandardWatchEventKinds.OVERFLOW) {
+                    WatchEvent.Kind<?> kind = watchEvent.kind();
+                    
+                    if (kind == StandardWatchEventKinds.OVERFLOW) {
                         LOGGER.log(Level.SEVERE, null, "Overflow event retrieved from watch service");
                         continue;
                     }
-                    handleRequest(dir.resolve(((WatchEvent<Path>) watchEvent).context()).toFile());
+                    final File file = dir.resolve(((WatchEvent<Path>) watchEvent).context()).toFile();
+                    //System.err.println(kind);
+                    //System.err.println(file);
+                    Thread t = new Thread() {
+                        @Override
+                        public void run() {
+                            try {
+                                handleRequest(file);
+                            } catch (Throwable th) {
+                                Logger.getLogger(RequestHandler.class.getName()).log(Level.SEVERE, null, th);
+                            }
+                        }
+                    };
+                    t.start();
                 }
                 if (!key.reset()) {
                     LOGGER.log(Level.SEVERE, null, "Request directory is inaccessible");
@@ -114,36 +136,33 @@ public class RequestHandler {
             Integer id = Integer.valueOf(matcher.group(1));
             OpName opName = OpName.valueOf(matcher.group(2));
             String user = LinuxCommands.getInstance().getFileOwner(requestFile);
-            String json;
-            try (FileInputStream fis = new FileInputStream(requestFile)) {
-                json = Miscellaneous.toString(fis, "UTF-8");
-            }
-            requestFile.delete();
+            String json = new String(Files.readAllBytes(requestFile.toPath()));
             PeerChannel ch = null;
             try {
+
                 if (opName == OpName.submit) {
                     SubmitInput input = JsonCodec.getInstance().parse(json, SubmitInput.class);
-                    PeerChannel<SubmitInput> channel = new PeerChannel(user, input, new File(Environment.TEMP, "/streams/" + id));
+                    PeerChannel<SubmitInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
                     ch = channel;
                     this.scheduler.submit(channel);
                 } else if (opName == OpName.cancel) {
                     CancelInput input = JsonCodec.getInstance().parse(json, CancelInput.class);
-                    PeerChannel<CancelInput> channel = new PeerChannel(user, input, new File(Environment.TEMP, "/streams/" + id));
+                    PeerChannel<CancelInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
                     ch = channel;
                     this.scheduler.cancel(channel);
                 } else if (opName == OpName.jobs) {
                     Boolean noHeaders = JsonCodec.getInstance().parse(json, Boolean.class);
-                    PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.TEMP, "/streams/" + id));
+                    PeerChannel<Void> channel = new PeerChannel(user, null, new File(streamsFolder, String.valueOf(id)));
                     ch = channel;
                     this.scheduler.listJobs(channel, noHeaders);
                 } else if (opName == OpName.group) {
                     GroupInput input = JsonCodec.getInstance().parse(json, GroupInput.class);
                     if (input.isList()) {
-                        PeerChannel<Void> channel = new PeerChannel(user, null, new File(Environment.TEMP, "/streams/" + id));
+                        PeerChannel<Void> channel = new PeerChannel(user, null, new File(streamsFolder, String.valueOf(id)));
                         ch = channel;
                         this.scheduler.listGroups(channel, input.isNoHeaders());
                     } else {
-                        PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(Environment.TEMP, "/streams/" + id));
+                        PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
                         ch = channel;
                         this.scheduler.updateGroup(channel);
                     }
@@ -155,9 +174,9 @@ public class RequestHandler {
                 } else if (th instanceof InterruptedException) {
                     throw (InterruptedException) th;
                 } else {
-                    PeerChannel.println(ch.getStderrOs(), ANSICode.RED + "[wava] An error has ocurred. See core process logs for more details");
+                    PeerChannel.println(ch.getStderrOs(), ANSICode.RED + "[wava] An error has ocurred processing request " + id + ". See core process logs for more details");
                     ch.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
-                    LOGGER.log(Level.SEVERE, th.getMessage(), th);
+                    LOGGER.log(Level.SEVERE, "Error processing request " + id + ": " + th.getMessage() + "\noperation:" + opName + "\nuser:" + user + "\njson:" + json, th);
                 }
                 ch.close();
             }
@@ -165,19 +184,8 @@ public class RequestHandler {
     }
 
     public static void main(String[] args) throws Exception {
-        SubmitInput ri = new SubmitInput();
-        ri.setCommand(new String[]{"ls"});
-        ri.setWorkingDirectory(new File("/tmp"));
-        ri.setMaxRSS(500000);
-        System.out.println(JsonCodec.getInstance().transform(ri));
 
-        String s = JsonCodec.getInstance().transform(new File("/tmp"));
-        System.out.println(s);
-        System.out.println(JsonCodec.getInstance().parse(s, File.class
-        ).getAbsolutePath());
-        System.out.println(JsonCodec.getInstance().parse(s, File.class
-        ).getAbsolutePath());
-        System.out.println(ri.getWorkingDirectory().getAbsolutePath());
+        System.out.println(JsonCodec.getInstance().parse("", SubmitInput.class));
     }
 
 }
