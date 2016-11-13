@@ -71,9 +71,6 @@ public class Scheduler {
                 createGroupInfo(group.getName(), this.runningUser, group.getPriority(), group.getTimeToIdleSeconds());
             }
         }
-        remakeFolder(new File(Environment.TEMP, "streams/"));
-        remakeFolder(new File(Environment.TEMP, "state/"));
-        remakeFolder(new File(Environment.TEMP, "request/"));
 
         this.processingThread = new Thread(this.threadGroup, "processingThread") {
             @Override
@@ -96,11 +93,6 @@ public class Scheduler {
         };
         this.processingThread.setDaemon(true);
         this.processingThread.start();
-    }
-
-    private static void remakeFolder(File f) throws IOException {
-        Miscellaneous.deleteDirectory(f);
-        Miscellaneous.createDirectory(f);
     }
 
     private GroupInfo createGroupInfo(String name, String user, int priority, int timetoIdleSeconds) {
@@ -308,7 +300,7 @@ public class Scheduler {
             submitChannel.sendEvent(Event.id, id);
             jobSet.queue(id, gi.getPriority(), gi.getGroupId());
             submitChannel.sendEvent(Event.priority, gi.getPriority());
-            refresh();
+           // refresh();
         }
     }
 
@@ -705,7 +697,7 @@ public class Scheduler {
                                 }
                             }
                         }
-                        refresh();
+                       // refresh();
                     } catch (Throwable th) {
                         LOGGER.log(Level.SEVERE, th.getMessage(), th);
                     }
