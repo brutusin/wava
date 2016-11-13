@@ -19,7 +19,7 @@ import org.brutusin.wava.utils.ANSICode;
 import java.io.File;
 import java.nio.channels.FileLock;
 import org.brutusin.wava.core.Environment;
-import org.brutusin.wava.core.RequestHandler;
+import org.brutusin.wava.core.io.RequestHandler;
 import org.brutusin.wava.core.Scheduler;
 import org.brutusin.wava.utils.Utils;
 import static org.brutusin.wava.utils.Utils.WAVA_ERROR_RETCODE;

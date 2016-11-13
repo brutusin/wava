@@ -22,7 +22,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.brutusin.wava.utils.Utils;
-import org.brutusin.wava.core.OpName;
+import org.brutusin.wava.core.io.OpName;
+import org.brutusin.wava.core.io.RequestExecutor;
 import org.brutusin.wava.input.GroupInput;
 
 /**
@@ -126,6 +127,6 @@ public class GroupMain {
         if (gi == null) {
             System.exit(Utils.WAVA_ERROR_RETCODE);
         }
-        System.exit(Utils.executeRequest(OpName.group, gi, null, false));
+        System.exit(RequestExecutor.executeRequest(OpName.group, gi, null, false));
     }
 }

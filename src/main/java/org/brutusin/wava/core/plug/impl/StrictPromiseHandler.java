@@ -16,7 +16,7 @@
 package org.brutusin.wava.core.plug.impl;
 
 import java.io.IOException;
-import org.brutusin.wava.core.Event;
+import org.brutusin.wava.core.io.Event;
 import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.Scheduler;
 

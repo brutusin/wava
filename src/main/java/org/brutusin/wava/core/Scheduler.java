@@ -1,5 +1,7 @@
 package org.brutusin.wava.core;
 
+import org.brutusin.wava.core.io.Event;
+import org.brutusin.wava.core.io.PeerChannel;
 import org.brutusin.wava.core.cfg.Config;
 import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.plug.LinuxCommands;

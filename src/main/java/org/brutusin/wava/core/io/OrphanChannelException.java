@@ -13,15 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.core;
+package org.brutusin.wava.core.io;
 
 /**
+ * Thrown to indicate that the channel peer process has died.
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public enum OpName {
-    submit,
-    cancel,
-    jobs,
-    group,
+public class OrphanChannelException extends Exception {
+
+    public OrphanChannelException() {
+    }
+
+    public OrphanChannelException(String message) {
+        super(message);
+    }
 }

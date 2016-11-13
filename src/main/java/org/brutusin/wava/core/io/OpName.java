@@ -13,25 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.main.peer;
-
-import org.brutusin.wava.utils.Utils;
-import org.brutusin.wava.core.io.OpName;
-import org.brutusin.wava.core.io.RequestExecutor;
+package org.brutusin.wava.core.io;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class ListJobsMain {
-
-    public static void main(String[] args) throws Exception {
-        Utils.validateCoreRunning();
-        boolean noHeaders = args.length > 0 && (args[0].equals("-h") || args[0].equals("--no-headers"));
-        Integer retCode = RequestExecutor.executeRequest(OpName.jobs, noHeaders, null, false);
-        if (retCode == null) {
-            retCode = 1;
-        }
-        System.exit(retCode);
-    }
+public enum OpName {
+    submit,
+    cancel,
+    jobs,
+    group,
 }

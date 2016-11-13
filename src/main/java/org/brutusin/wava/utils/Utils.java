@@ -25,6 +25,8 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -37,10 +39,10 @@ import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.json.spi.JsonNode;
 import org.brutusin.wava.core.Environment;
-import org.brutusin.wava.core.Event;
-import org.brutusin.wava.core.PeerChannel;
+import org.brutusin.wava.core.io.Event;
+import org.brutusin.wava.core.io.PeerChannel;
 import org.brutusin.wava.core.plug.LinuxCommands;
-import org.brutusin.wava.core.OpName;
+import org.brutusin.wava.core.io.OpName;
 import org.brutusin.wava.main.WavaMain;
 
 /**
@@ -142,129 +144,6 @@ public final class Utils {
             System.err.println(ANSICode.RED.getCode() + "WAVA core process is not running!" + ANSICode.RESET.getCode());
             System.exit(WAVA_ERROR_RETCODE);
         }
-    }
-
-    public static Integer executeRequest(OpName opName, Object input, final OutputStream eventStream, boolean prettyEvents) throws IOException, InterruptedException {
-        File counterFile = new File(Environment.TEMP, "state/.seq");
-        long id = Miscellaneous.getGlobalAutoIncremental(counterFile);
-        String json = JsonCodec.getInstance().transform(input);
-        File requestFile = new File(Environment.TEMP, "request/" + id + "-" + opName);
-        File streamRoot = new File(Environment.TEMP, "streams/" + id);
-        Miscellaneous.createDirectory(streamRoot);
-        File eventsNamedPipe = new File(streamRoot, PeerChannel.NamedPipe.events.name());
-        File stdoutNamedPipe = new File(streamRoot, PeerChannel.NamedPipe.stdout.name());
-        File stderrNamedPipe = new File(streamRoot, PeerChannel.NamedPipe.stderr.name());
-        LinuxCommands.getInstance().createNamedPipes(eventsNamedPipe, stderrNamedPipe, stdoutNamedPipe);
-        final Bean<Integer> retCode = new Bean<>();
-        Thread eventsThread;
-        eventsThread = new Thread() {
-            @Override
-            public void run() {
-                try {
-                    InputStream eventsIs = new FileInputStream(eventsNamedPipe);
-                    BufferedReader br = new BufferedReader(new InputStreamReader(eventsIs));
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        List<String> tokens = parseEventLine(line);
-                        Event evt = Event.valueOf(tokens.get(1));
-                        String value;
-                        if (tokens.size() > 2) {
-                            value = tokens.get(2);
-                        } else {
-                            value = null;
-                        }
-
-                        if (evt == Event.ping) {
-
-                        } else {
-                            if (evt == Event.retcode) {
-                                retCode.setValue(Integer.valueOf(value));
-                            }
-                            if (eventStream != null) {
-                                if (!prettyEvents) {
-                                    synchronized (eventStream) {
-                                        eventStream.write((line + "\n").getBytes());
-                                    }
-                                } else {
-                                    Date date = new Date(Long.valueOf(tokens.get(0)));
-                                    ANSICode color = ANSICode.CYAN;
-                                    if (evt == Event.id || evt == Event.running) {
-                                        color = ANSICode.GREEN;
-                                    } else if (evt == Event.queued) {
-                                        color = ANSICode.YELLOW;
-                                    } else if (evt == Event.cancelled) {
-                                        color = ANSICode.YELLOW;
-                                    } else if (evt == Event.retcode) {
-                                        if (retCode.getValue() == 0) {
-                                            color = ANSICode.GREEN;
-                                        } else {
-                                            color = ANSICode.RED;
-                                        }
-                                    } else if (evt == Event.exceed_allowed) {
-                                        color = ANSICode.YELLOW;
-                                    } else if (evt == Event.exceed_disallowed) {
-                                        color = ANSICode.RED;
-                                    } else if (evt == Event.exceed_global) {
-                                        color = ANSICode.YELLOW;
-                                    } else if (evt == Event.error) {
-                                        color = ANSICode.RED;
-                                        if (value != null) {
-                                            JsonNode node = JsonCodec.getInstance().parse(value);
-                                            value = node.asString();
-                                        }
-                                    }
-                                    synchronized (eventStream) {
-                                        eventStream.write((color.getCode() + "[wava] [" + Utils.DATE_FORMAT.format(date) + "] [" + evt + (value != null ? (":" + value) : "") + "]" + ANSICode.RESET.getCode() + "\n").getBytes());
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } catch (Throwable th) {
-                    th.printStackTrace(System.err);
-                }
-            }
-        };
-        Thread outThread = new Thread() {
-            @Override
-            public void run() {
-                try {
-                    InputStream outIs = new FileInputStream(stdoutNamedPipe);
-                    Miscellaneous.pipeAsynchronously(outIs, System.out);
-                } catch (Throwable th) {
-                    th.printStackTrace(System.err);
-                }
-            }
-        };
-        Thread errThread = new Thread() {
-            @Override
-            public void run() {
-                InputStream errIs = null;
-                try {
-                    errIs = new FileInputStream(stderrNamedPipe);
-                    BufferedReader br = new BufferedReader(new InputStreamReader(errIs));
-                    Miscellaneous.pipeSynchronously(br, false, System.err);
-                } catch (Throwable th) {
-                    th.printStackTrace(System.err);
-                } finally {
-                    if (errIs != null) {
-                        try {
-                            errIs.close();
-                        } catch (IOException ex) {
-                            ex.printStackTrace(System.err);
-                        }
-                    }
-                }
-            }
-        };
-        eventsThread.start();
-        outThread.start();
-        errThread.start();
-        Miscellaneous.writeStringToFile(requestFile, json, "UTF-8");
-        eventsThread.join();
-        outThread.join();
-        errThread.join();
-        return retCode.getValue();
     }
 
     public static void main(String[] args) {

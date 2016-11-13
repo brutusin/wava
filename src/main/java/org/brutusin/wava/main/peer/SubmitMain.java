@@ -28,7 +28,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.brutusin.commons.Pair;
 import org.brutusin.commons.utils.Miscellaneous;
-import org.brutusin.wava.core.OpName;
+import org.brutusin.wava.core.io.OpName;
+import org.brutusin.wava.core.io.RequestExecutor;
 import org.brutusin.wava.input.SubmitInput;
 
 /**
@@ -135,7 +136,7 @@ public class SubmitMain {
             eventOs = new FileOutputStream(pair.getElement2());
             prettyEvents = false;
         }
-        Integer retCode = Utils.executeRequest(OpName.submit, pair.getElement1(), eventOs, prettyEvents);
+        Integer retCode = RequestExecutor.executeRequest(OpName.submit, pair.getElement1(), eventOs, prettyEvents);
         if (retCode == null) {
             retCode = Utils.WAVA_ERROR_RETCODE;
         }
