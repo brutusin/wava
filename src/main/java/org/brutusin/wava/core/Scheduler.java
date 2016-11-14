@@ -5,7 +5,6 @@ import org.brutusin.wava.core.io.PeerChannel;
 import org.brutusin.wava.core.cfg.Config;
 import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.plug.LinuxCommands;
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,10 +30,10 @@ import org.brutusin.wava.utils.NonRootUserException;
 import org.brutusin.wava.utils.Utils;
 
 public class Scheduler {
-
+    
     public final static String DEFAULT_GROUP_NAME = "default";
     public final static int EVICTION_ETERNAL = -1;
-
+    
     private final static Logger LOGGER = Logger.getLogger(Scheduler.class.getName());
 
     // next four accessed under synchronized(jobSet)
@@ -42,16 +41,18 @@ public class Scheduler {
     private final Map<Integer, JobInfo> jobMap = new HashMap<>();
     private final Map<Integer, ProcessInfo> processMap = new HashMap<>();
     private final Map<String, GroupInfo> groupMap = new HashMap<>();
-
+    
     private final ThreadGroup threadGroup = new ThreadGroup(Scheduler.class.getName());
     private final AtomicInteger jobCounter = new AtomicInteger();
     private final AtomicInteger groupCounter = new AtomicInteger();
     private final Thread processingThread;
-
+    
+    private String jobList;
+    
     private final long maxManagedRss;
     private final String runningUser;
     private boolean closed;
-
+    
     public Scheduler() throws NonRootUserException, IOException, InterruptedException {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
         if (!this.runningUser.equals("root")) {
@@ -73,7 +74,7 @@ public class Scheduler {
                 createGroupInfo(group.getName(), this.runningUser, group.getPriority(), group.getTimeToIdleSeconds());
             }
         }
-
+        
         this.processingThread = new Thread(this.threadGroup, "processingThread") {
             @Override
             public void run() {
@@ -96,7 +97,7 @@ public class Scheduler {
         this.processingThread.setDaemon(true);
         this.processingThread.start();
     }
-
+    
     private GroupInfo createGroupInfo(String name, String user, int priority, int timetoIdleSeconds) {
         synchronized (jobSet) {
             if (!groupMap.containsKey(name)) {
@@ -131,7 +132,7 @@ public class Scheduler {
             return ret;
         }
     }
-
+    
     private long getMaxPromisedMemory() {
         synchronized (jobSet) {
             long sum = 0;
@@ -141,7 +142,7 @@ public class Scheduler {
             return sum;
         }
     }
-
+    
     private void cleanStalePeers() throws InterruptedException {
         synchronized (jobSet) {
             Iterator<Integer> it = jobSet.getQueue();
@@ -160,7 +161,7 @@ public class Scheduler {
                     }
                 }
             }
-
+            
             it = jobSet.getRunning();
             while (it.hasNext()) {
                 Integer id = it.next();
@@ -175,7 +176,7 @@ public class Scheduler {
             }
         }
     }
-
+    
     private void refresh() throws IOException, InterruptedException {
         synchronized (jobSet) {
             cleanStalePeers();
@@ -208,13 +209,14 @@ public class Scheduler {
                     ji.setPreviousQueuePosition(position);
                 }
             }
+            this.jobList = createJobList(false);
         }
     }
-
+    
     private void updateNiceness() throws IOException, InterruptedException {
         updateNiceness(null);
     }
-
+    
     private void updateNiceness(Integer pId) throws IOException, InterruptedException {
         synchronized (jobSet) {
             JobSet.RunningIterator running = jobSet.getRunning();
@@ -231,7 +233,7 @@ public class Scheduler {
             }
         }
     }
-
+    
     private long checkPromises(long availableMemory) throws IOException, InterruptedException {
         synchronized (jobSet) {
             long currentRSS = 0;
@@ -269,9 +271,9 @@ public class Scheduler {
             return currentRSS;
         }
     }
-
+    
     public void submit(PeerChannel<SubmitInput> submitChannel) throws IOException, InterruptedException {
-
+        
         if (closed) {
             throw new IllegalStateException("Instance is closed");
         }
@@ -284,28 +286,196 @@ public class Scheduler {
             submitChannel.close();
             return;
         }
-
+        
         if (submitChannel.getRequest().getGroupName() == null) {
             submitChannel.getRequest().setGroupName(DEFAULT_GROUP_NAME);
         }
         int id = jobCounter.incrementAndGet();
-
+        
         synchronized (jobSet) {
             GroupInfo gi = groupMap.get(submitChannel.getRequest().getGroupName());
             if (gi == null) { // dynamic group
                 gi = createGroupInfo(submitChannel.getRequest().getGroupName(), submitChannel.getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds());
             }
             gi.getJobs().add(id);
-
+            
             JobInfo ji = new JobInfo(id, submitChannel);
             jobMap.put(id, ji);
             submitChannel.sendEvent(Event.id, id);
             jobSet.queue(id, gi.getPriority(), gi.getGroupId());
             submitChannel.sendEvent(Event.priority, gi.getPriority());
-           // refresh();
+            // refresh();
         }
     }
-
+    
+    private String createJobList(boolean noHeaders) {
+        StringBuilder sb = new StringBuilder(200);
+        try {
+            if (!noHeaders) {
+                sb.append(ANSICode.CLEAR.getCode());
+                sb.append(ANSICode.MOVE_TO_TOP.getCode());
+                sb.append(ANSICode.BLACK.getCode());
+                sb.append(ANSICode.BG_GREEN.getCode());
+                sb.append(StringUtils.leftPad("ID", 8));
+                sb.append(" ");
+                sb.append(StringUtils.leftPad("PID", 8));
+                sb.append(" ");
+                sb.append(StringUtils.rightPad("GROUP", 8));
+                sb.append(" ");
+                sb.append(StringUtils.rightPad("USER", 8));
+                sb.append(" ");
+                sb.append(StringUtils.leftPad("PRIORITY", 8));
+                sb.append(" ");
+                sb.append(StringUtils.leftPad("QUEUE", 5));
+                sb.append(" ");
+                sb.append(StringUtils.leftPad("PID", 8));
+                sb.append(" ");
+                sb.append(StringUtils.leftPad("NICE", 4));
+                sb.append(" ");
+                sb.append(StringUtils.leftPad("PROM_RSS", 10));
+                sb.append(" ");
+                sb.append(StringUtils.leftPad("SEEN_RSS", 10));
+                sb.append(" ");
+                sb.append("CMD");
+                sb.append(ANSICode.END_OF_LINE.getCode());
+                sb.append(ANSICode.RESET.getCode());
+            } else {
+                ANSICode.setActive(false);
+            }
+            synchronized (jobSet) {
+                JobSet.RunningIterator runningIterator = jobSet.getRunning();
+                while (runningIterator.hasNext()) {
+                    Integer id = runningIterator.next();
+                    JobInfo ji = jobMap.get(id);
+                    ProcessInfo pi = processMap.get(id);
+                    GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
+                    sb.append("\n");
+                    sb.append(ANSICode.NO_WRAP.getCode());
+                    if (pi != null) {
+                        sb.append(StringUtils.leftPad(String.valueOf(id), 8));
+                        sb.append(" ");
+                        String pId;
+                        if (ji.getSubmitChannel().getRequest().getParentId() != null) {
+                            pId = String.valueOf(ji.getSubmitChannel().getRequest().getParentId());
+                        } else {
+                            pId = "";
+                        }
+                        sb.append(StringUtils.leftPad(pId, 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.rightPad(String.valueOf(gi.getGroupName()), 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad(String.valueOf(gi.getPriority()), 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 5));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad(String.valueOf(pi.getPid()), 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad(String.valueOf(pi.getNiceness()), 4));
+                        sb.append(" ");
+                        String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        sb.append(StringUtils.leftPad(mem[0], 6));
+                        sb.append(" ");
+                        sb.append(StringUtils.rightPad(mem[1], 3));
+                        sb.append(" ");
+                        if (pi.getMaxSeenRSS() > 0.9 * ji.getSubmitChannel().getRequest().getMaxRSS()) {
+                            sb.append(ANSICode.RED.getCode());
+                        }
+                        mem = Miscellaneous.humanReadableByteCount(pi.getMaxSeenRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        sb.append(StringUtils.leftPad(mem[0], 6));
+                        sb.append(" ");
+                        sb.append(StringUtils.rightPad(mem[1], 3));
+                        sb.append(ANSICode.RESET.getCode());
+                        sb.append(" ");
+                        sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
+                        sb.append(" ");
+                    } else { // process not stated yet
+                        sb.append(StringUtils.leftPad(String.valueOf(id), 8));
+                        sb.append(" ");
+                        String pId;
+                        if (ji.getSubmitChannel().getRequest().getParentId() != null) {
+                            pId = String.valueOf(ji.getSubmitChannel().getRequest().getParentId());
+                        } else {
+                            pId = "";
+                        }
+                        sb.append(StringUtils.leftPad(pId, 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.rightPad(String.valueOf(gi.getGroupName()), 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad(String.valueOf(gi.getPriority()), 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 5));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 4));
+                        sb.append(" ");
+                        String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        sb.append(StringUtils.leftPad(mem[0], 6));
+                        sb.append(" ");
+                        sb.append(StringUtils.rightPad(mem[1], 3));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 10));
+                        sb.append(" ");
+                        sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
+                        sb.append(" ");
+                    }
+                    sb.append(ANSICode.WRAP.getCode());
+                }
+                int position = 0;
+                JobSet.QueueIterator queueIterator = jobSet.getQueue();
+                while (queueIterator.hasNext()) {
+                    position++;
+                    Integer id = queueIterator.next();
+                    JobInfo ji = jobMap.get(id);
+                    GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
+                    sb.append("\n");
+                    sb.append(ANSICode.NO_WRAP.getCode());
+                    sb.append(ANSICode.YELLOW.getCode());
+                    sb.append(StringUtils.leftPad(String.valueOf(id), 8));
+                    sb.append(" ");
+                    String pId;
+                    if (ji.getSubmitChannel().getRequest().getParentId() != null) {
+                        pId = String.valueOf(ji.getSubmitChannel().getRequest().getParentId());
+                    } else {
+                        pId = "";
+                    }
+                    sb.append(StringUtils.leftPad(pId, 8));
+                    sb.append(" ");
+                    sb.append(StringUtils.rightPad(String.valueOf(ji.getSubmitChannel().getRequest().getGroupName()), 8));
+                    sb.append(" ");
+                    sb.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
+                    sb.append(" ");
+                    sb.append(StringUtils.leftPad(String.valueOf(gi.getPriority()), 8));
+                    sb.append(" ");
+                    sb.append(StringUtils.leftPad(String.valueOf(position), 5));
+                    sb.append(" ");
+                    sb.append(StringUtils.leftPad("", 8));
+                    sb.append(" ");
+                    sb.append(StringUtils.leftPad("", 4));
+                    sb.append(" ");
+                    String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                    sb.append(StringUtils.leftPad(mem[0], 6));
+                    sb.append(" ");
+                    sb.append(StringUtils.rightPad(mem[1], 3));
+                    sb.append(" ");
+                    sb.append(StringUtils.leftPad("", 10));
+                    sb.append(" ");
+                    sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
+                    sb.append(" ");
+                    sb.append(ANSICode.RESET.getCode());
+                    sb.append(ANSICode.WRAP.getCode());
+                }
+            }
+        } finally {
+            ANSICode.setActive(true);
+        }
+        return sb.toString();
+    }
+    
     public void listGroups(PeerChannel<Void> channel, boolean noHeaders) throws IOException, InterruptedException {
         try {
             if (!noHeaders) {
@@ -350,151 +520,20 @@ public class Scheduler {
             channel.close();
         }
     }
-
+    
     public void listJobs(PeerChannel<Void> channel, boolean noHeaders) throws IOException, InterruptedException {
         try {
-            if (!noHeaders) {
-                StringBuilder header = new StringBuilder(ANSICode.CLEAR.getCode());
-                header.append(ANSICode.MOVE_TO_TOP.getCode());
-                header.append(ANSICode.BLACK.getCode());
-                header.append(ANSICode.BG_GREEN.getCode());
-                header.append(StringUtils.leftPad("JOB_ID", 8));
-                header.append(" ");
-                header.append(StringUtils.rightPad("GROUP", 8));
-                header.append(" ");
-                header.append(StringUtils.rightPad("USER", 8));
-                header.append(" ");
-                header.append(StringUtils.leftPad("PRIORITY", 8));
-                header.append(" ");
-                header.append(StringUtils.leftPad("QUEUE", 5));
-                header.append(" ");
-                header.append(StringUtils.leftPad("PID", 8));
-                header.append(" ");
-                header.append(StringUtils.leftPad("NICE", 4));
-                header.append(" ");
-                header.append(StringUtils.leftPad("PROM_RSS", 10));
-                header.append(" ");
-                header.append(StringUtils.leftPad("SEEN_RSS", 10));
-                header.append(" ");
-                header.append("CMD");
-                header.append(ANSICode.END_OF_LINE.getCode());
-                header.append(ANSICode.RESET.getCode());
-                PeerChannel.println(channel.getStdoutOs(), header.toString());
+            if (noHeaders) {
+                PeerChannel.println(channel.getStdoutOs(), createJobList(true));
             } else {
-                ANSICode.setActive(false);
-            }
-            synchronized (jobSet) {
-                JobSet.RunningIterator runningIterator = jobSet.getRunning();
-                while (runningIterator.hasNext()) {
-                    Integer id = runningIterator.next();
-                    JobInfo ji = jobMap.get(id);
-                    ProcessInfo pi = processMap.get(id);
-                    GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
-                    StringBuilder line = new StringBuilder(ANSICode.NO_WRAP.getCode());
-                    if (pi != null) {
-                        line.append(StringUtils.leftPad(String.valueOf(id), 8));
-                        line.append(" ");
-                        line.append(StringUtils.rightPad(String.valueOf(gi.getGroupName()), 8));
-                        line.append(" ");
-                        line.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
-                        line.append(" ");
-                        line.append(StringUtils.leftPad(String.valueOf(gi.getPriority()), 8));
-                        line.append(" ");
-                        line.append(StringUtils.leftPad("", 5));
-                        line.append(" ");
-                        line.append(StringUtils.leftPad(String.valueOf(pi.getPid()), 8));
-                        line.append(" ");
-                        line.append(StringUtils.leftPad(String.valueOf(pi.getNiceness()), 4));
-                        line.append(" ");
-                        String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
-                        line.append(StringUtils.leftPad(mem[0], 6));
-                        line.append(" ");
-                        line.append(StringUtils.rightPad(mem[1], 3));
-                        line.append(" ");
-                        if (pi.getMaxSeenRSS() > 0.9 * ji.getSubmitChannel().getRequest().getMaxRSS()) {
-                            line.append(ANSICode.RED.getCode());
-                        }
-                        mem = Miscellaneous.humanReadableByteCount(pi.getMaxSeenRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
-                        line.append(StringUtils.leftPad(mem[0], 6));
-                        line.append(" ");
-                        line.append(StringUtils.rightPad(mem[1], 3));
-                        line.append(ANSICode.RESET.getCode());
-                        line.append(" ");
-                        line.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
-                        line.append(" ");
-                    } else { // process not stated yet
-                        line.append(StringUtils.leftPad(String.valueOf(id), 8));
-                        line.append(" ");
-                        line.append(StringUtils.rightPad(String.valueOf(gi.getGroupName()), 8));
-                        line.append(" ");
-                        line.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
-                        line.append(" ");
-                        line.append(StringUtils.leftPad(String.valueOf(gi.getPriority()), 8));
-                        line.append(" ");
-                        line.append(StringUtils.leftPad("", 5));
-                        line.append(" ");
-                        line.append(StringUtils.leftPad("", 8));
-                        line.append(" ");
-                        line.append(StringUtils.leftPad("", 4));
-                        line.append(" ");
-                        String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
-                        line.append(StringUtils.leftPad(mem[0], 6));
-                        line.append(" ");
-                        line.append(StringUtils.rightPad(mem[1], 3));
-                        line.append(" ");
-                        line.append(StringUtils.leftPad("", 10));
-                        line.append(" ");
-                        line.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
-                        line.append(" ");
-                    }
-                    line.append(ANSICode.WRAP.getCode());
-                    PeerChannel.println(channel.getStdoutOs(), line.toString());
-                }
-                int position = 0;
-                JobSet.QueueIterator queueIterator = jobSet.getQueue();
-                while (queueIterator.hasNext()) {
-                    position++;
-                    Integer id = queueIterator.next();
-                    JobInfo ji = jobMap.get(id);
-                    GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
-                    StringBuilder line = new StringBuilder();
-                    line.append(ANSICode.NO_WRAP.getCode());
-                    line.append(ANSICode.YELLOW.getCode());
-                    line.append(StringUtils.leftPad(String.valueOf(id), 8));
-                    line.append(" ");
-                    line.append(StringUtils.rightPad(String.valueOf(ji.getSubmitChannel().getRequest().getGroupName()), 8));
-                    line.append(" ");
-                    line.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
-                    line.append(" ");
-                    line.append(StringUtils.leftPad(String.valueOf(gi.getPriority()), 8));
-                    line.append(" ");
-                    line.append(StringUtils.leftPad(String.valueOf(position), 5));
-                    line.append(" ");
-                    line.append(StringUtils.leftPad("", 8));
-                    line.append(" ");
-                    line.append(StringUtils.leftPad("", 4));
-                    line.append(" ");
-                    String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
-                    line.append(StringUtils.leftPad(mem[0], 6));
-                    line.append(" ");
-                    line.append(StringUtils.rightPad(mem[1], 3));
-                    line.append(" ");
-                    line.append(StringUtils.leftPad("", 10));
-                    line.append(" ");
-                    line.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
-                    line.append(" ");
-                    line.append(ANSICode.RESET.getCode());
-                    line.append(ANSICode.WRAP.getCode());
-                    PeerChannel.println(channel.getStdoutOs(), line.toString());
-                }
+                PeerChannel.println(channel.getStdoutOs(), jobList);
             }
         } finally {
-            ANSICode.setActive(true);
             channel.sendEvent(Event.retcode, 0);
             channel.close();
         }
     }
-
+    
     public void cancel(PeerChannel<CancelInput> cancelChannel) throws IOException, InterruptedException {
         try {
             if (closed) {
@@ -545,7 +584,7 @@ public class Scheduler {
             cancelChannel.close();
         }
     }
-
+    
     public void updateGroup(PeerChannel<GroupInput> channel) throws IOException {
         try {
             if (closed) {
@@ -602,7 +641,7 @@ public class Scheduler {
             channel.close();
         }
     }
-
+    
     private void execute(final int id, final JobInfo ji) {
         if (ji == null) {
             throw new IllegalArgumentException("Id is required");
@@ -621,6 +660,7 @@ public class Scheduler {
                 if (ji.getSubmitChannel().getRequest().getEnvironment() != null) {
                     pb.environment().putAll(ji.getSubmitChannel().getRequest().getEnvironment());
                 }
+                pb.environment().put(Environment.WAVA_JOB_ID, String.valueOf(id));
                 ProcessInfo pi;
                 Process process;
                 int pId;
@@ -687,10 +727,12 @@ public class Scheduler {
                                                 synchronized (jobSet) {
                                                     if (gi.getJobs().isEmpty()) {
                                                         groupMap.remove(gi.getGroupName());
+                                                        
                                                     }
                                                 }
                                             } catch (InterruptedException ex) {
-                                                Logger.getLogger(Scheduler.class.getName()).log(Level.SEVERE, null, ex);
+                                                Logger.getLogger(Scheduler.class
+                                                        .getName()).log(Level.SEVERE, null, ex);
                                             }
                                         }
                                     };
@@ -699,7 +741,7 @@ public class Scheduler {
                                 }
                             }
                         }
-                       // refresh();
+                        // refresh();
                     } catch (Throwable th) {
                         LOGGER.log(Level.SEVERE, th.getMessage(), th);
                     }
@@ -708,63 +750,64 @@ public class Scheduler {
         };
         t.start();
     }
-
+    
     public void close() {
         synchronized (jobSet) {
             this.closed = true;
             this.threadGroup.interrupt();
+            
         }
     }
-
+    
     public class GroupInfo implements Comparable<GroupInfo> {
-
+        
         private final String groupName;
         private final int groupId;
         private final String user;
         private final Set<Integer> jobs = Collections.synchronizedNavigableSet(new TreeSet<Integer>());
         private int timeToIdelSeconds;
-
+        
         private int priority;
-
+        
         public GroupInfo(String groupName, String user, int timeToIdelSeconds) {
             this.groupName = groupName;
             this.groupId = groupCounter.incrementAndGet();
             this.user = user;
             this.timeToIdelSeconds = timeToIdelSeconds;
         }
-
+        
         public String getGroupName() {
             return groupName;
         }
-
+        
         public int getGroupId() {
             return groupId;
         }
-
+        
         public String getUser() {
             return user;
         }
-
+        
         public Set<Integer> getJobs() {
             return jobs;
         }
-
+        
         public void setTimeToIdelSeconds(int timeToIdelSeconds) {
             this.timeToIdelSeconds = timeToIdelSeconds;
         }
-
+        
         public int getPriority() {
             return priority;
         }
-
+        
         public void setPriority(int priority) {
             this.priority = priority;
         }
-
+        
         public int getTimeToIdelSeconds() {
             return timeToIdelSeconds;
         }
-
+        
         @Override
         public int compareTo(GroupInfo o) {
             if (o == null) {
@@ -777,91 +820,91 @@ public class Scheduler {
             return ret;
         }
     }
-
+    
     public class JobInfo {
-
+        
         private final int id;
         private final PeerChannel<SubmitInput> submitChannel;
-
+        
         private int previousQueuePosition;
-
+        
         public JobInfo(int id, PeerChannel<SubmitInput> submitChannel) throws IOException, InterruptedException {
             this.id = id;
             this.submitChannel = submitChannel;
         }
-
+        
         public int getPreviousQueuePosition() {
             return previousQueuePosition;
         }
-
+        
         public void setPreviousQueuePosition(int previousQueuePosition) {
             this.previousQueuePosition = previousQueuePosition;
         }
-
+        
         public int getId() {
             return id;
         }
-
+        
         public PeerChannel<SubmitInput> getSubmitChannel() {
             return submitChannel;
         }
     }
-
+    
     public class ProcessInfo {
-
+        
         private final JobInfo jobInfo;
         private final int pId;
         private long maxRSS;
         private long maxSeenRSS;
         private int niceness = Integer.MAX_VALUE;
         private boolean allowed;
-
+        
         public ProcessInfo(JobInfo jobInfo, int pId) {
             this.jobInfo = jobInfo;
             this.pId = pId;
             this.maxRSS = jobInfo.getSubmitChannel().getRequest().getMaxRSS();
         }
-
+        
         public int getPid() {
             return pId;
         }
-
+        
         public long getMaxSeenRSS() {
             return maxSeenRSS;
         }
-
+        
         public void setMaxSeenRSS(long maxSeenRSS) {
             this.maxSeenRSS = maxSeenRSS;
         }
-
+        
         public int getNiceness() {
             return niceness;
         }
-
+        
         public JobInfo getJobInfo() {
             return jobInfo;
         }
-
+        
         public int getpId() {
             return pId;
         }
-
+        
         public long getMaxRSS() {
             return maxRSS;
         }
-
+        
         public void setMaxRSS(long maxRSS) {
             this.maxRSS = maxRSS;
         }
-
+        
         public boolean isAllowed() {
             return allowed;
         }
-
+        
         public void setAllowed(boolean allowed) {
             this.allowed = allowed;
         }
-
+        
         public void setNiceness(int niceness) throws IOException, InterruptedException {
             if (niceness != this.niceness) {
                 LinuxCommands.getInstance().setNiceness(pId, niceness);

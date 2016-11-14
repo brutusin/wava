@@ -25,7 +25,8 @@ public final class Environment {
 
     public static final File ROOT;
     public static final File TEMP;
-    private static final String WAVA_HOME = "WAVA_HOME";
+    public static final String WAVA_HOME = "WAVA_HOME";
+    public static final String WAVA_JOB_ID = "WAVA_JOB_ID";
 
     static {
         String value = System.getenv(WAVA_HOME);

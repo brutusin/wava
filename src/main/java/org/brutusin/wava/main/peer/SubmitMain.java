@@ -28,6 +28,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.brutusin.commons.Pair;
 import org.brutusin.commons.utils.Miscellaneous;
+import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.io.OpName;
 import org.brutusin.wava.core.io.RequestExecutor;
 import org.brutusin.wava.input.SubmitInput;
@@ -37,13 +38,13 @@ import org.brutusin.wava.input.SubmitInput;
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class SubmitMain {
-
+    
     public static final String DESCRIPTION = "enqueue a job to be executed when enough physical memory is available";
-
+    
     private static void showHelp(Options options) {
         Utils.showHelp(options, "wava -r [options] [command]\n" + DESCRIPTION);
     }
-
+    
     private static int getCommandStart(String[] args) {
         for (int i = 0; i < args.length; i = i + 2) {
             if (!args[i].startsWith("-")) {
@@ -52,7 +53,7 @@ public class SubmitMain {
         }
         return args.length;
     }
-
+    
     private static Pair<SubmitInput, File> getRequest(String[] args) {
         Options options = new Options();
         Option hOpt = new Option("h", "print this message");
@@ -70,14 +71,14 @@ public class SubmitMain {
                 .hasArg()
                 .desc("priority group of the execution. Jobs of the same group follow a FIFO ordering")
                 .build();
-
+        
         options.addOption(hOpt);
         options.addOption(mOpt);
         options.addOption(gOpt);
         options.addOption(eOpt);
-
+        
         int commandStart = getCommandStart(args);
-
+        
         try {
             CommandLineParser parser = new DefaultParser();
             CommandLine cl = parser.parse(options, Arrays.copyOfRange(args, 0, commandStart));
@@ -86,7 +87,7 @@ public class SubmitMain {
                 showHelp(options);
                 return null;
             }
-
+            
             if (cl.hasOption(hOpt.getOpt())) {
                 showHelp(options);
                 return null;
@@ -97,7 +98,7 @@ public class SubmitMain {
             } else {
                 eventFile = null;
             }
-
+            
             long memory;
             try {
                 memory = Miscellaneous.parseHumanReadableByteCount(cl.getOptionValue(mOpt.getOpt()));
@@ -105,6 +106,10 @@ public class SubmitMain {
                 throw new ParseException("Invalid memory (-" + mOpt.getOpt() + ") value");
             }
             SubmitInput ri = new SubmitInput();
+            String envJobId = System.getenv(Environment.WAVA_JOB_ID);
+            if (envJobId != null) {
+                ri.setParentId(Integer.valueOf(envJobId));
+            }
             ri.setCommand(Arrays.copyOfRange(args, commandStart, args.length));
             ri.setMaxRSS(memory);
             ri.setWorkingDirectory(new File(""));
@@ -120,7 +125,7 @@ public class SubmitMain {
             return null;
         }
     }
-
+    
     public static void main(String[] args) throws Exception {
         Utils.validateCoreRunning();
         Pair<SubmitInput, File> pair = getRequest(args);
