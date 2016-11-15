@@ -30,10 +30,10 @@ import org.brutusin.wava.utils.NonRootUserException;
 import org.brutusin.wava.utils.Utils;
 
 public class Scheduler {
-    
+
     public final static String DEFAULT_GROUP_NAME = "default";
     public final static int EVICTION_ETERNAL = -1;
-    
+
     private final static Logger LOGGER = Logger.getLogger(Scheduler.class.getName());
 
     // next four accessed under synchronized(jobSet)
@@ -41,18 +41,18 @@ public class Scheduler {
     private final Map<Integer, JobInfo> jobMap = new HashMap<>();
     private final Map<Integer, ProcessInfo> processMap = new HashMap<>();
     private final Map<String, GroupInfo> groupMap = new HashMap<>();
-    
+
     private final ThreadGroup threadGroup = new ThreadGroup(Scheduler.class.getName());
     private final AtomicInteger jobCounter = new AtomicInteger();
     private final AtomicInteger groupCounter = new AtomicInteger();
     private final Thread processingThread;
-    
+
     private String jobList;
-    
+
     private final long maxManagedRss;
     private final String runningUser;
     private boolean closed;
-    
+
     public Scheduler() throws NonRootUserException, IOException, InterruptedException {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
         if (!this.runningUser.equals("root")) {
@@ -74,7 +74,7 @@ public class Scheduler {
                 createGroupInfo(group.getName(), this.runningUser, group.getPriority(), group.getTimeToIdleSeconds());
             }
         }
-        
+
         this.processingThread = new Thread(this.threadGroup, "processingThread") {
             @Override
             public void run() {
@@ -97,7 +97,7 @@ public class Scheduler {
         this.processingThread.setDaemon(true);
         this.processingThread.start();
     }
-    
+
     private GroupInfo createGroupInfo(String name, String user, int priority, int timetoIdleSeconds) {
         synchronized (jobSet) {
             if (!groupMap.containsKey(name)) {
@@ -132,7 +132,7 @@ public class Scheduler {
             return ret;
         }
     }
-    
+
     private long getMaxPromisedMemory() {
         synchronized (jobSet) {
             long sum = 0;
@@ -142,7 +142,7 @@ public class Scheduler {
             return sum;
         }
     }
-    
+
     private void cleanStalePeers() throws InterruptedException {
         synchronized (jobSet) {
             Iterator<Integer> it = jobSet.getQueue();
@@ -161,7 +161,7 @@ public class Scheduler {
                     }
                 }
             }
-            
+
             it = jobSet.getRunning();
             while (it.hasNext()) {
                 Integer id = it.next();
@@ -176,7 +176,7 @@ public class Scheduler {
             }
         }
     }
-    
+
     private void refresh() throws IOException, InterruptedException {
         synchronized (jobSet) {
             cleanStalePeers();
@@ -212,11 +212,11 @@ public class Scheduler {
             this.jobList = createJobList(false);
         }
     }
-    
+
     private void updateNiceness() throws IOException, InterruptedException {
         updateNiceness(null);
     }
-    
+
     private void updateNiceness(Integer pId) throws IOException, InterruptedException {
         synchronized (jobSet) {
             JobSet.RunningIterator running = jobSet.getRunning();
@@ -233,7 +233,7 @@ public class Scheduler {
             }
         }
     }
-    
+
     private long checkPromises(long availableMemory) throws IOException, InterruptedException {
         synchronized (jobSet) {
             long currentRSS = 0;
@@ -271,34 +271,35 @@ public class Scheduler {
             return currentRSS;
         }
     }
-    
+
     public void submit(PeerChannel<SubmitInput> submitChannel) throws IOException, InterruptedException {
-        
+
         if (closed) {
             throw new IllegalStateException("Instance is closed");
         }
         if (submitChannel == null) {
             throw new IllegalArgumentException("Request info is required");
         }
-        if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && submitChannel.getRequest().getMaxRSS() > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes()) {
+
+        if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && submitChannel.getRequest().getMaxRSS() > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() || maxManagedRss < submitChannel.getRequest().getMaxRSS()) {
             submitChannel.sendEvent(Event.exceed_global, Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
             submitChannel.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
             submitChannel.close();
             return;
         }
-        
+
         if (submitChannel.getRequest().getGroupName() == null) {
             submitChannel.getRequest().setGroupName(DEFAULT_GROUP_NAME);
         }
         int id = jobCounter.incrementAndGet();
-        
+
         synchronized (jobSet) {
             GroupInfo gi = groupMap.get(submitChannel.getRequest().getGroupName());
             if (gi == null) { // dynamic group
                 gi = createGroupInfo(submitChannel.getRequest().getGroupName(), submitChannel.getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds());
             }
             gi.getJobs().add(id);
-            
+
             JobInfo ji = new JobInfo(id, submitChannel);
             jobMap.put(id, ji);
             submitChannel.sendEvent(Event.id, id);
@@ -307,7 +308,7 @@ public class Scheduler {
             // refresh();
         }
     }
-    
+
     private String createJobList(boolean noHeaders) {
         StringBuilder sb = new StringBuilder(200);
         try {
@@ -475,7 +476,7 @@ public class Scheduler {
         }
         return sb.toString();
     }
-    
+
     public void listGroups(PeerChannel<Void> channel, boolean noHeaders) throws IOException, InterruptedException {
         try {
             if (!noHeaders) {
@@ -520,7 +521,7 @@ public class Scheduler {
             channel.close();
         }
     }
-    
+
     public void listJobs(PeerChannel<Void> channel, boolean noHeaders) throws IOException, InterruptedException {
         try {
             if (noHeaders) {
@@ -533,7 +534,7 @@ public class Scheduler {
             channel.close();
         }
     }
-    
+
     public void cancel(PeerChannel<CancelInput> cancelChannel) throws IOException, InterruptedException {
         try {
             if (closed) {
@@ -584,7 +585,7 @@ public class Scheduler {
             cancelChannel.close();
         }
     }
-    
+
     public void updateGroup(PeerChannel<GroupInput> channel) throws IOException {
         try {
             if (closed) {
@@ -641,7 +642,7 @@ public class Scheduler {
             channel.close();
         }
     }
-    
+
     private void execute(final int id, final JobInfo ji) {
         if (ji == null) {
             throw new IllegalArgumentException("Id is required");
@@ -727,7 +728,7 @@ public class Scheduler {
                                                 synchronized (jobSet) {
                                                     if (gi.getJobs().isEmpty()) {
                                                         groupMap.remove(gi.getGroupName());
-                                                        
+
                                                     }
                                                 }
                                             } catch (InterruptedException ex) {
@@ -750,64 +751,64 @@ public class Scheduler {
         };
         t.start();
     }
-    
+
     public void close() {
         synchronized (jobSet) {
             this.closed = true;
             this.threadGroup.interrupt();
-            
+
         }
     }
-    
+
     public class GroupInfo implements Comparable<GroupInfo> {
-        
+
         private final String groupName;
         private final int groupId;
         private final String user;
         private final Set<Integer> jobs = Collections.synchronizedNavigableSet(new TreeSet<Integer>());
         private int timeToIdelSeconds;
-        
+
         private int priority;
-        
+
         public GroupInfo(String groupName, String user, int timeToIdelSeconds) {
             this.groupName = groupName;
             this.groupId = groupCounter.incrementAndGet();
             this.user = user;
             this.timeToIdelSeconds = timeToIdelSeconds;
         }
-        
+
         public String getGroupName() {
             return groupName;
         }
-        
+
         public int getGroupId() {
             return groupId;
         }
-        
+
         public String getUser() {
             return user;
         }
-        
+
         public Set<Integer> getJobs() {
             return jobs;
         }
-        
+
         public void setTimeToIdelSeconds(int timeToIdelSeconds) {
             this.timeToIdelSeconds = timeToIdelSeconds;
         }
-        
+
         public int getPriority() {
             return priority;
         }
-        
+
         public void setPriority(int priority) {
             this.priority = priority;
         }
-        
+
         public int getTimeToIdelSeconds() {
             return timeToIdelSeconds;
         }
-        
+
         @Override
         public int compareTo(GroupInfo o) {
             if (o == null) {
@@ -820,91 +821,91 @@ public class Scheduler {
             return ret;
         }
     }
-    
+
     public class JobInfo {
-        
+
         private final int id;
         private final PeerChannel<SubmitInput> submitChannel;
-        
+
         private int previousQueuePosition;
-        
+
         public JobInfo(int id, PeerChannel<SubmitInput> submitChannel) throws IOException, InterruptedException {
             this.id = id;
             this.submitChannel = submitChannel;
         }
-        
+
         public int getPreviousQueuePosition() {
             return previousQueuePosition;
         }
-        
+
         public void setPreviousQueuePosition(int previousQueuePosition) {
             this.previousQueuePosition = previousQueuePosition;
         }
-        
+
         public int getId() {
             return id;
         }
-        
+
         public PeerChannel<SubmitInput> getSubmitChannel() {
             return submitChannel;
         }
     }
-    
+
     public class ProcessInfo {
-        
+
         private final JobInfo jobInfo;
         private final int pId;
         private long maxRSS;
         private long maxSeenRSS;
         private int niceness = Integer.MAX_VALUE;
         private boolean allowed;
-        
+
         public ProcessInfo(JobInfo jobInfo, int pId) {
             this.jobInfo = jobInfo;
             this.pId = pId;
             this.maxRSS = jobInfo.getSubmitChannel().getRequest().getMaxRSS();
         }
-        
+
         public int getPid() {
             return pId;
         }
-        
+
         public long getMaxSeenRSS() {
             return maxSeenRSS;
         }
-        
+
         public void setMaxSeenRSS(long maxSeenRSS) {
             this.maxSeenRSS = maxSeenRSS;
         }
-        
+
         public int getNiceness() {
             return niceness;
         }
-        
+
         public JobInfo getJobInfo() {
             return jobInfo;
         }
-        
+
         public int getpId() {
             return pId;
         }
-        
+
         public long getMaxRSS() {
             return maxRSS;
         }
-        
+
         public void setMaxRSS(long maxRSS) {
             this.maxRSS = maxRSS;
         }
-        
+
         public boolean isAllowed() {
             return allowed;
         }
-        
+
         public void setAllowed(boolean allowed) {
             this.allowed = allowed;
         }
-        
+
         public void setNiceness(int niceness) throws IOException, InterruptedException {
             if (niceness != this.niceness) {
                 LinuxCommands.getInstance().setNiceness(pId, niceness);
