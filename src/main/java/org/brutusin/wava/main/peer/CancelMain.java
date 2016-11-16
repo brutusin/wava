@@ -25,6 +25,7 @@ import org.apache.commons.cli.ParseException;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.core.io.OpName;
 import org.brutusin.wava.core.io.RequestExecutor;
+import org.brutusin.wava.utils.RetCode;
 
 /**
  *
@@ -75,7 +76,7 @@ public class CancelMain {
             retCode = RequestExecutor.executeRequest(OpName.cancel, ci, null, false);
         }
         if (retCode == null) {
-            retCode = Utils.WAVA_ERROR_RETCODE;
+            retCode = RetCode.ERROR.getCode();
         }
         System.exit(retCode);
     }

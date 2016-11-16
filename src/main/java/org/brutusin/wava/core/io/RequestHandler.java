@@ -15,9 +15,6 @@
  */
 package org.brutusin.wava.core.io;
 
-import org.brutusin.wava.core.io.OpName;
-import org.brutusin.wava.core.io.Event;
-import org.brutusin.wava.core.io.PeerChannel;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystems;
@@ -43,6 +40,7 @@ import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.input.SubmitInput;
 import org.brutusin.wava.utils.ANSICode;
+import org.brutusin.wava.utils.RetCode;
 import org.brutusin.wava.utils.Utils;
 
 /**
@@ -175,7 +173,7 @@ public class RequestHandler {
             } catch (Throwable th) {
                 if (th instanceof IllegalArgumentException) {
                     PeerChannel.println(ch.getStderrOs(), ANSICode.RED + "[wava] " + th.getMessage());
-                    ch.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
+                    ch.sendEvent(Event.retcode, RetCode.ERROR.getCode());
                 } else if (th instanceof InterruptedException) {
                     throw (InterruptedException) th;
                 } else if (th instanceof OrphanChannelException) {
@@ -183,7 +181,7 @@ public class RequestHandler {
                 } else {
                     LOGGER.log(Level.SEVERE, "Error processing request " + id + ": " + th.getMessage() + "\noperation:" + opName + "\nuser:" + user + "\njson:" + json, th);
                     PeerChannel.println(ch.getStderrOs(), ANSICode.RED + "[wava] An error has ocurred processing request " + id + ". See core process logs for more details");
-                    ch.sendEvent(Event.retcode, Utils.WAVA_ERROR_RETCODE);
+                    ch.sendEvent(Event.retcode, RetCode.ERROR.getCode());
                 }
                 if (ch != null) {
                     ch.close();

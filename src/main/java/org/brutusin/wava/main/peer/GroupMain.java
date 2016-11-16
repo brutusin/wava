@@ -25,6 +25,7 @@ import org.brutusin.wava.utils.Utils;
 import org.brutusin.wava.core.io.OpName;
 import org.brutusin.wava.core.io.RequestExecutor;
 import org.brutusin.wava.input.GroupInput;
+import org.brutusin.wava.utils.RetCode;
 
 /**
  *
@@ -125,7 +126,7 @@ public class GroupMain {
         Utils.validateCoreRunning();
         GroupInput gi = getRequest(args);
         if (gi == null) {
-            System.exit(Utils.WAVA_ERROR_RETCODE);
+            System.exit(RetCode.ERROR.getCode());
         }
         System.exit(RequestExecutor.executeRequest(OpName.group, gi, null, false));
     }

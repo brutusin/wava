@@ -21,8 +21,8 @@ import java.nio.channels.FileLock;
 import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.io.RequestHandler;
 import org.brutusin.wava.core.Scheduler;
+import org.brutusin.wava.utils.RetCode;
 import org.brutusin.wava.utils.Utils;
-import static org.brutusin.wava.utils.Utils.WAVA_ERROR_RETCODE;
 
 /**
  *
@@ -35,7 +35,7 @@ public class CoreMain {
         FileLock lock = Utils.tryLock(lockFile);
         if (lock == null) {
             System.err.println(ANSICode.RED.getCode() + "Another WAVA core process is running!" + ANSICode.RESET.getCode());
-            System.exit(WAVA_ERROR_RETCODE);
+            System.exit(RetCode.ERROR.getCode());
         }
         try {
             Scheduler scheduler = new Scheduler();

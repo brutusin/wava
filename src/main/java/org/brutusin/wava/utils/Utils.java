@@ -15,34 +15,19 @@
  */
 package org.brutusin.wava.utils;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
-import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
-import org.brutusin.commons.Bean;
 import org.brutusin.commons.utils.Miscellaneous;
-import org.brutusin.json.spi.JsonCodec;
-import org.brutusin.json.spi.JsonNode;
 import org.brutusin.wava.core.Environment;
-import org.brutusin.wava.core.io.Event;
-import org.brutusin.wava.core.io.PeerChannel;
-import org.brutusin.wava.core.plug.LinuxCommands;
-import org.brutusin.wava.core.io.OpName;
 import org.brutusin.wava.main.WavaMain;
 
 /**
@@ -51,7 +36,6 @@ import org.brutusin.wava.main.WavaMain;
  */
 public final class Utils {
 
-    public final static int WAVA_ERROR_RETCODE = 2016;
     public final static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 
     private Utils() {
@@ -106,6 +90,7 @@ public final class Utils {
             String line = Miscellaneous.append("_", 29 + version.length());
             StringBuilder sb = new StringBuilder(line);
             sb.append("\n");
+            sb.append(ANSICode.BOLD.getCode());
             sb.append(ANSICode.GREEN.getCode());
             sb.append(Miscellaneous.toString(WavaMain.class.getClassLoader().getResourceAsStream("logo.txt"), "UTF-8"));
             sb.append(ANSICode.RESET.getCode());
@@ -142,7 +127,7 @@ public final class Utils {
         FileLock lock = Utils.tryLock(new File(Environment.TEMP, ".lock"));
         if (lock != null) {
             System.err.println(ANSICode.RED.getCode() + "WAVA core process is not running!" + ANSICode.RESET.getCode());
-            System.exit(WAVA_ERROR_RETCODE);
+            System.exit(RetCode.CORE_NOT_RUNNING.getCode());
         }
     }
 

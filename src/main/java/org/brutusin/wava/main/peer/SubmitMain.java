@@ -32,6 +32,7 @@ import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.core.io.OpName;
 import org.brutusin.wava.core.io.RequestExecutor;
 import org.brutusin.wava.input.SubmitInput;
+import org.brutusin.wava.utils.RetCode;
 
 /**
  *
@@ -130,7 +131,7 @@ public class SubmitMain {
         Utils.validateCoreRunning();
         Pair<SubmitInput, File> pair = getRequest(args);
         if (pair == null) {
-            System.exit(Utils.WAVA_ERROR_RETCODE);
+            System.exit(RetCode.ERROR.getCode());
         }
         OutputStream eventOs;
         boolean prettyEvents;
@@ -143,7 +144,7 @@ public class SubmitMain {
         }
         Integer retCode = RequestExecutor.executeRequest(OpName.submit, pair.getElement1(), eventOs, prettyEvents);
         if (retCode == null) {
-            retCode = Utils.WAVA_ERROR_RETCODE;
+            retCode = RetCode.ERROR.getCode();
         }
         System.exit(retCode);
     }

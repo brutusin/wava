@@ -13,26 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.core.io;
+package org.brutusin.wava.utils;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public enum Event {
+public enum RetCode {
 
-    id,
-    queued,
-    priority,
-    running,
-    niceness,
-    retcode,
-    cancelled,
-    ping,
-    error,
-    exceed_allowed,
-    exceed_disallowed,
-    exceed_global,
-    exceed_tree,
-    maxrss;
+    CORE_NOT_RUNNING(7777),
+    ERROR(2016);
+
+    private final int code;
+
+    private RetCode(int code) {
+        this.code = code;
+    }
+
+    public int getCode() {
+        return code;
+    }
 }
