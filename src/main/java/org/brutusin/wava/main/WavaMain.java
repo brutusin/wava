@@ -28,6 +28,7 @@ import org.apache.commons.cli.ParseException;
 import org.brutusin.wava.core.Environment;
 import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.NonRootUserException;
+import org.brutusin.wava.utils.RetCode;
 
 /**
  *
@@ -69,9 +70,13 @@ public class WavaMain {
                 .longOpt("group")
                 .desc("group management commands")
                 .build();
-        Option kOpt = Option.builder("c")
+        Option cOpt = Option.builder("c")
                 .longOpt("cancel")
                 .desc(CancelMain.DESCRIPTION)
+                .build();
+        Option tOpt = Option.builder("t")
+                .longOpt("status")
+                .desc(StatusMain.DESCRIPTION)
                 .build();
 
         options.addOption(aOpt);
@@ -80,8 +85,9 @@ public class WavaMain {
         options.addOption(rOpt);
         options.addOption(gOpt);
         options.addOption(jOpt);
-        options.addOption(kOpt);
+        options.addOption(cOpt);
         options.addOption(uOpt);
+        options.addOption(tOpt);
         try {
             if (args.length > 0) {
                 CommandLineParser parser = new DefaultParser();
@@ -104,10 +110,12 @@ public class WavaMain {
                     GroupMain.main(subArgs);
                 } else if (cl.hasOption(rOpt.getOpt())) {
                     SubmitMain.main(subArgs);
-                } else if (cl.hasOption(kOpt.getOpt())) {
+                } else if (cl.hasOption(cOpt.getOpt())) {
                     CancelMain.main(args);
                 } else if (cl.hasOption(uOpt.getOpt())) {
                     System.err.println("run the following script for updating: " + ANSICode.CYAN + new File(Environment.ROOT, "bin/wava-update").getAbsolutePath() + ANSICode.RESET);
+                } else if (cl.hasOption(tOpt.getOpt())) {
+                    StatusMain.main(args);
                 }
             } else {
                 showHelp(options);
@@ -115,13 +123,13 @@ public class WavaMain {
         } catch (ParseException exp) {
             System.err.println(ANSICode.RED + "Parsing failed.  Reason: " + exp.getMessage() + ANSICode.RESET + "\n");
             showHelp(options);
-            System.exit(Utils.WAVA_ERROR_RETCODE);
+            System.exit(RetCode.ERROR.getCode());
         } catch (NonRootUserException nex) {
             System.err.println(ANSICode.RED + "Only 'root' user can run this command" + ANSICode.RESET);
-            System.exit(Utils.WAVA_ERROR_RETCODE);
+            System.exit(RetCode.ERROR.getCode());
         } catch (Error err) {
             System.err.println(ANSICode.RED + "Severe error: " + err.getMessage() + ANSICode.RESET);
-            System.exit(Utils.WAVA_ERROR_RETCODE);
+            System.exit(RetCode.ERROR.getCode());
         }
     }
 }
