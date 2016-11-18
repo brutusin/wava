@@ -93,6 +93,9 @@ Event type ([`Events.java`](src/main/java/org/brutusin/wava/core/Event.java)) | 
 `error`            | yes | To send information about an error.
 `retcode`          | yes | Return code for the client process to use.
 
+## Job hierarchy
+### Deadlock prevention
+
 ## Requirements
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
 
