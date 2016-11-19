@@ -108,6 +108,8 @@ public class RequestExecutor {
                                             JsonNode node = JsonCodec.getInstance().parse(value);
                                             value = node.asString();
                                         }
+                                    } else if (evt == Event.shutdown) {
+                                        color = ANSICode.RED;
                                     }
                                     synchronized (eventStream) {
                                         eventStream.write((color.getCode() + "[wava] [" + Utils.DATE_FORMAT.format(date) + "] [" + evt + (value != null ? (":" + value) : "") + "]" + ANSICode.RESET.getCode() + "\n").getBytes());

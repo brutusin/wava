@@ -34,5 +34,6 @@ public enum Event {
     exceed_disallowed,
     exceed_global,
     exceed_tree,
+    shutdown,
     maxrss;
 }

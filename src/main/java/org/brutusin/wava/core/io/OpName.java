@@ -24,4 +24,5 @@ public enum OpName {
     cancel,
     jobs,
     group,
+    exit
 }

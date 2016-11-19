@@ -78,6 +78,10 @@ public class WavaMain {
                 .longOpt("status")
                 .desc(StatusMain.DESCRIPTION)
                 .build();
+        Option xOpt = Option.builder("x")
+                .longOpt("exit")
+                .desc("stop core process, terminating all jobs")
+                .build();
 
         options.addOption(aOpt);
         options.addOption(hOpt);
@@ -88,6 +92,7 @@ public class WavaMain {
         options.addOption(cOpt);
         options.addOption(uOpt);
         options.addOption(tOpt);
+        options.addOption(xOpt);
         try {
             if (args.length > 0) {
                 CommandLineParser parser = new DefaultParser();
@@ -116,6 +121,8 @@ public class WavaMain {
                     System.err.println("run the following script for updating: " + ANSICode.CYAN + new File(Environment.ROOT, "bin/wava-update").getAbsolutePath() + ANSICode.RESET);
                 } else if (cl.hasOption(tOpt.getOpt())) {
                     StatusMain.main(args);
+                } else if (cl.hasOption(xOpt.getOpt())) {
+                    ExitMain.main(args);
                 }
             } else {
                 showHelp(options);
