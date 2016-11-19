@@ -18,6 +18,7 @@ package org.brutusin.wava.main.peer;
 import org.brutusin.wava.utils.Utils;
 import org.brutusin.wava.core.io.OpName;
 import org.brutusin.wava.core.io.RequestExecutor;
+import org.brutusin.wava.utils.RetCode;
 
 /**
  *
@@ -30,7 +31,7 @@ public class ListJobsMain {
         boolean noHeaders = args.length > 0 && (args[0].equals("-h") || args[0].equals("--no-headers"));
         Integer retCode = RequestExecutor.executeRequest(OpName.jobs, noHeaders, null, false);
         if (retCode == null) {
-            retCode = 1;
+            retCode = RetCode.ERROR.getCode();
         }
         System.exit(retCode);
     }
