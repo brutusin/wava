@@ -29,8 +29,8 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     private String nicenessHandlerClassName = HomogeneusSpreadNicenessHandler.class.getName();
 
     private int pollingSecs = 5;
-    private int maxTotalRSSBytes = -1;
-    private int maxJobRSSBytes = -1;
+    private long maxTotalRSSBytes = -1;
+    private long maxJobRSSBytes = -1;
     private int commandTTLCacheSecs = 2;
     private int sigKillDelaySecs = 5;
 
@@ -62,20 +62,20 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     }
 
     @Override
-    public int getMaxTotalRSSBytes() {
+    public long getMaxTotalRSSBytes() {
         return maxTotalRSSBytes;
     }
 
-    public void setMaxTotalRSSBytes(int maxTotalRSSBytes) {
+    public void setMaxTotalRSSBytes(long maxTotalRSSBytes) {
         this.maxTotalRSSBytes = maxTotalRSSBytes;
     }
 
     @Override
-    public int getMaxJobRSSBytes() {
+    public long getMaxJobRSSBytes() {
         return maxJobRSSBytes;
     }
 
-    public void setMaxJobRSSBytes(int maxJobRSSBytes) {
+    public void setMaxJobRSSBytes(long maxJobRSSBytes) {
         this.maxJobRSSBytes = maxJobRSSBytes;
     }
 

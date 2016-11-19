@@ -27,9 +27,9 @@ public interface SchedulerCfg {
 
     public int getPollingSecs();
 
-    public int getMaxTotalRSSBytes();
+    public long getMaxTotalRSSBytes();
 
-    public int getMaxJobRSSBytes();
+    public long getMaxJobRSSBytes();
 
     public int getCommandTTLCacheSecs();
 
