@@ -42,16 +42,19 @@ public class Scheduler {
     private final Map<Integer, ProcessInfo> processMap = new HashMap<>();
     private final Map<String, GroupInfo> groupMap = new HashMap<>();
 
-    private final ThreadGroup threadGroup = new ThreadGroup(Scheduler.class.getName());
+    private final ThreadGroup coreGroup = new ThreadGroup(Scheduler.class.getName());
+    private final ThreadGroup processGroup = new ThreadGroup(Scheduler.class.getName() + " processes");
+
     private final AtomicInteger jobCounter = new AtomicInteger();
     private final AtomicInteger groupCounter = new AtomicInteger();
     private final Thread processingThread;
+    private final Thread deadlockThread;
 
+    private volatile boolean deadlockFlag;
+    private volatile boolean closed;
     private String jobList;
-
     private final long maxManagedRss;
     private final String runningUser;
-    private boolean closed;
 
     public Scheduler() throws NonRootUserException, IOException, InterruptedException {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
@@ -75,7 +78,7 @@ public class Scheduler {
             }
         }
 
-        this.processingThread = new Thread(this.threadGroup, "processingThread") {
+        this.processingThread = new Thread(this.coreGroup, "processingThread") {
             @Override
             public void run() {
                 while (true) {
@@ -86,16 +89,41 @@ public class Scheduler {
                         Thread.sleep(Config.getInstance().getSchedulerCfg().getPollingSecs() * 1000);
                         refresh();
                     } catch (Throwable th) {
-                        LOGGER.log(Level.SEVERE, null, th);
                         if (th instanceof InterruptedException) {
                             break;
                         }
+                        LOGGER.log(Level.SEVERE, null, th);
                     }
                 }
             }
         };
-        this.processingThread.setDaemon(true);
         this.processingThread.start();
+
+        this.deadlockThread = new Thread(this.coreGroup, "deadlockThread") {
+            @Override
+            public void run() {
+                while (true) {
+                    if (Thread.interrupted()) {
+                        break;
+                    }
+                    try {
+                        synchronized (this) {
+                            while (!deadlockFlag) {
+                                this.wait();
+                            }
+                            deadlockFlag = false;
+                        }
+                    } catch (Throwable th) {
+                        if (th instanceof InterruptedException) {
+                            break;
+                        }
+                        LOGGER.log(Level.SEVERE, null, th);
+                    }
+                    verifyDeadlock(false);
+                }
+            }
+        };
+        this.deadlockThread.start();
     }
 
     private GroupInfo createGroupInfo(String name, String user, int priority, int timetoIdleSeconds) {
@@ -108,6 +136,21 @@ public class Scheduler {
             }
         }
         return null;
+    }
+
+    private void verifyDeadlock() {
+        verifyDeadlock(true);
+    }
+
+    private void verifyDeadlock(boolean request) {
+        if (request) {
+            synchronized (deadlockThread) {
+                deadlockFlag = true;
+                deadlockThread.notifyAll();
+            }
+        } else {
+            System.err.println("Verifying deadlock");
+        }
     }
 
     /**
@@ -151,7 +194,7 @@ public class Scheduler {
                 JobInfo ji = jobMap.get(id);
                 if (!ji.getSubmitChannel().ping()) {
                     it.remove();
-                    jobMap.remove(id);
+                    removeFromJobMap(ji);
                     GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                     gi.getJobs().remove(id);
                     try {
@@ -179,6 +222,9 @@ public class Scheduler {
 
     private void refresh() throws IOException, InterruptedException {
         synchronized (jobSet) {
+            if (closed) {
+                return;
+            }
             cleanStalePeers();
             updateNiceness();
             long availableMemory = maxManagedRss - getMaxPromisedMemory();
@@ -188,16 +234,23 @@ public class Scheduler {
                 availableMemory = freeRSS;
             }
             JobSet.QueueIterator it = jobSet.getQueue();
+            boolean dequeued = false;
             while (it.hasNext()) {
                 Integer id = it.next();
                 JobInfo ji = jobMap.get(id);
                 if (ji.getSubmitChannel().getRequest().getMaxRSS() > availableMemory) {
                     break;
                 }
+                dequeued = true;
                 it.moveToRunning();
                 execute(id, ji);
                 availableMemory -= ji.getSubmitChannel().getRequest().getMaxRSS();
             }
+
+            if (jobSet.countQueued() > 0 && !dequeued) {
+                verifyDeadlock();
+            }
+
             int position = 0;
             it = jobSet.getQueue();
             while (it.hasNext()) {
@@ -287,12 +340,17 @@ public class Scheduler {
             submitChannel.close();
             return;
         }
+
         long treeRSS = submitChannel.getRequest().getMaxRSS();
         Integer parentId = submitChannel.getRequest().getParentId();
+        JobInfo parent = null;
         while (parentId != null) {
             JobInfo ji = jobMap.get(parentId);
             if (ji == null) {
                 break;
+            }
+            if (parent == null) {
+                parent = ji;
             }
             treeRSS += ji.getSubmitChannel().getRequest().getMaxRSS();
             parentId = ji.getSubmitChannel().getRequest().getParentId();
@@ -303,6 +361,12 @@ public class Scheduler {
             submitChannel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
             submitChannel.close();
             return;
+        }
+
+        if (parent != null) {
+            synchronized (parent) {
+                parent.setChildCount(parent.getChildCount() + 1);
+            }
         }
 
         if (submitChannel.getRequest().getGroupName() == null) {
@@ -370,7 +434,11 @@ public class Scheduler {
                     sb.append("\n");
                     sb.append(ANSICode.NO_WRAP.getCode());
                     if (pi != null) {
+                        if (!ji.getSubmitChannel().getRequest().isIdempotent()) {
+                            sb.append(ANSICode.RED.getCode());
+                        }
                         sb.append(StringUtils.leftPad(String.valueOf(id), 8));
+                        sb.append(ANSICode.RESET.getCode());
                         sb.append(" ");
                         String pId;
                         if (ji.getSubmitChannel().getRequest().getParentId() != null) {
@@ -409,7 +477,11 @@ public class Scheduler {
                         sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
                         sb.append(" ");
                     } else { // process not stated yet
+                        if (!ji.getSubmitChannel().getRequest().isIdempotent()) {
+                            sb.append(ANSICode.RED.getCode());
+                        }
                         sb.append(StringUtils.leftPad(String.valueOf(id), 8));
+                        sb.append(ANSICode.RESET.getCode());
                         sb.append(" ");
                         String pId;
                         if (ji.getSubmitChannel().getRequest().getParentId() != null) {
@@ -452,8 +524,13 @@ public class Scheduler {
                     GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                     sb.append("\n");
                     sb.append(ANSICode.NO_WRAP.getCode());
-                    sb.append(ANSICode.YELLOW.getCode());
+                    if (!ji.getSubmitChannel().getRequest().isIdempotent()) {
+                        sb.append(ANSICode.RED.getCode());
+                    } else {
+                        sb.append(ANSICode.YELLOW.getCode());
+                    }
                     sb.append(StringUtils.leftPad(String.valueOf(id), 8));
+                    sb.append(ANSICode.YELLOW.getCode());
                     sb.append(" ");
                     String pId;
                     if (ji.getSubmitChannel().getRequest().getParentId() != null) {
@@ -579,7 +656,7 @@ public class Scheduler {
                         GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                         gi.getJobs().remove(id);
                         jobSet.remove(id);
-                        jobMap.remove(id);
+                        removeFromJobMap(ji);
                     } else {
                         throw new AssertionError();
                     }
@@ -660,11 +737,24 @@ public class Scheduler {
         }
     }
 
+    private void removeFromJobMap(JobInfo jobInfo) {
+        jobMap.remove(jobInfo.getId());
+        Integer parentId = jobInfo.getSubmitChannel().getRequest().getParentId();
+        if (parentId != null) {
+            JobInfo parent = jobMap.get(parentId);
+            if (parent != null) {
+                synchronized (parent) {
+                    parent.setChildCount(parent.getChildCount() - 1);
+                }
+            }
+        }
+    }
+
     private void execute(final int id, final JobInfo ji) {
         if (ji == null) {
             throw new IllegalArgumentException("Id is required");
         }
-        Thread t = new Thread(this.threadGroup, "scheduled process " + id) {
+        Thread t = new Thread(this.processGroup, "scheduled process " + id) {
             @Override
             public void run() {
                 String[] cmd = ji.getSubmitChannel().getRequest().getCommand();
@@ -729,7 +819,7 @@ public class Scheduler {
                         ji.getSubmitChannel().close();
                         synchronized (jobSet) {
                             jobSet.remove(id);
-                            jobMap.remove(id);
+                            removeFromJobMap(ji);
                             processMap.remove(id);
                             final GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                             gi.getJobs().remove(id);
@@ -737,7 +827,7 @@ public class Scheduler {
                                 if (gi.getTimeToIdelSeconds() == 0) {
                                     groupMap.remove(gi.getGroupName());
                                 } else if (gi.getTimeToIdelSeconds() > 0) {
-                                    Thread t = new Thread(threadGroup, "group-" + gi.getGroupName() + " idle thread") {
+                                    Thread t = new Thread(coreGroup, "group-" + gi.getGroupName() + " idle thread") {
                                         @Override
                                         public void run() {
                                             try {
@@ -748,9 +838,11 @@ public class Scheduler {
 
                                                     }
                                                 }
-                                            } catch (InterruptedException ex) {
-                                                Logger.getLogger(Scheduler.class
-                                                        .getName()).log(Level.SEVERE, null, ex);
+                                            } catch (Throwable th) {
+                                                if (th instanceof InterruptedException) {
+                                                    return;
+                                                }
+                                                Logger.getLogger(Scheduler.class.getName()).log(Level.SEVERE, null, th);
                                             }
                                         }
                                     };
@@ -769,12 +861,50 @@ public class Scheduler {
         t.start();
     }
 
-    public void close() {
+    public boolean close(PeerChannel<Void> channel) throws IOException {
+        if (!channel.getUser().equals("root") && !channel.getUser().equals(runningUser)) {
+            channel.log(ANSICode.RED, "user '" + channel.getUser() + "' is not allowed to stop the core scheduler process");
+            channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
+            channel.close();
+            return false;
+        }
+        channel.log(ANSICode.GREEN, "Stopping scheduler process ...");
+        channel.sendEvent(Event.retcode, 0);
+        channel.close();
         synchronized (jobSet) {
             this.closed = true;
-            this.threadGroup.interrupt();
+            this.coreGroup.interrupt();
 
+            Iterator<Integer> it = jobSet.getQueue();
+            while (it.hasNext()) {
+                Integer id = it.next();
+                JobInfo ji = jobMap.get(id);
+                it.remove();
+                removeFromJobMap(ji);
+                GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
+                gi.getJobs().remove(id);
+                try {
+                    ji.getSubmitChannel().sendEvent(Event.shutdown, runningUser);
+                    ji.getSubmitChannel().sendEvent(Event.retcode, RetCode.ERROR.getCode());
+                    ji.getSubmitChannel().close();
+                } catch (IOException ex) {
+                    LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
+                }
+            }
+
+            it = jobSet.getRunning();
+            while (it.hasNext()) {
+                Integer id = it.next();
+                ProcessInfo pi = processMap.get(id);
+                pi.getJobInfo().getSubmitChannel().sendEvent(Event.shutdown, runningUser);
+                try {
+                    LinuxCommands.getInstance().killTree(pi.getPid());
+                } catch (Exception ex) {
+                    LOGGER.log(Level.SEVERE, null, ex);
+                }
+            }
         }
+        return true;
     }
 
     public class GroupInfo implements Comparable<GroupInfo> {
@@ -845,6 +975,7 @@ public class Scheduler {
         private final PeerChannel<SubmitInput> submitChannel;
 
         private int previousQueuePosition;
+        private volatile int childCount;
 
         public JobInfo(int id, PeerChannel<SubmitInput> submitChannel) throws IOException, InterruptedException {
             this.id = id;
@@ -865,6 +996,14 @@ public class Scheduler {
 
         public PeerChannel<SubmitInput> getSubmitChannel() {
             return submitChannel;
+        }
+
+        public int getChildCount() {
+            return childCount;
+        }
+
+        public void setChildCount(int childCount) {
+            this.childCount = childCount;
         }
     }
 
