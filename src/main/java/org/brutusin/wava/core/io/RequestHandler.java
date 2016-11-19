@@ -41,7 +41,6 @@ import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.input.SubmitInput;
 import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.RetCode;
-import org.brutusin.wava.utils.Utils;
 
 /**
  *
@@ -68,6 +67,7 @@ public class RequestHandler {
     private final Scheduler scheduler;
     private final File requestFolder;
     private final File streamsFolder;
+    private Thread mainThread;
 
     public RequestHandler(Scheduler scheduler) throws IOException {
         this.scheduler = scheduler;
@@ -85,52 +85,53 @@ public class RequestHandler {
     }
 
     public void start() throws IOException {
-        final WatchService watcher = FileSystems.getDefault().newWatchService();
-        Path dir = Paths.get(requestFolder.getAbsolutePath());
-        dir.register(watcher, ENTRY_CREATE);
-        outer:
-        while (true) {
-            try {
-                if (Thread.interrupted()) {
-                    break outer;
-                }
-                WatchKey key = watcher.take();
-                for (WatchEvent<?> watchEvent : key.pollEvents()) {
+        mainThread = Thread.currentThread();
+        try (WatchService watcher = FileSystems.getDefault().newWatchService()) {
+            Path dir = Paths.get(requestFolder.getAbsolutePath());
+            dir.register(watcher, ENTRY_CREATE);
+            outer:
+            while (true) {
+                try {
                     if (Thread.interrupted()) {
                         break outer;
                     }
-                    WatchEvent.Kind<?> kind = watchEvent.kind();
-
-                    if (kind == StandardWatchEventKinds.OVERFLOW) {
-                        LOGGER.log(Level.SEVERE, null, "Overflow event retrieved from watch service");
-                        continue;
-                    }
-                    final File file = dir.resolve(((WatchEvent<Path>) watchEvent).context()).toFile();
-                    //System.err.println(kind);
-                    //System.err.println(file);
-                    Thread t = new Thread() {
-                        @Override
-                        public void run() {
-                            try {
-                                handleRequest(file);
-                            } catch (Throwable th) {
-                                Logger.getLogger(RequestHandler.class.getName()).log(Level.SEVERE, null, th);
-                            }
+                    WatchKey key = watcher.take();
+                    for (WatchEvent<?> watchEvent : key.pollEvents()) {
+                        if (Thread.interrupted()) {
+                            break outer;
                         }
-                    };
-                    t.start();
-                }
-                if (!key.reset()) {
-                    LOGGER.log(Level.SEVERE, null, "Request directory is inaccessible");
+                        WatchEvent.Kind<?> kind = watchEvent.kind();
+
+                        if (kind == StandardWatchEventKinds.OVERFLOW) {
+                            LOGGER.log(Level.SEVERE, null, "Overflow event retrieved from watch service");
+                            continue;
+                        }
+                        final File file = dir.resolve(((WatchEvent<Path>) watchEvent).context()).toFile();
+                        //System.err.println(kind);
+                        //System.err.println(file);
+                        Thread t = new Thread() {
+                            @Override
+                            public void run() {
+                                try {
+                                    handleRequest(file);
+                                } catch (Throwable th) {
+                                    Logger.getLogger(RequestHandler.class.getName()).log(Level.SEVERE, null, th);
+                                }
+                            }
+                        };
+                        t.start();
+                    }
+                    if (!key.reset()) {
+                        LOGGER.log(Level.SEVERE, null, "Request directory is inaccessible");
+                        break;
+                    }
+                } catch (InterruptedException ie) {
                     break;
+                } catch (Throwable th) {
+                    LOGGER.log(Level.SEVERE, th.getMessage(), th);
                 }
-            } catch (InterruptedException ie) {
-                break;
-            } catch (Throwable th) {
-                LOGGER.log(Level.SEVERE, th.getMessage(), th);
             }
         }
-        watcher.close();
     }
 
     private void handleRequest(File requestFile) throws IOException, InterruptedException, ParseException {
@@ -168,6 +169,11 @@ public class RequestHandler {
                         PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
                         ch = channel;
                         this.scheduler.updateGroup(channel);
+                    }
+                } else if (opName == OpName.exit) {
+                    PeerChannel<Void> channel = new PeerChannel(user, null, new File(streamsFolder, String.valueOf(id)));
+                    if (this.scheduler.close(channel)) {
+                        mainThread.interrupt();
                     }
                 }
             } catch (Throwable th) {
