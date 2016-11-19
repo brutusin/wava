@@ -11,6 +11,7 @@ public class SubmitInput {
     private long maxRSS;    
     private Map<String,String> environment;    
     private File workingDirectory;
+    private boolean idempotent;
 
     public Map<String, String> getEnvironment() {
         return environment;
@@ -58,5 +59,13 @@ public class SubmitInput {
 
     public void setParentId(Integer parentId) {
         this.parentId = parentId;
+    }
+
+    public boolean isIdempotent() {
+        return idempotent;
+    }
+
+    public void setIdempotent(boolean idempotent) {
+        this.idempotent = idempotent;
     }
 }

@@ -39,56 +39,75 @@ import org.brutusin.wava.utils.RetCode;
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class SubmitMain {
-    
+
     public static final String DESCRIPTION = "enqueue a job to be executed when enough physical memory is available";
-    
+
     private static void showHelp(Options options) {
         Utils.showHelp(options, "wava -r [options] [command]\n" + DESCRIPTION);
     }
-    
-    private static int getCommandStart(String[] args) {
-        for (int i = 0; i < args.length; i = i + 2) {
-            if (!args[i].startsWith("-")) {
+
+    private static int getCommandStart(Options options, String[] args) {
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            Option option = options.getOption(arg);
+            if (option == null) {
                 return i;
             }
+            if (option.hasArg()) {
+                i++;
+            }
         }
-        return args.length;
+        return -1;
     }
-    
+
     private static Pair<SubmitInput, File> getRequest(String[] args) {
         Options options = new Options();
-        Option hOpt = new Option("h", "print this message");
+        Option hOpt = Option.builder("h")
+                .longOpt("help")
+                .desc("print this message")
+                .required()
+                .build();
         Option mOpt = Option.builder("m")
+                .longOpt("memory")
                 .argName("mem value")
                 .hasArg()
                 .desc("promised maximum RSS memory to be allocated by the process at any time, in bytes, if no unit is specified")
                 .required()
                 .build();
-        Option eOpt = Option.builder("e").argName("file")
+        Option eOpt = Option.builder("e")
+                .longOpt("event-file")
+                .argName("file")
                 .hasArg()
                 .desc("file to send execution events. If null, then stderr will be used")
                 .build();
-        Option gOpt = Option.builder("g").argName("group id")
+        Option gOpt = Option.builder("g")
+                .longOpt("group")
+                .argName("group id")
                 .hasArg()
                 .desc("priority group of the execution. Jobs of the same group follow a FIFO ordering")
                 .build();
-        
+        Option iOpt = Option.builder("i")
+                .longOpt("idempotent")
+                .desc("priority group of the execution. Jobs of the same group follow a FIFO ordering")
+                .build();
+
         options.addOption(hOpt);
         options.addOption(mOpt);
         options.addOption(gOpt);
         options.addOption(eOpt);
-        
-        int commandStart = getCommandStart(args);
-        
+        options.addOption(iOpt);
+
+        int commandStart = getCommandStart(options, args);
+
         try {
             CommandLineParser parser = new DefaultParser();
             CommandLine cl = parser.parse(options, Arrays.copyOfRange(args, 0, commandStart));
-            if (commandStart == args.length) {
+            if (commandStart == -1) {
                 System.err.println("A command is required");
                 showHelp(options);
                 return null;
             }
-            
+
             if (cl.hasOption(hOpt.getOpt())) {
                 showHelp(options);
                 return null;
@@ -99,7 +118,7 @@ public class SubmitMain {
             } else {
                 eventFile = null;
             }
-            
+
             long memory;
             try {
                 memory = Miscellaneous.parseHumanReadableByteCount(cl.getOptionValue(mOpt.getOpt()));
@@ -119,6 +138,9 @@ public class SubmitMain {
                 String group = cl.getOptionValue(gOpt.getOpt());
                 ri.setGroupName(group);
             }
+            if (cl.hasOption(iOpt.getOpt())) {
+                ri.setIdempotent(true);
+            }
             return new Pair(ri, eventFile);
         } catch (ParseException exp) {
             System.err.println("Parsing failed.  Reason: " + exp.getMessage() + "\n");
@@ -126,7 +148,7 @@ public class SubmitMain {
             return null;
         }
     }
-    
+
     public static void main(String[] args) throws Exception {
         Utils.validateCoreRunning();
         Pair<SubmitInput, File> pair = getRequest(args);
