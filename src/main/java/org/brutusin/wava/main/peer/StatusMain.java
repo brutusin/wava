@@ -24,7 +24,7 @@ import org.brutusin.wava.utils.ANSICode;
  */
 public class StatusMain {
 
-    public static final String DESCRIPTION = "return core service status";
+    public static final String DESCRIPTION = "return core process status";
 
     public static void main(String[] args) throws Exception {
         Utils.validateCoreRunning();
