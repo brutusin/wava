@@ -15,6 +15,7 @@
  */
 package org.brutusin.wava.utils;
 
+import org.brutusin.wava.io.RetCode;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -24,6 +25,8 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.wava.Environment;
+import org.brutusin.wava.Utils;
+import org.brutusin.wava.WavaNotRunningException;
 import org.brutusin.wava.main.WavaMain;
 
 /**
@@ -90,19 +93,9 @@ public final class CoreUtils {
         }
     }
 
-    public static FileLock tryLock(File f) throws IOException {
-        if (!f.exists()) {
-            Miscellaneous.createFile(f.getAbsolutePath());
-        }
-        RandomAccessFile raf = new RandomAccessFile(f, "rws");
-        return raf.getChannel().tryLock();
-    }
-
-    public static void validateCoreRunning() throws IOException {
-        FileLock lock = CoreUtils.tryLock(new File(Environment.TEMP, ".lock"));
-        if (lock != null) {
-            System.err.println(ANSICode.RED.getCode() + "WAVA core process is not running!" + ANSICode.RESET.getCode());
-            System.exit(RetCode.CORE_NOT_RUNNING.getCode());
+    public static void validateCoreRunning() throws IOException, WavaNotRunningException {
+        if (!Utils.isCoreRunning()) {
+           throw new WavaNotRunningException();
         }
     }
 

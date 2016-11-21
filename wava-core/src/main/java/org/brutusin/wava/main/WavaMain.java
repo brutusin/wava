@@ -26,9 +26,11 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.brutusin.wava.Environment;
+import org.brutusin.wava.WavaHomeNotSetError;
+import org.brutusin.wava.WavaNotRunningException;
 import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.NonRootUserException;
-import org.brutusin.wava.utils.RetCode;
+import org.brutusin.wava.io.RetCode;
 
 /**
  *
@@ -118,7 +120,7 @@ public class WavaMain {
                 } else if (cl.hasOption(cOpt.getOpt())) {
                     CancelMain.main(args);
                 } else if (cl.hasOption(uOpt.getOpt())) {
-                    System.err.println("run the following script for updating: " + ANSICode.CYAN + new File(Environment.ROOT, "bin/wava-update").getAbsolutePath() + ANSICode.RESET);
+                    System.err.println("run the following script for updating: " + ANSICode.CYAN + new File(Environment.getInstance().getRoot(), "bin/wava-update").getAbsolutePath() + ANSICode.RESET);
                 } else if (cl.hasOption(tOpt.getOpt())) {
                     StatusMain.main(args);
                 } else if (cl.hasOption(xOpt.getOpt())) {
@@ -131,11 +133,17 @@ public class WavaMain {
             System.err.println(ANSICode.RED + "Parsing failed.  Reason: " + exp.getMessage() + ANSICode.RESET + "\n");
             showHelp(options);
             System.exit(RetCode.ERROR.getCode());
-        } catch (NonRootUserException nex) {
+        } catch (NonRootUserException ex) {
             System.err.println(ANSICode.RED + "Only 'root' user can run this command" + ANSICode.RESET);
-            System.exit(RetCode.ERROR.getCode());
-        } catch (Error err) {
-            System.err.println(ANSICode.RED + "Severe error: " + err.getMessage() + ANSICode.RESET);
+            System.exit(RetCode.NOT_ROOT_USER.getCode());
+        } catch (WavaNotRunningException ex) {
+            System.err.println(ANSICode.RED.getCode() + "WAVA core process is not running!" + ANSICode.RESET.getCode());
+            System.exit(RetCode.CORE_NOT_RUNNING.getCode());
+        } catch (WavaHomeNotSetError th) {
+            System.err.println(Environment.WAVA_HOME + " environment variable not set");
+            System.exit(RetCode.NOT_WAVA_HOME.getCode());
+        } catch (Throwable th) {
+            System.err.println(ANSICode.RED + "Severe error: " + th.getMessage() + ANSICode.RESET);
             System.exit(RetCode.ERROR.getCode());
         }
     }

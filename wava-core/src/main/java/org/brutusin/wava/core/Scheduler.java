@@ -28,7 +28,7 @@ import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.input.SubmitInput;
 import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.NonRootUserException;
-import org.brutusin.wava.utils.RetCode;
+import org.brutusin.wava.io.RetCode;
 
 public class Scheduler {
 

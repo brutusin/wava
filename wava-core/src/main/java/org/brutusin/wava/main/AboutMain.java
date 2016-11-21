@@ -31,6 +31,6 @@ public class AboutMain {
         System.err.println(ANSICode.CYAN.getCode() + "Version:\n\t" + ANSICode.RESET.getCode() + CoreUtils.getVersion() + " (" + CoreUtils.getBuildDate() + ")");
         System.err.println(ANSICode.CYAN.getCode() + "Project site:\n\t" + ANSICode.RESET.getCode() + "http://wava.brutusin.org");
         System.err.println(ANSICode.CYAN.getCode() + "Created by:\n\t" + ANSICode.RESET.getCode() + "Ignacio del Valle Alles");
-        System.err.println(ANSICode.CYAN.getCode() + "Offline help:\n\t" + ANSICode.RESET.getCode() + "more " + new File(Environment.ROOT, "README").getAbsolutePath());
+        System.err.println(ANSICode.CYAN.getCode() + "Offline help:\n\t" + ANSICode.RESET.getCode() + "more " + new File(Environment.getInstance().getRoot(), "README").getAbsolutePath());
     }
 }

@@ -1,9 +1,14 @@
 package org.brutusin.wava;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileLock;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import org.brutusin.commons.utils.Miscellaneous;
 
 /*
  * Copyright 2016 Ignacio del Valle Alles idelvall@brutusin.org.
@@ -27,7 +32,7 @@ import java.util.List;
 public class Utils {
 
     public final static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-    
+
     public static List<String> parseEventLine(String line) {
         List<String> ret = new ArrayList<>();
         int start = 0;
@@ -45,5 +50,17 @@ public class Utils {
             ret.add(line.substring(start));
         }
         return ret;
+    }
+
+    public static FileLock tryLock(File f) throws IOException {
+        if (!f.exists()) {
+            Miscellaneous.createFile(f.getAbsolutePath());
+        }
+        RandomAccessFile raf = new RandomAccessFile(f, "rws");
+        return raf.getChannel().tryLock();
+    }
+
+    public static boolean isCoreRunning() throws IOException {
+        return tryLock(new File(Environment.getInstance().getTemp(), ".lock")) == null;
     }
 }

@@ -16,7 +16,6 @@
 package org.brutusin.wava;
 
 import java.io.File;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -26,22 +25,39 @@ import java.util.logging.Logger;
 public final class Environment {
 
     private final static Logger LOGGER = Logger.getLogger(Environment.class.getName());
-
-    public static final File ROOT;
-    public static final File TEMP;
     public static final String WAVA_HOME = "WAVA_HOME";
     public static final String WAVA_JOB_ID = "WAVA_JOB_ID";
 
-    static {
-        String value = System.getenv(WAVA_HOME);
-        if (value == null) {
-            LOGGER.log(Level.SEVERE, "Enviroment variable not found: " + WAVA_HOME);
-            throw new Error("Enviroment variable not found: " + WAVA_HOME);
+    private static volatile Environment instance;
+
+    private final File root;
+    private final File temp;
+
+    public static Environment getInstance() {
+        if (instance == null) {
+            synchronized (Environment.class) {
+                if (instance == null) {
+                    instance = new Environment();
+                }
+            }
         }
-        ROOT = new File(value);
-        TEMP = new File("/dev/shm/wava");
+        return instance;
     }
 
     private Environment() {
+        String wavaHome = System.getenv(WAVA_HOME);
+        if (wavaHome == null) {
+            throw new WavaHomeNotSetError();
+        }
+        this.root = new File(wavaHome);
+        this.temp = new File("/dev/shm/wava");
+    }
+
+    public File getRoot() {
+        return root;
+    }
+
+    public File getTemp() {
+        return temp;
     }
 }

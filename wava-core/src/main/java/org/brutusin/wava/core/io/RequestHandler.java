@@ -42,7 +42,7 @@ import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.input.SubmitInput;
 import org.brutusin.wava.utils.ANSICode;
-import org.brutusin.wava.utils.RetCode;
+import org.brutusin.wava.io.RetCode;
 
 /**
  *
@@ -73,12 +73,12 @@ public class RequestHandler {
 
     public RequestHandler(Scheduler scheduler) throws IOException {
         this.scheduler = scheduler;
-        this.requestFolder = new File(Environment.TEMP, "request");
-        this.streamsFolder = new File(Environment.TEMP, "streams");
+        this.requestFolder = new File(Environment.getInstance().getTemp(), "request");
+        this.streamsFolder = new File(Environment.getInstance().getTemp(), "streams");
         remakeFolder(requestFolder);
         remakeFolder(streamsFolder);
-        remakeFolder(new File(Environment.TEMP, "temp"));
-        remakeFolder(new File(Environment.TEMP, "state"));
+        remakeFolder(new File(Environment.getInstance().getTemp(), "temp"));
+        remakeFolder(new File(Environment.getInstance().getTemp(), "state"));
     }
 
     private static void remakeFolder(File f) throws IOException {

@@ -38,10 +38,10 @@ import org.brutusin.wava.Utils;
 public class RequestExecutor {
 
     public Integer executeRequest(OpName opName, Object input, final OutputStream stdoutStream, final OutputStream stderrStream, final EventListener eventListener) throws IOException, InterruptedException {
-        File counterFile = new File(Environment.TEMP, "state/.seq");
+        File counterFile = new File(Environment.getInstance().getTemp(), "state/.seq");
         long id = Miscellaneous.getGlobalAutoIncremental(counterFile);
         String json = JsonCodec.getInstance().transform(input);
-        File streamRoot = new File(Environment.TEMP, "streams/" + id);
+        File streamRoot = new File(Environment.getInstance().getTemp(), "streams/" + id);
         Miscellaneous.createDirectory(streamRoot);
         File eventsNamedPipe = new File(streamRoot, NamedPipe.events.name());
         File stdoutNamedPipe = new File(streamRoot, NamedPipe.stdout.name());
@@ -102,15 +102,12 @@ public class RequestExecutor {
         };
         errThread.start();
 
-        File tempFile = new File(Environment.TEMP, "temp/" + id + "-" + opName);
-        File requestFile = new File(Environment.TEMP, "request/" + id + "-" + opName);
+        File tempFile = new File(Environment.getInstance().getTemp(), "temp/" + id + "-" + opName);
+        File requestFile = new File(Environment.getInstance().getTemp(), "request/" + id + "-" + opName);
 
         Files.write(tempFile.toPath(), json.getBytes());
         Files.move(tempFile.toPath(), requestFile.toPath());
-        if (eventsThread
-                != null) {
-
-        }
+        
         errThread.join();
         eventsThread.join();
         outThread.join();

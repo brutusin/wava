@@ -12,12 +12,12 @@ import org.brutusin.wava.Environment;
 public class Config {
 
     private final static Logger LOGGER = Logger.getLogger(Config.class.getName());
-    private static final Config INSTANCE = new Config();
+    private static volatile Config instance;
     private final ConfigImpl impl;
 
     private Config() {
         try {
-            File cfgFile = new File(Environment.ROOT, "cfg/wava.json");
+            File cfgFile = new File(Environment.getInstance().getRoot(), "cfg/wava.json");
             if (!cfgFile.exists()) {
                 throw new RuntimeException("Config file not found " + cfgFile.getAbsolutePath());
             }
@@ -42,7 +42,14 @@ public class Config {
     }
 
     public static Config getInstance() {
-        return INSTANCE;
+        if (instance == null) {
+            synchronized (Config.class) {
+                if (instance == null) {
+                    instance = new Config();
+                }
+            }
+        }
+        return instance;
     }
 
     public SchedulerCfg getSchedulerCfg() {

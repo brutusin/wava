@@ -18,7 +18,7 @@ package org.brutusin.wava.main.peer;
 import org.brutusin.wava.core.io.CommandLineRequestExecutor;
 import org.brutusin.wava.utils.CoreUtils;
 import org.brutusin.wava.io.OpName;
-import org.brutusin.wava.utils.RetCode;
+import org.brutusin.wava.io.RetCode;
 
 /**
  *

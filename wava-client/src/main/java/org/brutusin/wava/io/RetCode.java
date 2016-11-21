@@ -13,25 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.main.peer;
-
-import org.brutusin.wava.core.io.CommandLineRequestExecutor;
-import org.brutusin.wava.utils.CoreUtils;
-import org.brutusin.wava.io.OpName;
-import org.brutusin.wava.io.RetCode;
+package org.brutusin.wava.io;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class ExitMain {
+public enum RetCode {
 
-    public static void main(String[] args) throws Exception {
-        CoreUtils.validateCoreRunning();
-        Integer retCode = new CommandLineRequestExecutor().executeRequest(OpName.exit, null);
-        if (retCode == null) {
-            retCode = RetCode.ERROR.getCode();
-        }
-        System.exit(retCode);
+    CORE_NOT_RUNNING(7777),
+    NOT_WAVA_HOME(8888),
+    NOT_ROOT_USER(9999),
+    ERROR(1111);
+
+    private final int code;
+
+    private RetCode(int code) {
+        this.code = code;
+    }
+
+    public int getCode() {
+        return code;
     }
 }

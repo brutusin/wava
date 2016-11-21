@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Ignacio del Valle Alles idelvall@brutusin.org.
+ * Copyright 2016 DREAMgenics S.L..
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,25 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.main.peer;
-
-import org.brutusin.wava.core.io.CommandLineRequestExecutor;
-import org.brutusin.wava.utils.CoreUtils;
-import org.brutusin.wava.io.OpName;
-import org.brutusin.wava.io.RetCode;
+package org.brutusin.wava;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class ExitMain {
+public class WavaNotRunningException extends Exception {
 
-    public static void main(String[] args) throws Exception {
-        CoreUtils.validateCoreRunning();
-        Integer retCode = new CommandLineRequestExecutor().executeRequest(OpName.exit, null);
-        if (retCode == null) {
-            retCode = RetCode.ERROR.getCode();
-        }
-        System.exit(retCode);
+    public WavaNotRunningException() {
+    }
+
+    public WavaNotRunningException(String message) {
+        super(message);
+    }
+
+    public WavaNotRunningException(Throwable cause) {
+        super(cause);
     }
 }
