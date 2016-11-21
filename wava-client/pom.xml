@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.brutusin</groupId>
+        <artifactId>wava-root</artifactId>
+        <version>1.3.2-SNAPSHOT</version>
+    </parent>
+    <groupId>org.brutusin</groupId>
+    <artifactId>wava-client</artifactId>
+    <packaging>jar</packaging>   
+    <version>1.3.2-SNAPSHOT</version>
+    <name>${project.groupId}:${project.artifactId}</name>
+         
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>   
+        </dependency>
+        <dependency>
+            <groupId>org.brutusin</groupId>
+            <artifactId>commons</artifactId>
+            <version>${brutusin-commons-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.brutusin</groupId>
+            <artifactId>json</artifactId>
+            <version>${brutusin-json-version}</version>
+        </dependency>
+     
+        <dependency>
+            <groupId>org.brutusin</groupId>
+            <artifactId>json-provider</artifactId>
+            <version>${brutusin-json-provider-version}</version>
+            <scope>runtime</scope>
+        </dependency>
+      
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+
+    </dependencies>
+   
+</project>

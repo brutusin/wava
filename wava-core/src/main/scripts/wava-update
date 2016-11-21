@@ -1,0 +1,42 @@
+#!/bin/bash
+export USER=`whoami`
+export CURRENT_VERSION=${project.version}
+export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava/maven-metadata.xml | grep '<latest>' | grep -Eow '[0-9\.]*'` 
+
+if [ "$USER" != "root" ]; then
+    echo "root user is required to run this script"
+    exit 1
+fi
+
+if [ "$CURRENT_VERSION" == "$WAVA_VERSION" ]; then
+    echo "Current version ($CURRENT_VERSION) is the latest"
+    exit 1
+fi
+
+echo "Downloading latest version ($WAVA_VERSION)..."
+wget -O /tmp/wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=$WAVA_VERSION" &> /dev/null
+if [ $? != 0 ]; then
+    echo "Error downloading distribution file: https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=$WAVA_VERSION"
+    exit 1
+fi
+
+echo "Decompressing dist file..."
+unzip -o /tmp/wava-latest-dist.zip -d /tmp &> /dev/null
+
+if [ -d /opt/wava/wava-$CURRENT_VERSION ]; then
+	echo "Checking current configuration..."
+	cmp --silent /opt/wava/wava-$CURRENT_VERSION/cfg/wava.json.default /tmp/wava-$WAVA_VERSION/cfg/wava.json.default && cp -f /opt/wava/wava-$CURRENT_VERSION/cfg/wava.json /tmp/wava-$WAVA_VERSION/cfg/wava.json || echo "Configuration file structure has changed. A manual review of the configuration is required."
+fi
+
+echo "Setting file permissions..."
+chmod -R 555 /tmp/wava-$WAVA_VERSION
+
+echo "Installing..."
+rm -rf /opt/wava-back
+mv -f /opt/wava /opt/wava-back
+mkdir -p /opt/wava
+mv /tmp/wava-$WAVA_VERSION /opt/wava
+ln -sf /opt/wava/wava-$WAVA_VERSION/bin/wava /usr/bin/wava
+
+echo "Running..."
+wava
