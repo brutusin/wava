@@ -25,9 +25,11 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.brutusin.wava.Environment;
-import org.brutusin.wava.WavaHomeNotSetError;
+import org.brutusin.wava.env.WavaTemp;
+import org.brutusin.wava.env.WavaHomeNotSetError;
 import org.brutusin.wava.WavaNotRunningException;
+import org.brutusin.wava.env.EnvEntry;
+import org.brutusin.wava.env.WavaHome;
 import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.NonRootUserException;
 import org.brutusin.wava.io.RetCode;
@@ -120,7 +122,7 @@ public class WavaMain {
                 } else if (cl.hasOption(cOpt.getOpt())) {
                     CancelMain.main(args);
                 } else if (cl.hasOption(uOpt.getOpt())) {
-                    System.err.println("run the following script for updating: " + ANSICode.CYAN + new File(Environment.getInstance().getRoot(), "bin/wava-update").getAbsolutePath() + ANSICode.RESET);
+                    System.err.println("run the following script for updating: " + ANSICode.CYAN + new File(WavaHome.getInstance().getFile(), "bin/wava-update").getAbsolutePath() + ANSICode.RESET);
                 } else if (cl.hasOption(tOpt.getOpt())) {
                     StatusMain.main(args);
                 } else if (cl.hasOption(xOpt.getOpt())) {
@@ -140,7 +142,7 @@ public class WavaMain {
             System.err.println(ANSICode.RED.getCode() + "WAVA core process is not running!" + ANSICode.RESET.getCode());
             System.exit(RetCode.CORE_NOT_RUNNING.getCode());
         } catch (WavaHomeNotSetError th) {
-            System.err.println(Environment.WAVA_HOME + " environment variable not set");
+            System.err.println(EnvEntry.WAVA_HOME.name() + " environment variable not set");
             System.exit(RetCode.NOT_WAVA_HOME.getCode());
         } catch (Throwable th) {
             System.err.println(ANSICode.RED + "Severe error: " + th.getMessage() + ANSICode.RESET);

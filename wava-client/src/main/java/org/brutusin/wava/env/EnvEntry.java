@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava;
+package org.brutusin.wava.env;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class WavaHomeNotSetError extends Error {
-
+public enum EnvEntry {
+    WAVA_HOME,
+    WAVA_JOB_ID
 }

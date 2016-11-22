@@ -1,5 +1,6 @@
 package org.brutusin.wava;
 
+import org.brutusin.wava.env.WavaTemp;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -61,6 +62,6 @@ public class Utils {
     }
 
     public static boolean isCoreRunning() throws IOException {
-        return tryLock(new File(Environment.getInstance().getTemp(), ".lock")) == null;
+        return tryLock(new File(WavaTemp.getInstance().getTemp(), ".lock")) == null;
     }
 }

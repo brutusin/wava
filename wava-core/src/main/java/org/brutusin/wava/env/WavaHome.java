@@ -13,51 +13,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava;
+package org.brutusin.wava.env;
 
 import java.io.File;
-import java.util.logging.Logger;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public final class Environment {
+public class WavaHome {
 
-    private final static Logger LOGGER = Logger.getLogger(Environment.class.getName());
-    public static final String WAVA_HOME = "WAVA_HOME";
-    public static final String WAVA_JOB_ID = "WAVA_JOB_ID";
+    private static volatile WavaHome instance;
 
-    private static volatile Environment instance;
+    private final File file;
 
-    private final File root;
-    private final File temp;
-
-    public static Environment getInstance() {
+    public static WavaHome getInstance() {
         if (instance == null) {
-            synchronized (Environment.class) {
+            synchronized (WavaHome.class) {
                 if (instance == null) {
-                    instance = new Environment();
+                    instance = new WavaHome();
                 }
             }
         }
         return instance;
     }
 
-    private Environment() {
-        String wavaHome = System.getenv(WAVA_HOME);
+    private WavaHome() {
+        String wavaHome = System.getenv(EnvEntry.WAVA_HOME.name());
         if (wavaHome == null) {
             throw new WavaHomeNotSetError();
         }
-        this.root = new File(wavaHome);
-        this.temp = new File("/dev/shm/wava");
+        this.file = new File(wavaHome);
     }
 
-    public File getRoot() {
-        return root;
-    }
-
-    public File getTemp() {
-        return temp;
+    public File getFile() {
+        return file;
     }
 }

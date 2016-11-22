@@ -27,6 +27,7 @@ import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.json.spi.JsonNode;
 import org.brutusin.wava.Utils;
 import org.brutusin.wava.io.EventListener;
+import org.brutusin.wava.io.LineListener;
 import org.brutusin.wava.io.RequestExecutor;
 import org.brutusin.wava.utils.ANSICode;
 
@@ -35,7 +36,7 @@ import org.brutusin.wava.utils.ANSICode;
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class CommandLineRequestExecutor extends RequestExecutor {
-    
+
     public Integer executeRequest(OpName opName, Object input) throws IOException, InterruptedException {
         return executeRequest(opName, input, null, false);
     }
@@ -107,6 +108,12 @@ public class CommandLineRequestExecutor extends RequestExecutor {
                 }
             };
         }
-        return executeRequest(opName, input, System.out, System.err, evtListener);
+        LineListener sterrListener = new LineListener() {
+            @Override
+            public void onNewLine(String line) {
+                System.err.println(line);
+            }
+        };
+        return executeRequest(opName, input, System.out, sterrListener, evtListener);
     }
 }

@@ -19,16 +19,17 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.brutusin.commons.Bean;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.commons.utils.ProcessUtils;
 import org.brutusin.json.spi.JsonCodec;
-import org.brutusin.wava.Environment;
+import org.brutusin.wava.env.WavaTemp;
 import org.brutusin.wava.Utils;
 
 /**
@@ -37,23 +38,29 @@ import org.brutusin.wava.Utils;
  */
 public class RequestExecutor {
 
-    public Integer executeRequest(OpName opName, Object input, final OutputStream stdoutStream, final OutputStream stderrStream, final EventListener eventListener) throws IOException, InterruptedException {
-        File counterFile = new File(Environment.getInstance().getTemp(), "state/.seq");
-        long id = Miscellaneous.getGlobalAutoIncremental(counterFile);
+    private static final Logger LOGGER = Logger.getLogger(RequestExecutor.class.getName());
+    private static final File COUNTER_FILE = new File(WavaTemp.getInstance().getTemp(), "state/.seq");
+
+    public Integer executeRequest(OpName opName, Object input, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws IOException {
+        long id = Miscellaneous.getGlobalAutoIncremental(COUNTER_FILE);
         String json = JsonCodec.getInstance().transform(input);
-        File streamRoot = new File(Environment.getInstance().getTemp(), "streams/" + id);
+        File streamRoot = new File(WavaTemp.getInstance().getTemp(), "streams/" + id);
         Miscellaneous.createDirectory(streamRoot);
-        File eventsNamedPipe = new File(streamRoot, NamedPipe.events.name());
-        File stdoutNamedPipe = new File(streamRoot, NamedPipe.stdout.name());
-        File stderrNamedPipe = new File(streamRoot, NamedPipe.stderr.name());
+        final File eventsNamedPipe = new File(streamRoot, NamedPipe.events.name());
+        final File stdoutNamedPipe = new File(streamRoot, NamedPipe.stdout.name());
+        final File stderrNamedPipe = new File(streamRoot, NamedPipe.stderr.name());
         ProcessUtils.createPOSIXNamedPipes(eventsNamedPipe, stderrNamedPipe, stdoutNamedPipe);
         final Bean<Integer> retCode = new Bean<>();
+        final Bean<FileInputStream> eventsStreamBean = new Bean<>();
+        final Bean<FileInputStream> stdoutStreamBean = new Bean<>();
+        final Bean<FileInputStream> stderrStreamBean = new Bean<>();
         Thread eventsThread = new Thread() {
             @Override
             public void run() {
                 try {
-                    InputStream eventsIs = new FileInputStream(eventsNamedPipe);
-                    BufferedReader br = new BufferedReader(new InputStreamReader(eventsIs));
+                    FileInputStream is = new FileInputStream(eventsNamedPipe);
+                    eventsStreamBean.setValue(is);
+                    BufferedReader br = new BufferedReader(new InputStreamReader(is));
                     String line;
                     while ((line = br.readLine()) != null) {
                         List<String> tokens = Utils.parseEventLine(line);
@@ -72,7 +79,7 @@ public class RequestExecutor {
                         }
                     }
                 } catch (Throwable th) {
-                    th.printStackTrace(System.err);
+                    LOGGER.log(Level.SEVERE, th.getMessage(), th);
                 }
             }
         };
@@ -81,10 +88,11 @@ public class RequestExecutor {
             @Override
             public void run() {
                 try {
-                    InputStream is = new FileInputStream(stdoutNamedPipe);
-                    Miscellaneous.pipeAsynchronously(is, false, stdoutStream);
+                    FileInputStream is = new FileInputStream(stdoutNamedPipe);
+                    stdoutStreamBean.setValue(is);
+                    Miscellaneous.pipeAsynchronously(is, true, stdoutStream);
                 } catch (Throwable th) {
-                    th.printStackTrace(System.err);
+                    LOGGER.log(Level.SEVERE, th.getMessage(), th);
                 }
             }
         };
@@ -93,25 +101,55 @@ public class RequestExecutor {
             @Override
             public void run() {
                 try {
-                    InputStream is = new FileInputStream(stderrNamedPipe);
-                    Miscellaneous.pipeAsynchronously(is, false, stderrStream);
+                    FileInputStream is = new FileInputStream(stderrNamedPipe);
+                    stderrStreamBean.setValue(is);
+                    BufferedReader br = new BufferedReader(new InputStreamReader(is));
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        if (stderrListener != null) {
+                            stderrListener.onNewLine(line);
+                        }
+                    }
                 } catch (Throwable th) {
-                    th.printStackTrace(System.err);
+                    LOGGER.log(Level.SEVERE, th.getMessage(), th);
                 }
             }
         };
         errThread.start();
 
-        File tempFile = new File(Environment.getInstance().getTemp(), "temp/" + id + "-" + opName);
-        File requestFile = new File(Environment.getInstance().getTemp(), "request/" + id + "-" + opName);
+        File tempFile = new File(WavaTemp.getInstance().getTemp(), "temp/" + id + "-" + opName);
+        File requestFile = new File(WavaTemp.getInstance().getTemp(), "request/" + id + "-" + opName);
 
         Files.write(tempFile.toPath(), json.getBytes());
         Files.move(tempFile.toPath(), requestFile.toPath());
-        
-        errThread.join();
-        eventsThread.join();
-        outThread.join();
 
+        try {
+            errThread.join();
+            eventsThread.join();
+            outThread.join();
+        } catch (InterruptedException i) {
+            if (eventsStreamBean.getValue() != null) {
+                try {
+                    eventsStreamBean.getValue().close();
+                } catch (IOException ex) {
+                    LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
+                }
+            }
+            if (stdoutStreamBean.getValue() != null) {
+                try {
+                    stdoutStreamBean.getValue().close();
+                } catch (IOException ex) {
+                    LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
+                }
+            }
+            if (stderrStreamBean.getValue() != null) {
+                try {
+                    stderrStreamBean.getValue().close();
+                } catch (IOException ex) {
+                    LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
+                }
+            }
+        }
         return retCode.getValue();
     }
 

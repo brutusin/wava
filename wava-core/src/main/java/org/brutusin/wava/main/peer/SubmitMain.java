@@ -18,7 +18,6 @@ package org.brutusin.wava.main.peer;
 import org.brutusin.wava.utils.CoreUtils;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
 import org.apache.commons.cli.CommandLine;
@@ -29,11 +28,11 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.brutusin.commons.Pair;
 import org.brutusin.commons.utils.Miscellaneous;
-import org.brutusin.wava.Environment;
 import org.brutusin.wava.core.io.CommandLineRequestExecutor;
+import org.brutusin.wava.env.EnvEntry;
+import org.brutusin.wava.input.ExtendedSubmitInput;
 import org.brutusin.wava.io.OpName;
 import org.brutusin.wava.input.SubmitInput;
-import org.brutusin.wava.io.RequestExecutor;
 import org.brutusin.wava.io.RetCode;
 
 /**
@@ -126,8 +125,8 @@ public class SubmitMain {
             } catch (IllegalArgumentException ex) {
                 throw new ParseException("Invalid memory (-" + mOpt.getOpt() + ") value");
             }
-            SubmitInput ri = new SubmitInput();
-            String envJobId = System.getenv(Environment.WAVA_JOB_ID);
+            ExtendedSubmitInput ri = new ExtendedSubmitInput();
+            String envJobId = System.getenv(EnvEntry.WAVA_JOB_ID.name());
             if (envJobId != null) {
                 ri.setParentId(Integer.valueOf(envJobId));
             }
@@ -156,7 +155,7 @@ public class SubmitMain {
         if (pair == null) {
             System.exit(RetCode.ERROR.getCode());
         }
-         OutputStream eventOs;
+        OutputStream eventOs;
         boolean prettyEvents;
         if (pair.getElement2() == null) {
             eventOs = System.err;
@@ -165,7 +164,7 @@ public class SubmitMain {
             eventOs = new FileOutputStream(pair.getElement2());
             prettyEvents = false;
         }
-        Integer retCode = new CommandLineRequestExecutor().executeRequest(OpName.submit, pair.getElement1(), System.err, prettyEvents);
+        Integer retCode = new CommandLineRequestExecutor().executeRequest(OpName.submit, pair.getElement1(), eventOs, prettyEvents);
         if (retCode == null) {
             retCode = RetCode.ERROR.getCode();
         }

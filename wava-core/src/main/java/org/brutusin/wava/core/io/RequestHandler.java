@@ -35,12 +35,12 @@ import java.util.regex.Pattern;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.ParseException;
 import org.brutusin.json.spi.JsonCodec;
-import org.brutusin.wava.Environment;
+import org.brutusin.wava.env.WavaTemp;
 import org.brutusin.wava.core.Scheduler;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
-import org.brutusin.wava.input.SubmitInput;
+import org.brutusin.wava.input.ExtendedSubmitInput;
 import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.io.RetCode;
 
@@ -73,12 +73,12 @@ public class RequestHandler {
 
     public RequestHandler(Scheduler scheduler) throws IOException {
         this.scheduler = scheduler;
-        this.requestFolder = new File(Environment.getInstance().getTemp(), "request");
-        this.streamsFolder = new File(Environment.getInstance().getTemp(), "streams");
+        this.requestFolder = new File(WavaTemp.getInstance().getTemp(), "request");
+        this.streamsFolder = new File(WavaTemp.getInstance().getTemp(), "streams");
         remakeFolder(requestFolder);
         remakeFolder(streamsFolder);
-        remakeFolder(new File(Environment.getInstance().getTemp(), "temp"));
-        remakeFolder(new File(Environment.getInstance().getTemp(), "state"));
+        remakeFolder(new File(WavaTemp.getInstance().getTemp(), "temp"));
+        remakeFolder(new File(WavaTemp.getInstance().getTemp(), "state"));
     }
 
     private static void remakeFolder(File f) throws IOException {
@@ -147,8 +147,8 @@ public class RequestHandler {
             try {
 
                 if (opName == OpName.submit) {
-                    SubmitInput input = JsonCodec.getInstance().parse(json, SubmitInput.class);
-                    PeerChannel<SubmitInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
+                    ExtendedSubmitInput input = JsonCodec.getInstance().parse(json, ExtendedSubmitInput.class);
+                    PeerChannel<ExtendedSubmitInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
                     ch = channel;
                     this.scheduler.submit(channel);
                 } else if (opName == OpName.cancel) {
@@ -200,7 +200,7 @@ public class RequestHandler {
 
     public static void main(String[] args) throws Exception {
 
-        System.out.println(JsonCodec.getInstance().parse("", SubmitInput.class));
+        System.out.println(JsonCodec.getInstance().parse("", ExtendedSubmitInput.class));
     }
 
 }

@@ -24,7 +24,7 @@ import java.nio.channels.FileLock;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.brutusin.commons.utils.Miscellaneous;
-import org.brutusin.wava.Environment;
+import org.brutusin.wava.env.WavaTemp;
 import org.brutusin.wava.Utils;
 import org.brutusin.wava.WavaNotRunningException;
 import org.brutusin.wava.main.WavaMain;

@@ -1,6 +1,6 @@
 package org.brutusin.wava.core;
 
-import org.brutusin.wava.Environment;
+import org.brutusin.wava.env.WavaTemp;
 import org.brutusin.wava.io.Event;
 import org.brutusin.wava.core.io.PeerChannel;
 import org.brutusin.wava.core.cfg.Config;
@@ -23,9 +23,11 @@ import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.core.cfg.GroupCfg;
 import org.brutusin.wava.core.plug.NicenessHandler;
+import org.brutusin.wava.env.EnvEntry;
 import org.brutusin.wava.input.CancelInput;
+import org.brutusin.wava.input.ExtendedSubmitInput;
 import org.brutusin.wava.input.GroupInput;
-import org.brutusin.wava.input.SubmitInput;
+import org.brutusin.wava.input.ExtendedSubmitInput;
 import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.NonRootUserException;
 import org.brutusin.wava.io.RetCode;
@@ -326,7 +328,7 @@ public class Scheduler {
         }
     }
 
-    public void submit(PeerChannel<SubmitInput> submitChannel) throws IOException, InterruptedException {
+    public void submit(PeerChannel<ExtendedSubmitInput> submitChannel) throws IOException, InterruptedException {
 
         if (closed) {
             throw new IllegalStateException("Instance is closed");
@@ -769,7 +771,7 @@ public class Scheduler {
                 if (ji.getSubmitChannel().getRequest().getEnvironment() != null) {
                     pb.environment().putAll(ji.getSubmitChannel().getRequest().getEnvironment());
                 }
-                pb.environment().put(Environment.WAVA_JOB_ID, String.valueOf(id));
+                pb.environment().put(EnvEntry.WAVA_JOB_ID.name(), String.valueOf(id));
                 ProcessInfo pi;
                 Process process;
                 int pId;
@@ -973,12 +975,12 @@ public class Scheduler {
     public class JobInfo {
 
         private final int id;
-        private final PeerChannel<SubmitInput> submitChannel;
+        private final PeerChannel<ExtendedSubmitInput> submitChannel;
 
         private int previousQueuePosition;
         private volatile int childCount;
 
-        public JobInfo(int id, PeerChannel<SubmitInput> submitChannel) throws IOException, InterruptedException {
+        public JobInfo(int id, PeerChannel<ExtendedSubmitInput> submitChannel) throws IOException, InterruptedException {
             this.id = id;
             this.submitChannel = submitChannel;
         }
@@ -995,7 +997,7 @@ public class Scheduler {
             return id;
         }
 
-        public PeerChannel<SubmitInput> getSubmitChannel() {
+        public PeerChannel<ExtendedSubmitInput> getSubmitChannel() {
             return submitChannel;
         }
 

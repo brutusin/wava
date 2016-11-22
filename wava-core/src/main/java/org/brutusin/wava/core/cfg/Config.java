@@ -7,7 +7,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
-import org.brutusin.wava.Environment;
+import org.brutusin.wava.env.WavaTemp;
+import org.brutusin.wava.env.WavaHome;
 
 public class Config {
 
@@ -17,7 +18,7 @@ public class Config {
 
     private Config() {
         try {
-            File cfgFile = new File(Environment.getInstance().getRoot(), "cfg/wava.json");
+            File cfgFile = new File(WavaHome.getInstance().getFile(), "cfg/wava.json");
             if (!cfgFile.exists()) {
                 throw new RuntimeException("Config file not found " + cfgFile.getAbsolutePath());
             }

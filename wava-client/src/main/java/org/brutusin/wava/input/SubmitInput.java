@@ -5,7 +5,6 @@ import java.util.Map;
 
 public class SubmitInput {
 
-    private Integer parentId;
     private String groupName;
     private String[] command;
     private long maxRSS;    
@@ -51,14 +50,6 @@ public class SubmitInput {
 
     public void setMaxRSS(long maxRSS) {
         this.maxRSS = maxRSS;
-    }
-
-    public Integer getParentId() {
-        return parentId;
-    }
-
-    public void setParentId(Integer parentId) {
-        this.parentId = parentId;
     }
 
     public boolean isIdempotent() {
