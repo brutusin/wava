@@ -1,6 +1,5 @@
 package org.brutusin.wava.core;
 
-import org.brutusin.wava.env.WavaTemp;
 import org.brutusin.wava.io.Event;
 import org.brutusin.wava.core.io.PeerChannel;
 import org.brutusin.wava.core.cfg.Config;
@@ -25,7 +24,6 @@ import org.brutusin.wava.core.cfg.GroupCfg;
 import org.brutusin.wava.core.plug.NicenessHandler;
 import org.brutusin.wava.env.EnvEntry;
 import org.brutusin.wava.input.CancelInput;
-import org.brutusin.wava.input.ExtendedSubmitInput;
 import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.input.ExtendedSubmitInput;
 import org.brutusin.wava.utils.ANSICode;
@@ -152,7 +150,7 @@ public class Scheduler {
                 deadlockThread.notifyAll();
             }
         } else {
-            System.err.println("Verifying deadlock");
+            
         }
     }
 
@@ -401,9 +399,9 @@ public class Scheduler {
                 sb.append(ANSICode.MOVE_TO_TOP.getCode());
                 sb.append(ANSICode.BLACK.getCode());
                 sb.append(ANSICode.BG_GREEN.getCode());
-                sb.append(StringUtils.leftPad("ID", 8));
+                sb.append(StringUtils.leftPad("JOB ID", 8));
                 sb.append(" ");
-                sb.append(StringUtils.leftPad("PID", 8));
+                sb.append(StringUtils.leftPad("PARENT", 8));
                 sb.append(" ");
                 sb.append(StringUtils.rightPad("GROUP", 8));
                 sb.append(" ");
@@ -439,6 +437,8 @@ public class Scheduler {
                     if (pi != null) {
                         if (!ji.getSubmitChannel().getRequest().isIdempotent()) {
                             sb.append(ANSICode.RED.getCode());
+                        } else {
+                            sb.append(ANSICode.GREEN.getCode());
                         }
                         sb.append(StringUtils.leftPad(String.valueOf(id), 8));
                         sb.append(ANSICode.RESET.getCode());
@@ -482,6 +482,8 @@ public class Scheduler {
                     } else { // process not stated yet
                         if (!ji.getSubmitChannel().getRequest().isIdempotent()) {
                             sb.append(ANSICode.RED.getCode());
+                        } else {
+                            sb.append(ANSICode.GREEN.getCode());
                         }
                         sb.append(StringUtils.leftPad(String.valueOf(id), 8));
                         sb.append(ANSICode.RESET.getCode());
@@ -530,7 +532,7 @@ public class Scheduler {
                     if (!ji.getSubmitChannel().getRequest().isIdempotent()) {
                         sb.append(ANSICode.RED.getCode());
                     } else {
-                        sb.append(ANSICode.YELLOW.getCode());
+                        sb.append(ANSICode.GREEN.getCode());
                     }
                     sb.append(StringUtils.leftPad(String.valueOf(id), 8));
                     sb.append(ANSICode.YELLOW.getCode());
