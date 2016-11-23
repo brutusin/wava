@@ -33,6 +33,7 @@ import org.brutusin.commons.utils.Miscellaneous;
 public class Utils {
 
     public final static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+    private final static File LOCK_FILE = new File(WavaTemp.getInstance().getTemp(), ".lock");
 
     public static List<String> parseEventLine(String line) {
         List<String> ret = new ArrayList<>();
@@ -53,15 +54,27 @@ public class Utils {
         return ret;
     }
 
-    public static FileLock tryLock(File f) throws IOException {
-        if (!f.exists()) {
-            Miscellaneous.createFile(f.getAbsolutePath());
+    public static FileLock tryWavaLock() throws IOException {
+        return tryLock(LOCK_FILE);
+    }
+
+    private static FileLock tryLock(File f) throws IOException {
+        synchronized (f) {
+            if (!f.exists()) {
+                Miscellaneous.createFile(f.getAbsolutePath());
+            }
+            RandomAccessFile raf = new RandomAccessFile(f, "rws");
+            return raf.getChannel().tryLock();
         }
-        RandomAccessFile raf = new RandomAccessFile(f, "rws");
-        return raf.getChannel().tryLock();
     }
 
     public static boolean isCoreRunning() throws IOException {
-        return tryLock(new File(WavaTemp.getInstance().getTemp(), ".lock")) == null;
+        synchronized (LOCK_FILE) {
+            FileLock lock = tryWavaLock();
+            if (lock != null) {
+                lock.release();
+            }
+            return lock == null;
+        }
     }
 }

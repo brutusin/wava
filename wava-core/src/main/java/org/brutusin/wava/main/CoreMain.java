@@ -16,9 +16,7 @@
 package org.brutusin.wava.main;
 
 import org.brutusin.wava.utils.ANSICode;
-import java.io.File;
 import java.nio.channels.FileLock;
-import org.brutusin.wava.env.WavaTemp;
 import org.brutusin.wava.Utils;
 import org.brutusin.wava.core.io.RequestHandler;
 import org.brutusin.wava.core.Scheduler;
@@ -31,8 +29,7 @@ import org.brutusin.wava.io.RetCode;
 public class CoreMain {
 
     public static void main(String[] args) throws Exception {
-        File lockFile = new File(WavaTemp.getInstance().getTemp(), ".lock");
-        FileLock lock = Utils.tryLock(lockFile);
+        FileLock lock = Utils.tryWavaLock();
         if (lock == null) {
             System.err.println(ANSICode.RED.getCode() + "Another WAVA core process is running!" + ANSICode.RESET.getCode());
             System.exit(RetCode.ERROR.getCode());

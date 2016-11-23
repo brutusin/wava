@@ -35,5 +35,7 @@ public enum Event {
     exceed_global,
     exceed_tree,
     shutdown,
-    maxrss;
+    maxrss,
+    deadlock_relaunch,
+    deadlock_stop;
 }

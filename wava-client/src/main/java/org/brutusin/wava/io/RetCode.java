@@ -21,10 +21,11 @@ package org.brutusin.wava.io;
  */
 public enum RetCode {
 
-    CORE_NOT_RUNNING(7777),
-    NOT_WAVA_HOME(8888),
-    NOT_ROOT_USER(9999),
-    ERROR(1111);
+    ERROR(201601),
+    CORE_NOT_RUNNING(201602),
+    NOT_WAVA_HOME(201603),
+    NOT_ROOT_USER(201604),
+    CANCELLED(201605);
 
     private final int code;
 

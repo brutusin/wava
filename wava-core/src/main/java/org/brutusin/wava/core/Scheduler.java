@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -51,6 +52,7 @@ public class Scheduler {
     private final Thread processingThread;
     private final Thread deadlockThread;
 
+    private volatile boolean relaunching;
     private volatile boolean deadlockFlag;
     private volatile boolean closed;
     private String jobList;
@@ -109,7 +111,7 @@ public class Scheduler {
                     }
                     try {
                         synchronized (this) {
-                            while (!deadlockFlag) {
+                            while (!deadlockFlag || relaunching) {
                                 this.wait();
                             }
                             deadlockFlag = false;
@@ -150,7 +152,54 @@ public class Scheduler {
                 deadlockThread.notifyAll();
             }
         } else {
-            
+            synchronized (jobSet) {
+                Iterator<Integer> it = jobSet.getRunning();
+                Set<Integer> parents = new HashSet<>();
+                ProcessInfo lastProcess = null;
+                while (it.hasNext()) {
+                    Integer id = it.next();
+                    ProcessInfo pi = processMap.get(id);
+                    if (pi.getJobInfo().getChildCount() == 0) { // a leaf job
+                        return;
+                    }
+                    parents.add(id);
+                    if (lastProcess == null || !lastProcess.getJobInfo().getSubmitChannel().getRequest().isIdempotent() || pi.getJobInfo().getSubmitChannel().getRequest().isIdempotent()) {
+                        lastProcess = pi;
+                    }
+                }
+                if (parents.isEmpty()) {
+                    return;
+                }
+                it = jobSet.getQueue();
+                while (it.hasNext()) {
+                    Integer id = it.next();
+                    JobInfo ji = jobMap.get(id);
+                    Integer parentId = ji.getSubmitChannel().getRequest().getParentId();
+                    if (parentId != null) {
+                        parents.remove(parentId);
+                    }
+                }
+                if (parents.isEmpty()) { // all parents are blocked by queued childs
+                    killByDeadlock(lastProcess);
+                }
+            }
+        }
+    }
+
+    private void killByDeadlock(ProcessInfo pi) {
+        try {
+            if (pi.getJobInfo().getSubmitChannel().getRequest().isIdempotent()) {
+                LOGGER.log(Level.WARNING, "Deadlock scenario found. Ralaunching idempotent job {0} ({1})", new Object[]{pi.getJobInfo().getId(), pi.getJobInfo().getSubmitChannel().getRequest().getGroupName()});
+                pi.getJobInfo().getSubmitChannel().sendEvent(Event.deadlock_relaunch, runningUser);
+                pi.getJobInfo().setRelaunched(true);
+                relaunching = true;
+            } else {
+                LOGGER.log(Level.SEVERE, "Deadlock scenario found. Killing non-idempotent job {0} ({1})", new Object[]{pi.getJobInfo().getId(), pi.getJobInfo().getSubmitChannel().getRequest().getGroupName()});
+                pi.getJobInfo().getSubmitChannel().sendEvent(Event.deadlock_stop, runningUser);
+            }
+            LinuxCommands.getInstance().killTree(pi.getPid());
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, null, ex);
         }
     }
 
@@ -654,7 +703,7 @@ public class Scheduler {
                             return;
                         }
                         ji.getSubmitChannel().sendEvent(Event.cancelled, cancelChannel.getUser());
-                        ji.getSubmitChannel().sendEvent(Event.retcode, RetCode.ERROR.getCode());
+                        ji.getSubmitChannel().sendEvent(Event.retcode, RetCode.CANCELLED.getCode());
                         ji.getSubmitChannel().close();
                         cancelChannel.log(ANSICode.GREEN, "enqueued job sucessfully cancelled");
                         cancelChannel.sendEvent(Event.retcode, 0);
@@ -821,7 +870,6 @@ public class Scheduler {
                     }
                 } finally {
                     try {
-                        ji.getSubmitChannel().close();
                         synchronized (jobSet) {
                             jobSet.remove(id);
                             removeFromJobMap(ji);
@@ -847,7 +895,7 @@ public class Scheduler {
                                                 if (th instanceof InterruptedException) {
                                                     return;
                                                 }
-                                                Logger.getLogger(Scheduler.class.getName()).log(Level.SEVERE, null, th);
+                                                LOGGER.log(Level.SEVERE, null, th);
                                             }
                                         }
                                     };
@@ -856,7 +904,13 @@ public class Scheduler {
                                 }
                             }
                         }
-                        // refresh();
+                        if (ji.isRelaunched()) {
+                            relaunching = false;
+                            ji.setRelaunched(false);
+                            submit(ji.getSubmitChannel());
+                        } else {
+                            ji.getSubmitChannel().close();
+                        }
                     } catch (Throwable th) {
                         LOGGER.log(Level.SEVERE, th.getMessage(), th);
                     }
@@ -981,6 +1035,7 @@ public class Scheduler {
 
         private int previousQueuePosition;
         private volatile int childCount;
+        private volatile boolean relaunched;
 
         public JobInfo(int id, PeerChannel<ExtendedSubmitInput> submitChannel) throws IOException, InterruptedException {
             this.id = id;
@@ -1009,6 +1064,14 @@ public class Scheduler {
 
         public void setChildCount(int childCount) {
             this.childCount = childCount;
+        }
+
+        public boolean isRelaunched() {
+            return relaunched;
+        }
+
+        public void setRelaunched(boolean relaunched) {
+            this.relaunched = relaunched;
         }
     }
 
