@@ -25,7 +25,6 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.brutusin.wava.env.WavaTemp;
 import org.brutusin.wava.env.WavaHomeNotSetError;
 import org.brutusin.wava.WavaNotRunningException;
 import org.brutusin.wava.env.EnvEntry;

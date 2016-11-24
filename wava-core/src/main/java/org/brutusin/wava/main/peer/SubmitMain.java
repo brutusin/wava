@@ -98,16 +98,14 @@ public class SubmitMain {
         options.addOption(iOpt);
 
         int commandStart = getCommandStart(options, args);
-
+        if (commandStart == -1) {
+            System.err.println("A command is required");
+            showHelp(options);
+            return null;
+        }
         try {
             CommandLineParser parser = new DefaultParser();
             CommandLine cl = parser.parse(options, Arrays.copyOfRange(args, 0, commandStart));
-            if (commandStart == -1) {
-                System.err.println("A command is required");
-                showHelp(options);
-                return null;
-            }
-
             if (cl.hasOption(hOpt.getOpt())) {
                 showHelp(options);
                 return null;

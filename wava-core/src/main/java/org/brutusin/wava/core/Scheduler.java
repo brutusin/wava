@@ -380,8 +380,11 @@ public class Scheduler {
     public void submit(PeerChannel<ExtendedSubmitInput> submitChannel) throws IOException, InterruptedException {
 
         if (closed) {
-            throw new IllegalStateException("Instance is closed");
+            submitChannel.sendEvent(Event.retcode, RetCode.CANCELLED.getCode());
+            submitChannel.close();
+            return;
         }
+        
         if (submitChannel == null) {
             throw new IllegalArgumentException("Request info is required");
         }
