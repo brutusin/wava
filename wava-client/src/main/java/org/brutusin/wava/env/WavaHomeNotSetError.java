@@ -15,28 +15,10 @@
  */
 package org.brutusin.wava.env;
 
-import java.io.File;
-import org.brutusin.wava.cfg.Config;
-
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public final class WavaTemp {
+public class WavaHomeNotSetError extends Error {
 
-    private static final WavaTemp INSTANCE = new WavaTemp();
-
-    private final File temp;
-
-    public static WavaTemp getInstance() {
-        return INSTANCE;
-    }
-
-    private WavaTemp() {
-        this.temp = Config.getInstance().getTempFolder();
-    }
-
-    public File getTemp() {
-        return temp;
-    }
 }

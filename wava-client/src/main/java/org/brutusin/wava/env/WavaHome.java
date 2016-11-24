@@ -16,27 +16,38 @@
 package org.brutusin.wava.env;
 
 import java.io.File;
-import org.brutusin.wava.cfg.Config;
+import org.brutusin.wava.env.EnvEntry;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public final class WavaTemp {
+public class WavaHome {
 
-    private static final WavaTemp INSTANCE = new WavaTemp();
+    private static volatile WavaHome instance;
 
-    private final File temp;
+    private final File file;
 
-    public static WavaTemp getInstance() {
-        return INSTANCE;
+    public static WavaHome getInstance() {
+        if (instance == null) {
+            synchronized (WavaHome.class) {
+                if (instance == null) {
+                    instance = new WavaHome();
+                }
+            }
+        }
+        return instance;
     }
 
-    private WavaTemp() {
-        this.temp = Config.getInstance().getTempFolder();
+    private WavaHome() {
+        String wavaHome = System.getenv(EnvEntry.WAVA_HOME.name());
+        if (wavaHome == null) {
+            throw new WavaHomeNotSetError();
+        }
+        this.file = new File(wavaHome);
     }
 
-    public File getTemp() {
-        return temp;
+    public File getFile() {
+        return file;
     }
 }

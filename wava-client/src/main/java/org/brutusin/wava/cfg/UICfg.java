@@ -13,30 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.env;
-
-import java.io.File;
-import org.brutusin.wava.cfg.Config;
+package org.brutusin.wava.cfg;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public final class WavaTemp {
+public interface UICfg {
 
-    private static final WavaTemp INSTANCE = new WavaTemp();
-
-    private final File temp;
-
-    public static WavaTemp getInstance() {
-        return INSTANCE;
-    }
-
-    private WavaTemp() {
-        this.temp = Config.getInstance().getTempFolder();
-    }
-
-    public File getTemp() {
-        return temp;
-    }
+    public boolean isAnsiColors();
+    public boolean issIMemoryUnits();
 }

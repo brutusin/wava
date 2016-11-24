@@ -13,30 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.env;
+package org.brutusin.wava.cfg.impl;
 
-import java.io.File;
-import org.brutusin.wava.cfg.Config;
+import org.brutusin.wava.cfg.ProcessCfg;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public final class WavaTemp {
+public class ProcessCfgImpl implements ProcessCfg {
 
-    private static final WavaTemp INSTANCE = new WavaTemp();
+    private static String DEFAULT_CPU_AFINITY_ENV = "DEFAULT_CPU_AFINITY";
 
-    private final File temp;
+    private int[] nicenessRange = {-20, 19};
 
-    public static WavaTemp getInstance() {
-        return INSTANCE;
+    private String cpuAfinity = "$" + DEFAULT_CPU_AFINITY_ENV;
+
+    @Override
+    public int[] getNicenessRange() {
+        return nicenessRange;
     }
 
-    private WavaTemp() {
-        this.temp = Config.getInstance().getTempFolder();
+    public void setNicenessRange(int[] nicenessRange) {
+        this.nicenessRange = nicenessRange;
     }
 
-    public File getTemp() {
-        return temp;
+    @Override
+    public String getCpuAfinity() {
+        return cpuAfinity;
+    }
+
+    public void setCpuAfinity(String cpuAfinity) {
+        this.cpuAfinity = cpuAfinity;
     }
 }

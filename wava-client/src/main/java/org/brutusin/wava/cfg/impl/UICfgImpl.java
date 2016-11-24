@@ -13,30 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.env;
+package org.brutusin.wava.cfg.impl;
 
-import java.io.File;
-import org.brutusin.wava.cfg.Config;
+import org.brutusin.wava.cfg.UICfg;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public final class WavaTemp {
+public class UICfgImpl implements UICfg {
 
-    private static final WavaTemp INSTANCE = new WavaTemp();
+    private boolean ansiColors = true;
+    private boolean sIMemoryUnits = true;
 
-    private final File temp;
-
-    public static WavaTemp getInstance() {
-        return INSTANCE;
+    @Override
+    public boolean isAnsiColors() {
+        return ansiColors;
     }
 
-    private WavaTemp() {
-        this.temp = Config.getInstance().getTempFolder();
+    public void setAnsiColors(boolean ansiColors) {
+        this.ansiColors = ansiColors;
     }
 
-    public File getTemp() {
-        return temp;
+    @Override
+    public boolean issIMemoryUnits() {
+        return sIMemoryUnits;
+    }
+
+    public void setsIMemoryUnits(boolean sIMemoryUnits) {
+        this.sIMemoryUnits = sIMemoryUnits;
     }
 }

@@ -13,30 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.env;
-
-import java.io.File;
-import org.brutusin.wava.cfg.Config;
+package org.brutusin.wava.cfg;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public final class WavaTemp {
+public interface SchedulerCfg {
 
-    private static final WavaTemp INSTANCE = new WavaTemp();
+    public String getPromiseHandlerClassName();
+    
+    public String getNicenessHandlerClassName();
 
-    private final File temp;
+    public int getPollingSecs();
 
-    public static WavaTemp getInstance() {
-        return INSTANCE;
-    }
+    public long getMaxTotalRSSBytes();
 
-    private WavaTemp() {
-        this.temp = Config.getInstance().getTempFolder();
-    }
+    public long getMaxJobRSSBytes();
 
-    public File getTemp() {
-        return temp;
-    }
+    public int getCommandTTLCacheSecs();
+
+    public int getSigKillDelaySecs();
 }
