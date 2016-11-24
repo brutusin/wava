@@ -104,34 +104,46 @@ Event type ([`Events.java`](wava-client/src/main/java/org/brutusin/wava/io/Event
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
 
 ## Installation
-### 1. Download latest version:
+### 0. Run as `root`
 ```sh
-export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava/maven-metadata.xml | grep '<latest>' | grep -Eow '[0-9\.]*'`
-wget -O wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava&c=dist&e=zip&v=$WAVA_VERSION"
+sudo su
+```
+### 1. Create the `WAVA_HOME` environment variable pointing to the desired installation folder:
+```sh
+export WAVA_HOME=/opt/wava
+```
+make this variable persistent adding the previous line to the file: `~root/.bashrc`
+
+
+### 2. Download latest version:
+```sh
+export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-metadata.xml | grep '<latest>' | grep -Eow '[0-9\.]*'`
+wget -O /tmp/wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava-core&c=dist&e=zip&v=$WAVA_VERSION"
 ```
 *This `$WAVA_VERSION` variable has been created only for installation purposes and doesn't need to be persisted for future sessions*
-### 2. Decompress the distribution zip:
+### 3. Decompress the distribution zip:
 ```sh
-unzip -o wava-latest-dist.zip -d .
+unzip -o /tmp/wava-latest-dist.zip -d /tmp
 ```
-### 3. Set appropriate file permissions:
+### 4. Set appropriate file permissions:
 ```sh
-chmod -R 555 wava-$WAVA_VERSION
-```
-
-### 4. Move and create symbolic links:
-```sh
-sudo mkdir -p /opt/wava
-sudo mv wava-$WAVA_VERSION /opt/wava
-sudo ln -sf /opt/wava/wava-$WAVA_VERSION/bin/wava /usr/bin/wava
+chmod -R 555 /tmp/wava-core-$WAVA_VERSION
 ```
 
-### 5. Run to verify installation and generate default configuration file:
+### 5. Move and create symbolic links:
+```sh
+mkdir -p $WAVA_HOME
+mv /tmp/wava-core-$WAVA_VERSION/* $WAVA_HOME
+rm -rf /usr/bin/wava
+cp $WAVA_HOME/bin/wava-home-aware /usr/bin/wava
+```
+
+### 6. Run to verify installation and generate default configuration file:
 ```sh
 wava
 ```
 
-### 6. Run on startup
+### 7. Run on startup
 Optinally, create a service to run the following command at startup by the "root" user: `wava -s`. Details are not given here since it varies depending on the Linux distribution.
 
 ## Configuration
