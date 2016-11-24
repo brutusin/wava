@@ -1,4 +1,4 @@
-## org.brutusin:wava [![Build Status](https://api.travis-ci.org/brutusin/wava.svg?branch=master)](https://travis-ci.org/brutusin/wava) [![Maven Central Latest Version](https://maven-badges.herokuapp.com/maven-central/org.brutusin/wava/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.brutusin/wava/)
+## org.brutusin:wava [![Build Status](https://api.travis-ci.org/brutusin/wava.svg?branch=master)](https://travis-ci.org/brutusin/wava) [![Maven Central Latest Version](https://maven-badges.herokuapp.com/maven-central/org.brutusin/wava-core/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.brutusin/wava-core/)
 
 `wava` is a simple Linux command-line tool that allows to enqueue batch jobs (submitted with a maximum [RSS](https://en.wikipedia.org/wiki/Resident_set_size) usage promise) to be executed when enough physical memory is available in the system, and once running, manages their process nicenesses.
 
