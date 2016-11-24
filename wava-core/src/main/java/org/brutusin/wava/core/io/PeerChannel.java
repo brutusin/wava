@@ -29,7 +29,6 @@ import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.wava.Utils;
 import org.brutusin.wava.io.NamedPipe;
 import org.brutusin.wava.utils.ANSICode;
-import org.brutusin.wava.utils.CoreUtils;
 
 /**
  *
@@ -38,7 +37,7 @@ import org.brutusin.wava.utils.CoreUtils;
  */
 public class PeerChannel<T> {
 
-    private static Logger LOGGER = Logger.getLogger(PeerChannel.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(PeerChannel.class.getName());
 
     private final String user;
     private final T request;
