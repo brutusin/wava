@@ -15,7 +15,7 @@
  */
 package org.brutusin.wava.core.plug;
 
-import org.brutusin.wava.core.cfg.Config;
+import org.brutusin.wava.cfg.Config;
 
 /**
  *

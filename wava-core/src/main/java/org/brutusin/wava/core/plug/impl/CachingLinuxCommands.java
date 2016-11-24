@@ -23,7 +23,7 @@ import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Element;
 import net.sf.ehcache.config.CacheConfiguration;
 import net.sf.ehcache.config.PersistenceConfiguration;
-import org.brutusin.wava.core.cfg.Config;
+import org.brutusin.wava.cfg.Config;
 import org.brutusin.wava.core.plug.LinuxCommands;
 
 /**

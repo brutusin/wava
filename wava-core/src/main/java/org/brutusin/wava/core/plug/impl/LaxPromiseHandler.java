@@ -19,7 +19,7 @@ import java.io.IOException;
 import org.brutusin.wava.io.Event;
 import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.Scheduler;
-import org.brutusin.wava.core.cfg.Config;
+import org.brutusin.wava.cfg.Config;
 
 /**
  * Allows the execution of promise-failing jobs as long as the total-max-RSS and

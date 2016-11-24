@@ -15,7 +15,7 @@
  */
 package org.brutusin.wava.utils;
 
-import org.brutusin.wava.core.cfg.Config;
+import org.brutusin.wava.cfg.Config;
 
 
 /**

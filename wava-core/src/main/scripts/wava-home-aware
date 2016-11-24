@@ -1,0 +1,6 @@
+#!/bin/bash
+if [ -z "$WAVA_HOME" ]; then 
+    echo "WAVA_HOME environment variable not set"; 
+    exit 1;
+fi
+$WAVA_HOME/bin/wava "$@" < /dev/stdin 1>&1 2>&2

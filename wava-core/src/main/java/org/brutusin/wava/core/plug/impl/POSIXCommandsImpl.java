@@ -25,7 +25,7 @@ import java.util.Set;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.commons.utils.ProcessException;
 import org.brutusin.commons.utils.ProcessUtils;
-import org.brutusin.wava.core.cfg.Config;
+import org.brutusin.wava.cfg.Config;
 import org.brutusin.wava.core.plug.LinuxCommands;
 
 /**

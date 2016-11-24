@@ -17,7 +17,7 @@ package org.brutusin.wava.core.plug;
 
 import java.io.IOException;
 import org.brutusin.wava.core.Scheduler;
-import org.brutusin.wava.core.cfg.Config;
+import org.brutusin.wava.cfg.Config;
 
 /**
  *

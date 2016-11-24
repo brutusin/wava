@@ -18,7 +18,9 @@ package org.brutusin.wava.core;
 import java.io.File;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
-import org.brutusin.wava.core.cfg.impl.ConfigImpl;
+import org.brutusin.wava.cfg.impl.ConfigImpl;
+import org.brutusin.wava.core.plug.impl.HomogeneusSpreadNicenessHandler;
+import org.brutusin.wava.core.plug.impl.LaxPromiseHandler;
 
 /**
  *
@@ -29,6 +31,9 @@ public class GenerateConfigFiles {
     public static void main(String[] args) throws Exception {
         File cfgFile = new File("cfg.json");
         ConfigImpl defaultImpl = new ConfigImpl();
+        defaultImpl.setTempFolder("/dev/shm/wava");
+        defaultImpl.getSchedulerCfg().setPromiseHandlerClassName(LaxPromiseHandler.class.getName());
+        defaultImpl.getSchedulerCfg().setNicenessHandlerClassName(HomogeneusSpreadNicenessHandler.class.getName());
         Miscellaneous.writeStringToFile(cfgFile, JsonCodec.getInstance().prettyPrint(JsonCodec.getInstance().transform(defaultImpl)), "UTF-8");
     }
 }

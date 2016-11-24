@@ -2,7 +2,7 @@ package org.brutusin.wava.core;
 
 import org.brutusin.wava.io.Event;
 import org.brutusin.wava.core.io.PeerChannel;
-import org.brutusin.wava.core.cfg.Config;
+import org.brutusin.wava.cfg.Config;
 import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import java.io.IOException;
@@ -21,7 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.brutusin.commons.utils.ErrorHandler;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
-import org.brutusin.wava.core.cfg.GroupCfg;
+import org.brutusin.wava.cfg.GroupCfg;
 import org.brutusin.wava.core.plug.NicenessHandler;
 import org.brutusin.wava.env.EnvEntry;
 import org.brutusin.wava.input.CancelInput;
@@ -80,6 +80,8 @@ public class Scheduler {
                 createGroupInfo(group.getName(), this.runningUser, group.getPriority(), group.getTimeToIdleSeconds());
             }
         }
+
+        this.jobList = createJobList(false);
 
         this.processingThread = new Thread(this.coreGroup, "processingThread") {
             @Override
