@@ -99,6 +99,7 @@ public class PeerChannel<T> {
         try {
             os.write(message.getBytes());
             os.write("\n".getBytes());
+            os.flush();
             return true;
         } catch (IOException ex) {
             // Peer closed
@@ -150,6 +151,9 @@ public class PeerChannel<T> {
 
     public synchronized void close() throws IOException {
         this.closed = true;
+        this.eventsOs.flush();
+        this.stdoutOs.flush();
+        this.stderrOs.flush();
         this.eventsOs.close();
         this.stdoutOs.close();
         this.stderrOs.close();
