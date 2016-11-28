@@ -660,8 +660,10 @@ public class Scheduler {
         try {
             if (noHeaders) {
                 PeerChannel.println(channel.getStdoutOs(), createJobList(true));
-            } else {
+            } else if (closed) {
                 PeerChannel.println(channel.getStdoutOs(), jobList);
+            } else {
+                PeerChannel.println(channel.getStdoutOs(), createJobList(false));
             }
         } finally {
             channel.sendEvent(Event.retcode, 0);
@@ -833,14 +835,19 @@ public class Scheduler {
                 int pId;
                 try {
                     try {
-                        process = pb.start();
-                        pId = Miscellaneous.getUnixId(process);
-                        ji.getSubmitChannel().sendEvent(Event.running, pId);
-                        pi = new ProcessInfo(ji, pId);
                         synchronized (jobSet) {
+                            if (closed) {
+                                ji.getSubmitChannel().sendEvent(Event.shutdown, runningUser);
+                                ji.getSubmitChannel().sendEvent(Event.retcode, RetCode.CANCELLED.getCode());
+                                return;
+                            }
+                            process = pb.start();
+                            pId = Miscellaneous.getUnixId(process);
+                            pi = new ProcessInfo(ji, pId);
                             processMap.put(ji.getId(), pi);
+                            ji.getSubmitChannel().sendEvent(Event.running, pId);
+                            updateNiceness(pi, getRunningPosition(pi));
                         }
-                        updateNiceness(pi, getRunningPosition(pi));
                     } catch (Exception ex) {
                         ji.getSubmitChannel().sendEvent(Event.error, JsonCodec.getInstance().transform(Miscellaneous.getStrackTrace(ex)));
                         ji.getSubmitChannel().sendEvent(Event.retcode, RetCode.ERROR.getCode());
@@ -934,8 +941,7 @@ public class Scheduler {
             return false;
         }
         channel.log(ANSICode.GREEN, "Stopping scheduler process ...");
-        channel.sendEvent(Event.retcode, 0);
-        channel.close();
+
         synchronized (jobSet) {
             this.closed = true;
             this.coreGroup.interrupt();
@@ -969,6 +975,8 @@ public class Scheduler {
                 }
             }
         }
+        channel.sendEvent(Event.retcode, 0);
+        channel.close();
         return true;
     }
 
