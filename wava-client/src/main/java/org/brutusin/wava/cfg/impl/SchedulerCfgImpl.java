@@ -26,11 +26,12 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     private String promiseHandlerClassName;
     private String nicenessHandlerClassName;
 
-    private int pollingSecs = 5;
+    private int pollingMillisecs = 10;
     private long maxTotalRSSBytes = -1;
     private long maxJobRSSBytes = -1;
     private int commandTTLCacheSecs = 2;
     private int sigKillDelaySecs = 5;
+    private float maxBlockedRssStarvationRatio = 0.5f;
 
     @Override
     public String getPromiseHandlerClassName() {
@@ -51,12 +52,12 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     }
 
     @Override
-    public int getPollingSecs() {
-        return pollingSecs;
+    public int getPollingMillisecs() {
+        return pollingMillisecs;
     }
 
-    public void setPollingSecs(int pollingSecs) {
-        this.pollingSecs = pollingSecs;
+    public void setPollingMillisecs(int pollingMillisecs) {
+        this.pollingMillisecs = pollingMillisecs;
     }
 
     @Override
@@ -93,5 +94,14 @@ public class SchedulerCfgImpl implements SchedulerCfg {
 
     public void setSigKillDelaySecs(int sigKillDelaySecs) {
         this.sigKillDelaySecs = sigKillDelaySecs;
+    }
+
+    @Override
+    public float getMaxBlockedRssStarvationRatio() {
+        return maxBlockedRssStarvationRatio;
+    }
+
+    public void setMaxBlockedRssStarvationRatio(float maxBlockedRssStarvationRatio) {
+        this.maxBlockedRssStarvationRatio = maxBlockedRssStarvationRatio;
     }
 }

@@ -31,7 +31,7 @@ public class GenerateConfigFiles {
     public static void main(String[] args) throws Exception {
         File cfgFile = new File("cfg.json");
         ConfigImpl defaultImpl = new ConfigImpl();
-        defaultImpl.setTempFolder("/dev/shm/wava");
+        defaultImpl.setTempFolder("/dev/shm/wava/$WAVA_HOME");
         defaultImpl.getSchedulerCfg().setPromiseHandlerClassName(LaxPromiseHandler.class.getName());
         defaultImpl.getSchedulerCfg().setNicenessHandlerClassName(HomogeneusSpreadNicenessHandler.class.getName());
         Miscellaneous.writeStringToFile(cfgFile, JsonCodec.getInstance().prettyPrint(JsonCodec.getInstance().transform(defaultImpl)), "UTF-8");

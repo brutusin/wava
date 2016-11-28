@@ -22,10 +22,12 @@ package org.brutusin.wava.cfg;
 public interface SchedulerCfg {
 
     public String getPromiseHandlerClassName();
-    
+
     public String getNicenessHandlerClassName();
 
-    public int getPollingSecs();
+    public int getPollingMillisecs();
+
+    public float getMaxBlockedRssStarvationRatio();
 
     public long getMaxTotalRSSBytes();
 

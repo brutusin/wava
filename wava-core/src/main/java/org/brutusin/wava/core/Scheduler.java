@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -52,7 +51,7 @@ public class Scheduler {
     private final Thread processingThread;
 
     private volatile boolean closed;
-    private String jobList;
+    private volatile String jobList;
     private final long maxManagedRss;
     private final String runningUser;
 
@@ -88,7 +87,7 @@ public class Scheduler {
                         break;
                     }
                     try {
-                        Thread.sleep(Config.getInstance().getSchedulerCfg().getPollingSecs() * 1000);
+                        Thread.sleep(Config.getInstance().getSchedulerCfg().getPollingMillisecs());
                         refresh();
                     } catch (Throwable th) {
                         if (th instanceof InterruptedException) {
@@ -163,71 +162,14 @@ public class Scheduler {
         }
     }
 
-    private void refresh() throws IOException, InterruptedException {
-
+    private void cleanStalePeers() throws InterruptedException {
         synchronized (jobSet) {
-            if (closed) {
-                return;
-            }
-            JobSet.RunningIterator runningIt = jobSet.getRunning();
-            int pos = 0;
-            long maxPromisedMemoryOfRunningBlockedJobs = 0;
-            ProcessInfo toKillCandidate = null;
-            boolean allBlocked = true;
-            while (runningIt.hasNext()) {
-                Integer id = runningIt.next();
-                ProcessInfo pi = processMap.get(id);
-                if (pi == null) {
-                    continue;
-                }
-                if (!pi.getJobInfo().getSubmitChannel().ping()) {
-                    try {
-                        LinuxCommands.getInstance().killTree(pi.getPid());
-                    } catch (IOException ex) {
-                        LOGGER.log(Level.SEVERE, null, ex);
-                    }
-                    continue;
-                }
-                if (pi.getJobInfo().getQueuedChildCount() > 0 && pi.getJobInfo().getRunningChildCount() == 0) {
-                    maxPromisedMemoryOfRunningBlockedJobs += pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS();
-                    if (toKillCandidate == null || !toKillCandidate.getJobInfo().getSubmitChannel().getRequest().isIdempotent() || pi.getJobInfo().getSubmitChannel().getRequest().isIdempotent()) {
-                        toKillCandidate = pi;
-                    }
-                } else {
-                    allBlocked = false;
-                }
-                pi.setNiceness(NicenessHandler.getInstance().getNiceness(pos, jobSet.countRunning(), Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
-                pos++;
-            }
-
-            if (toKillCandidate != null) {
-                if (toKillCandidate.getJobInfo().getSubmitChannel().getRequest().isIdempotent()) {
-                    if (maxPromisedMemoryOfRunningBlockedJobs > maxManagedRss * 0.5) {
-                        killForStarvationProtection(toKillCandidate);
-                    }
-                } else {
-                    if (allBlocked) {
-                        killForStarvationProtection(toKillCandidate);
-                    }
-                }
-            }
-
-            long availableMemory = maxManagedRss - getMaxPromisedMemory();
-            checkPromises(availableMemory);
-
-            long freeRSS = LinuxCommands.getInstance().getSystemRSSFreeMemory();
-            if (availableMemory > freeRSS) {
-                availableMemory = freeRSS;
-            }
-            JobSet.QueueIterator queuedIt = jobSet.getQueue();
-
-            boolean exceedAvailable = false;
-            pos = 0;
-            while (queuedIt.hasNext()) {
-                Integer id = queuedIt.next();
+            Iterator<Integer> it = jobSet.getQueue();
+            while (it.hasNext()) {
+                Integer id = it.next();
                 JobInfo ji = jobMap.get(id);
                 if (!ji.getSubmitChannel().ping()) {
-                    queuedIt.remove();
+                    it.remove();
                     removeFromJobMap(ji);
                     GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                     gi.getJobs().remove(id);
@@ -236,25 +178,133 @@ public class Scheduler {
                     } catch (IOException ex) {
                         LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
                     }
-                } else if (!exceedAvailable) {
-                    if (ji.getSubmitChannel().getRequest().getMaxRSS() > availableMemory) {
-                        exceedAvailable = true;
-                    }
-                    queuedIt.moveToRunning();
-                    changeQueuedChildren(ji.getSubmitChannel().getRequest().getParentId(), false);
-                    changeRunningChildren(ji.getSubmitChannel().getRequest().getParentId(), true);
-                    execute(id, ji);
-                    availableMemory -= ji.getSubmitChannel().getRequest().getMaxRSS();
-                } else {
-                    pos++;
-                    if (pos != ji.getPreviousQueuePosition()) {
-                        ji.getSubmitChannel().sendEvent(Event.queued, pos);
-                        ji.setPreviousQueuePosition(pos);
-                    }
                 }
             }
 
+            it = jobSet.getRunning();
+            while (it.hasNext()) {
+                Integer id = it.next();
+                ProcessInfo pi = processMap.get(id);
+                if (pi != null && !pi.getJobInfo().getSubmitChannel().ping()) {
+                    try {
+                        LinuxCommands.getInstance().killTree(pi.getPid());
+                    } catch (IOException ex) {
+                        LOGGER.log(Level.SEVERE, null, ex);
+                    }
+                }
+            }
+        }
+    }
+
+    private void sendQueuePositionEvents() {
+        synchronized (jobSet) {
+            int position = 0;
+            JobSet.QueueIterator it = jobSet.getQueue();
+            while (it.hasNext()) {
+                position++;
+                Integer id = it.next();
+                JobInfo ji = jobMap.get(id);
+                if (position != ji.getPreviousQueuePosition()) {
+                    ji.getSubmitChannel().sendEvent(Event.queued, position);
+                    ji.setPreviousQueuePosition(position);
+                }
+            }
+        }
+    }
+
+    private void distributeNiceness() throws IOException, InterruptedException {
+        synchronized (jobSet) {
+            int pos = 0;
+            Iterator<Integer> it = jobSet.getRunning();
+            while (it.hasNext()) {
+                Integer id = it.next();
+                JobInfo ji = jobMap.get(id);
+                ProcessInfo pi = processMap.get(id);
+                if (pi != null) {
+                    pi.setNiceness(NicenessHandler.getInstance().getNiceness(pos, jobSet.countRunning(), Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
+                }
+                pos++;
+            }
+        }
+    }
+
+    private void checkStarvation() {
+
+        synchronized (jobSet) {
+            if (jobSet.countQueued() == 0) {
+                return;
+            }
+            boolean allJobsBlocked = true;
+            ProcessInfo candidateToKill = null;
+            long maxRSsSumOfBlockedJobs = 0;
+
+            Iterator<Integer> it = jobSet.getRunning();
+            while (it.hasNext()) {
+                Integer id = it.next();
+                JobInfo ji = jobMap.get(id);
+                if (ji.getQueuedChildCount() > 0 && ji.getRunningChildCount() == 0) {
+                    maxRSsSumOfBlockedJobs += ji.getSubmitChannel().getRequest().getMaxRSS();
+                    ProcessInfo pi = processMap.get(id);
+                    if (pi != null) {
+                        if (candidateToKill == null || !candidateToKill.getJobInfo().getSubmitChannel().getRequest().isIdempotent() || ji.getSubmitChannel().getRequest().isIdempotent()) {
+                            candidateToKill = pi;
+                        }
+                    } else {
+                        candidateToKill = null;
+                    }
+                } else {
+                    allJobsBlocked = false;
+                }
+            }
+            if (candidateToKill != null) {
+                if (allJobsBlocked || candidateToKill.getJobInfo().getSubmitChannel().getRequest().isIdempotent() && maxRSsSumOfBlockedJobs > maxManagedRss * Config.getInstance().getSchedulerCfg().getMaxBlockedRssStarvationRatio()) {
+                    killForStarvationProtection(candidateToKill);
+                }
+            }
+        }
+    }
+
+    private void dequeueJobs(long availableMemory) {
+        synchronized (jobSet) {
+            JobSet.QueueIterator queuedIt = jobSet.getQueue();
+            while (queuedIt.hasNext()) {
+                Integer id = queuedIt.next();
+                JobInfo ji = jobMap.get(id);
+                if (ji.getSubmitChannel().getRequest().getMaxRSS() > availableMemory) {
+                    return;
+                }
+                queuedIt.moveToRunning();
+                changeQueuedChildren(ji.getSubmitChannel().getRequest().getParentId(), false);
+                changeRunningChildren(ji.getSubmitChannel().getRequest().getParentId(), true);
+                execute(id, ji);
+                availableMemory -= ji.getSubmitChannel().getRequest().getMaxRSS();
+            }
+        }
+    }
+
+    private long getAvailableMemory() throws IOException, InterruptedException {
+        long availableMemory = maxManagedRss - getMaxPromisedMemory();
+        long freeRSS = LinuxCommands.getInstance().getSystemRSSFreeMemory();
+        if (availableMemory > freeRSS) {
+            availableMemory = freeRSS;
+        }
+        return availableMemory;
+    }
+
+    private void refresh() throws IOException, InterruptedException {
+
+        synchronized (jobSet) {
+            if (closed) {
+                return;
+            }
+            cleanStalePeers();
+            distributeNiceness();
+            long availableMemory = getAvailableMemory();
+            checkPromises(availableMemory);
+            dequeueJobs(availableMemory);
+            sendQueuePositionEvents();
             this.jobList = createJobList(false);
+            checkStarvation();
         }
     }
 
@@ -269,7 +319,10 @@ public class Scheduler {
             while (running.hasNext()) {
                 Integer id = running.next();
                 ProcessInfo p = processMap.get(id);
-                if (pi.getPid() == p.getPid()) {
+                if (p == null) {
+                    continue;
+                }
+                if (pi.getJobInfo().getId() == p.getJobInfo().getId()) {
                     return i;
                 }
                 i++;
@@ -337,14 +390,11 @@ public class Scheduler {
 
         long treeRSS = submitChannel.getRequest().getMaxRSS();
         Integer parentId = submitChannel.getRequest().getParentId();
-        JobInfo parent = null;
+
         while (parentId != null) {
             JobInfo ji = jobMap.get(parentId);
             if (ji == null) {
                 break;
-            }
-            if (parent == null) {
-                parent = ji;
             }
             treeRSS += ji.getSubmitChannel().getRequest().getMaxRSS();
             parentId = ji.getSubmitChannel().getRequest().getParentId();
@@ -357,28 +407,22 @@ public class Scheduler {
             return;
         }
 
-        if (parent != null) {
-            changeQueuedChildren(parentId, true);
-        }
-
         if (submitChannel.getRequest().getGroupName() == null) {
             submitChannel.getRequest().setGroupName(DEFAULT_GROUP_NAME);
         }
-        int id = jobCounter.incrementAndGet();
 
         synchronized (jobSet) {
-            GroupInfo gi = groupMap.get(submitChannel.getRequest().getGroupName());
+            JobInfo ji = new JobInfo(jobCounter.incrementAndGet(), submitChannel);
+            GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
             if (gi == null) { // dynamic group
-                gi = createGroupInfo(submitChannel.getRequest().getGroupName(), submitChannel.getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds());
+                gi = createGroupInfo(ji.getSubmitChannel().getRequest().getGroupName(), ji.getSubmitChannel().getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds());
             }
-            gi.getJobs().add(id);
-
-            JobInfo ji = new JobInfo(id, submitChannel);
-            jobMap.put(id, ji);
-            submitChannel.sendEvent(Event.id, id);
-            jobSet.queue(id, gi.getPriority(), gi.getGroupId());
-            submitChannel.sendEvent(Event.priority, gi.getPriority());
-            // refresh();
+            gi.getJobs().add(ji.getId());
+            changeQueuedChildren(ji.getSubmitChannel().getRequest().getParentId(), true);
+            jobMap.put(ji.getId(), ji);
+            ji.getSubmitChannel().sendEvent(Event.id, ji.getId());
+            jobSet.queue(ji.getId(), gi.getPriority(), gi.getGroupId());
+            ji.getSubmitChannel().sendEvent(Event.priority, gi.getPriority());
         }
     }
 
@@ -754,12 +798,12 @@ public class Scheduler {
         }
     }
 
-    private void changeRunningChildren(Integer parentId, boolean increment) {
+    private void changeRunningChildren(Integer parentId, boolean increase) {
         if (parentId != null) {
             JobInfo parent = jobMap.get(parentId);
             if (parent != null) {
                 synchronized (parent) {
-                    parent.setRunningChildCount(parent.getRunningChildCount() - (increment ? 1 : -1));
+                    parent.setRunningChildCount(parent.getRunningChildCount() + (increase ? 1 : -1));
                 }
             }
         }
@@ -808,8 +852,10 @@ public class Scheduler {
                     sterrReaderThread.setName("stderr-pid-" + pId);
                     try {
                         int code = process.waitFor();
-                        ji.getSubmitChannel().sendEvent(Event.maxrss, pi.getMaxSeenRSS());
-                        ji.getSubmitChannel().sendEvent(Event.retcode, code);
+                        if (!ji.isRelaunched()) {
+                            ji.getSubmitChannel().sendEvent(Event.maxrss, pi.getMaxSeenRSS());
+                            ji.getSubmitChannel().sendEvent(Event.retcode, code);
+                        }
                     } catch (InterruptedException ex) {
                         try {
                             LinuxCommands.getInstance().killTree(pId);
@@ -832,15 +878,15 @@ public class Scheduler {
                 } finally {
                     try {
                         synchronized (jobSet) {
-                            jobSet.remove(id);
                             removeFromJobMap(ji);
+                            jobSet.remove(id);
                             processMap.remove(id);
                             final GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                             gi.getJobs().remove(id);
                             if (gi.getJobs().isEmpty()) {
                                 if (gi.getTimeToIdelSeconds() == 0) {
                                     groupMap.remove(gi.getGroupName());
-                                } else if (gi.getTimeToIdelSeconds() > 0) {
+                                } else if (gi.getTimeToIdelSeconds() > 0 && !ji.isRelaunched()) {
                                     Thread t = new Thread(coreGroup, "group-" + gi.getGroupName() + " idle thread") {
                                         @Override
                                         public void run() {
@@ -864,13 +910,13 @@ public class Scheduler {
                                     t.start();
                                 }
                             }
+                            if (ji.isRelaunched()) {
+                                submit(ji.getSubmitChannel());
+                            } else {
+                                ji.getSubmitChannel().close();
+                            }
                         }
-                        if (ji.isRelaunched()) {
-                            ji.setRelaunched(false);
-                            submit(ji.getSubmitChannel());
-                        } else {
-                            ji.getSubmitChannel().close();
-                        }
+
                     } catch (Throwable th) {
                         LOGGER.log(Level.SEVERE, th.getMessage(), th);
                     }
@@ -1095,7 +1141,7 @@ public class Scheduler {
             this.allowed = allowed;
         }
 
-        public void setNiceness(int niceness) throws IOException, InterruptedException {
+        public synchronized void setNiceness(int niceness) throws IOException, InterruptedException {
             if (niceness != this.niceness) {
                 LinuxCommands.getInstance().setNiceness(pId, niceness);
                 jobInfo.getSubmitChannel().sendEvent(Event.niceness, niceness);

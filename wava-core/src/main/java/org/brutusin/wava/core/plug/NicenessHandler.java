@@ -1,4 +1,4 @@
-/*
+c/*
  * Copyright 2016 Ignacio del Valle Alles idelvall@brutusin.org.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
