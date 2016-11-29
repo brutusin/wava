@@ -25,7 +25,9 @@ public interface SchedulerCfg {
 
     public String getNicenessHandlerClassName();
 
-    public int getPollingMillisecs();
+    public int getRefreshLoopSleepMillisecs();
+
+    public int getPingMillisecs();
 
     public float getMaxBlockedRssStarvationRatio();
 

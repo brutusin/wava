@@ -26,7 +26,8 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     private String promiseHandlerClassName;
     private String nicenessHandlerClassName;
 
-    private int pollingMillisecs = 10;
+    private int refreshLoopSleepMillisecs = 10;
+    private int pingMillisecs = 1000;
     private long maxTotalRSSBytes = -1;
     private long maxJobRSSBytes = -1;
     private int commandTTLCacheSecs = 2;
@@ -52,12 +53,12 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     }
 
     @Override
-    public int getPollingMillisecs() {
-        return pollingMillisecs;
+    public int getRefreshLoopSleepMillisecs() {
+        return refreshLoopSleepMillisecs;
     }
 
-    public void setPollingMillisecs(int pollingMillisecs) {
-        this.pollingMillisecs = pollingMillisecs;
+    public void setPollingMillisecs(int refreshLoopSleepMillisecs) {
+        this.refreshLoopSleepMillisecs = refreshLoopSleepMillisecs;
     }
 
     @Override
@@ -103,5 +104,14 @@ public class SchedulerCfgImpl implements SchedulerCfg {
 
     public void setMaxBlockedRssStarvationRatio(float maxBlockedRssStarvationRatio) {
         this.maxBlockedRssStarvationRatio = maxBlockedRssStarvationRatio;
+    }
+
+    @Override
+    public int getPingMillisecs() {
+        return pingMillisecs;
+    }
+
+    public void setPingMillisecs(int pingMillisecs) {
+        this.pingMillisecs = pingMillisecs;
     }
 }

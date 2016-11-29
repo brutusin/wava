@@ -50,10 +50,16 @@ public class Scheduler {
     private final AtomicInteger groupCounter = new AtomicInteger();
     private final Thread processingThread;
 
-    private volatile boolean closed;
-    private volatile String jobList;
     private final long maxManagedRss;
     private final String runningUser;
+
+    private volatile boolean closed;
+    private volatile String jobList;
+
+    private long maxRssSumMemory;
+    private long availableMemory;
+    private long lastPingMillis;
+    private long refreshMillis;
 
     public Scheduler() throws NonRootUserException, IOException, InterruptedException {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
@@ -87,7 +93,7 @@ public class Scheduler {
                         break;
                     }
                     try {
-                        Thread.sleep(Config.getInstance().getSchedulerCfg().getPollingMillisecs());
+                        Thread.sleep(Config.getInstance().getSchedulerCfg().getRefreshLoopSleepMillisecs());
                         refresh();
                     } catch (Throwable th) {
                         if (th instanceof InterruptedException) {
@@ -155,14 +161,21 @@ public class Scheduler {
     private long getMaxPromisedMemory() {
         synchronized (jobSet) {
             long sum = 0;
-            for (ProcessInfo pi : processMap.values()) {
-                sum += pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS();
+            JobSet.RunningIterator it = jobSet.getRunning();
+            while (it.hasNext()) {
+                Integer id = it.next();
+                JobInfo ji = jobMap.get(id);
+                sum += ji.getSubmitChannel().getRequest().getMaxRSS();
             }
+            this.maxRssSumMemory = sum;
             return sum;
         }
     }
 
     private void cleanStalePeers() throws InterruptedException {
+        if (System.currentTimeMillis() - lastPingMillis < Config.getInstance().getSchedulerCfg().getPingMillisecs()) {
+            return;
+        }
         synchronized (jobSet) {
             Iterator<Integer> it = jobSet.getQueue();
             while (it.hasNext()) {
@@ -194,6 +207,7 @@ public class Scheduler {
                 }
             }
         }
+        lastPingMillis = System.currentTimeMillis();
     }
 
     private void sendQueuePositionEvents() {
@@ -246,6 +260,10 @@ public class Scheduler {
                     maxRSsSumOfBlockedJobs += ji.getSubmitChannel().getRequest().getMaxRSS();
                     ProcessInfo pi = processMap.get(id);
                     if (pi != null) {
+                        if (pi.getJobInfo().isRelaunched()) {
+                            maxRSsSumOfBlockedJobs -= ji.getSubmitChannel().getRequest().getMaxRSS();
+                            continue;
+                        }
                         if (candidateToKill == null || !candidateToKill.getJobInfo().getSubmitChannel().getRequest().isIdempotent() || ji.getSubmitChannel().getRequest().isIdempotent()) {
                             candidateToKill = pi;
                         }
@@ -292,19 +310,20 @@ public class Scheduler {
     }
 
     private void refresh() throws IOException, InterruptedException {
-
         synchronized (jobSet) {
             if (closed) {
                 return;
             }
+            long start = System.currentTimeMillis();
             cleanStalePeers();
             distributeNiceness();
-            long availableMemory = getAvailableMemory();
+            this.availableMemory = getAvailableMemory();
             checkPromises(availableMemory);
             dequeueJobs(availableMemory);
             sendQueuePositionEvents();
             this.jobList = createJobList(false);
             checkStarvation();
+            this.refreshMillis = System.currentTimeMillis() - start;
         }
     }
 
@@ -430,8 +449,6 @@ public class Scheduler {
         StringBuilder sb = new StringBuilder(200);
         try {
             if (!noHeaders) {
-                sb.append(ANSICode.CLEAR.getCode());
-                sb.append(ANSICode.MOVE_TO_TOP.getCode());
                 sb.append(ANSICode.BLACK.getCode());
                 sb.append(ANSICode.BG_GREEN.getCode());
                 sb.append(StringUtils.leftPad("JOB ID", 8));
@@ -460,6 +477,7 @@ public class Scheduler {
             } else {
                 ANSICode.setActive(false);
             }
+            int blocked = 0;
             synchronized (jobSet) {
                 JobSet.RunningIterator runningIterator = jobSet.getRunning();
                 while (runningIterator.hasNext()) {
@@ -470,8 +488,9 @@ public class Scheduler {
                     sb.append("\n");
                     sb.append(ANSICode.NO_WRAP.getCode());
                     if (pi != null) {
-                        if (!ji.getSubmitChannel().getRequest().isIdempotent()) {
+                        if (ji.getRunningChildCount() == 0 && ji.getQueuedChildCount() > 0) {
                             sb.append(ANSICode.RED.getCode());
+                            blocked++;
                         } else {
                             sb.append(ANSICode.GREEN.getCode());
                         }
@@ -515,13 +534,7 @@ public class Scheduler {
                         sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
                         sb.append(" ");
                     } else { // process not stated yet
-                        if (!ji.getSubmitChannel().getRequest().isIdempotent()) {
-                            sb.append(ANSICode.RED.getCode());
-                        } else {
-                            sb.append(ANSICode.GREEN.getCode());
-                        }
                         sb.append(StringUtils.leftPad(String.valueOf(id), 8));
-                        sb.append(ANSICode.RESET.getCode());
                         sb.append(" ");
                         String pId;
                         if (ji.getSubmitChannel().getRequest().getParentId() != null) {
@@ -564,13 +577,8 @@ public class Scheduler {
                     GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                     sb.append("\n");
                     sb.append(ANSICode.NO_WRAP.getCode());
-                    if (!ji.getSubmitChannel().getRequest().isIdempotent()) {
-                        sb.append(ANSICode.RED.getCode());
-                    } else {
-                        sb.append(ANSICode.GREEN.getCode());
-                    }
-                    sb.append(StringUtils.leftPad(String.valueOf(id), 8));
                     sb.append(ANSICode.YELLOW.getCode());
+                    sb.append(StringUtils.leftPad(String.valueOf(id), 8));
                     sb.append(" ");
                     String pId;
                     if (ji.getSubmitChannel().getRequest().getParentId() != null) {
@@ -604,6 +612,51 @@ public class Scheduler {
                     sb.append(ANSICode.RESET.getCode());
                     sb.append(ANSICode.WRAP.getCode());
                 }
+            }
+            if (!noHeaders) {
+                StringBuilder statSb = new StringBuilder();
+                statSb.append(ANSICode.CLEAR.getCode());
+                statSb.append(ANSICode.MOVE_TO_TOP.getCode());
+                statSb.append("\n");
+                statSb.append(ANSICode.CYAN);
+                statSb.append("  Jobs: ");
+                statSb.append(jobSet.countQueued() + jobSet.countRunning());
+                statSb.append("; ");
+                statSb.append(ANSICode.GREEN);
+                statSb.append(jobSet.countRunning() - blocked);
+                statSb.append(ANSICode.CYAN);
+                statSb.append(" running; ");
+                statSb.append(ANSICode.RED);
+                statSb.append(blocked);
+                statSb.append(ANSICode.CYAN);
+                statSb.append(" bloqued; ");
+                statSb.append(ANSICode.YELLOW);
+                statSb.append(jobSet.countQueued());
+                statSb.append(ANSICode.CYAN);
+                statSb.append(" queued");
+                statSb.append("\n");
+                statSb.append("  Refresh time: ");
+                statSb.append(ANSICode.GREEN);
+                statSb.append(this.refreshMillis);
+                statSb.append(ANSICode.CYAN);
+                statSb.append(" ms");
+                statSb.append("\n");
+                statSb.append("  Memory: ");
+                statSb.append(Miscellaneous.humanReadableByteCount(maxManagedRss, Config.getInstance().getuICfg().issIMemoryUnits()));
+                statSb.append(ANSICode.CYAN);
+                statSb.append(" (");
+                statSb.append(ANSICode.GREEN);
+                statSb.append(Miscellaneous.humanReadableByteCount(availableMemory, Config.getInstance().getuICfg().issIMemoryUnits()));
+                statSb.append(ANSICode.CYAN);
+                statSb.append(" / ");
+                statSb.append(ANSICode.RED);
+                statSb.append(Miscellaneous.humanReadableByteCount(maxRssSumMemory, Config.getInstance().getuICfg().issIMemoryUnits()));
+                statSb.append(ANSICode.CYAN);
+                statSb.append(")");
+                statSb.append(ANSICode.RESET);
+                statSb.append("\n");
+                statSb.append("\n");
+                sb.insert(0, statSb);
             }
         } finally {
             ANSICode.setActive(true);
@@ -844,9 +897,10 @@ public class Scheduler {
                             process = pb.start();
                             pId = Miscellaneous.getUnixId(process);
                             pi = new ProcessInfo(ji, pId);
-                            processMap.put(ji.getId(), pi);
                             ji.getSubmitChannel().sendEvent(Event.running, pId);
+                            processMap.put(ji.getId(), pi);
                             updateNiceness(pi, getRunningPosition(pi));
+
                         }
                     } catch (Exception ex) {
                         ji.getSubmitChannel().sendEvent(Event.error, JsonCodec.getInstance().transform(Miscellaneous.getStrackTrace(ex)));
@@ -1102,9 +1156,9 @@ public class Scheduler {
 
         private final JobInfo jobInfo;
         private final int pId;
-        private long maxRSS;
-        private long maxSeenRSS;
-        private int niceness = Integer.MAX_VALUE;
+        private volatile long maxRSS;
+        private volatile long maxSeenRSS;
+        private volatile int niceness = Integer.MAX_VALUE;
         private boolean allowed;
 
         public ProcessInfo(JobInfo jobInfo, int pId) {
