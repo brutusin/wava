@@ -173,7 +173,8 @@ public class RequestHandler {
                         this.scheduler.updateGroup(channel);
                     }
                 } else if (opName == OpName.exit) {
-                    PeerChannel<Void> channel = new PeerChannel(user, null, new File(streamsFolder, String.valueOf(id)));
+                    String input = JsonCodec.getInstance().parse(json, String.class);
+                    PeerChannel<String> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
                     if (this.scheduler.close(channel)) {
                         mainThread.interrupt();
                     }

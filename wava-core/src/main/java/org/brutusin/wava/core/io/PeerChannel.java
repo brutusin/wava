@@ -127,6 +127,9 @@ public class PeerChannel<T> {
         if (closed) {
             return false;
         }
+        if (color == null) {
+            color = ANSICode.RESET;
+        }
         return println(stderrOs, color + "[wava] [" + Utils.DATE_FORMAT.format(new Date()) + "] " + message + ANSICode.RESET);
     }
 

@@ -16,6 +16,7 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.brutusin.commons.utils.ErrorHandler;
 import org.brutusin.commons.utils.Miscellaneous;
@@ -50,6 +51,8 @@ public class Scheduler {
     private final AtomicInteger groupCounter = new AtomicInteger();
     private final Thread processingThread;
 
+    private final String exitToken;
+
     private final long maxManagedRss;
     private final String runningUser;
 
@@ -83,6 +86,7 @@ public class Scheduler {
             }
         }
 
+        this.exitToken = RandomStringUtils.randomAlphabetic(10);
         this.jobList = createJobList(false);
 
         this.processingThread = new Thread(this.coreGroup, "processingThread") {
@@ -987,10 +991,19 @@ public class Scheduler {
         t.start();
     }
 
-    public boolean close(PeerChannel<Void> channel) throws IOException {
+    public boolean close(PeerChannel<String> channel) throws IOException {
         if (!channel.getUser().equals("root") && !channel.getUser().equals(runningUser)) {
             channel.log(ANSICode.RED, "user '" + channel.getUser() + "' is not allowed to stop the core scheduler process");
             channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
+            channel.close();
+            return false;
+        }
+        if (channel.getRequest() == null || channel.getRequest().isEmpty()) {
+            channel.log(ANSICode.CYAN, "Confirm stopping scheduler by running: " + ANSICode.GREEN + "wava -x " + exitToken);
+            channel.close();
+            return false;
+        } else if (!channel.getRequest().equals(exitToken)) {
+            channel.log(ANSICode.RED, "Invalid token. Confirm stopping scheduler by running: " + ANSICode.GREEN + "wava -x " + exitToken);
             channel.close();
             return false;
         }

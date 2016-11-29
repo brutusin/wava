@@ -119,13 +119,13 @@ public class WavaMain {
                 } else if (cl.hasOption(rOpt.getOpt())) {
                     SubmitMain.main(subArgs);
                 } else if (cl.hasOption(cOpt.getOpt())) {
-                    CancelMain.main(args);
+                    CancelMain.main(subArgs);
                 } else if (cl.hasOption(uOpt.getOpt())) {
                     System.err.println("run the following script for updating: " + ANSICode.CYAN + new File(WavaHome.getInstance().getFile(), "bin/wava-update").getAbsolutePath() + ANSICode.RESET);
                 } else if (cl.hasOption(tOpt.getOpt())) {
-                    StatusMain.main(args);
+                    StatusMain.main(subArgs);
                 } else if (cl.hasOption(xOpt.getOpt())) {
-                    ExitMain.main(args);
+                    ExitMain.main(subArgs);
                 }
             } else {
                 showHelp(options);
