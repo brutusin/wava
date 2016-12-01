@@ -16,11 +16,13 @@
 package org.brutusin.wava.core.plug.impl;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.commons.utils.ProcessException;
@@ -32,7 +34,9 @@ import org.brutusin.wava.core.plug.LinuxCommands;
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public final class POSIXCommandsImpl extends LinuxCommands {
+public class POSIXCommandsImpl extends LinuxCommands {
+
+    private static final File FILE_MEMINFO = new File("/proc/meminfo");
 
     private static String executeBashCommand(String command) throws IOException, InterruptedException {
         String[] cmd = {"/bin/bash", "-c", command};
@@ -100,7 +104,7 @@ public final class POSIXCommandsImpl extends LinuxCommands {
 
     }
 
-    public void getTree(Set<Integer> visited, int pId, boolean stop) throws InterruptedException {
+    private void getTree(Set<Integer> visited, int pId, boolean stop) throws InterruptedException {
         try {
             if (stop) {
                 // needed to stop quickly forking parent from producing children between child killing and parent killing
@@ -145,11 +149,6 @@ public final class POSIXCommandsImpl extends LinuxCommands {
                 // Silently continue if executed command doesn't return 0
             }
         }
-    }
-
-    @Override
-    public long getSystemRSSUsedMemory() throws IOException, InterruptedException {
-        return getSystemRSSMemory() - getSystemRSSFreeMemory();
     }
 
     @Override
@@ -202,15 +201,24 @@ public final class POSIXCommandsImpl extends LinuxCommands {
     }
 
     @Override
-    public long getSystemRSSFreeMemory() throws IOException, InterruptedException {
-        String ouput = executeBashCommand("echo $((`cat /proc/meminfo | grep ^Cached:| awk '{print $2}'` + `cat /proc/meminfo | grep ^MemFree:| awk '{print $2}'` ))");
-        return Long.valueOf(ouput.trim()) * 1000;
-    }
-
-    @Override
-    public long getSystemRSSMemory() throws IOException, InterruptedException {
-        String ouput = executeBashCommand("cat /proc/meminfo | grep ^MemTotal:| awk '{print $2}'");
-        return Long.valueOf(ouput.trim()) * 1000;
+    public long[] getMemInfo() {
+        long[] ret = {-1, -1};
+        try (Scanner scanner = new Scanner(FILE_MEMINFO).useDelimiter("\\s*:\\s*|\n")) {
+            while (scanner.hasNext()) {
+                String token = scanner.next();
+                if (token.equals("MemTotal")) {
+                    ret[0] = Miscellaneous.parseHumanReadableByteCount(scanner.next());
+                } else if (token.equals("MemAvailable")) {
+                    ret[1] = Miscellaneous.parseHumanReadableByteCount(scanner.next());
+                }
+                if (ret[0] != -1 && ret[1] != -1) {
+                    break;
+                }
+            }
+            return ret;
+        } catch (FileNotFoundException e) {
+            throw new Error(FILE_MEMINFO.getPath() + " not found");
+        }
     }
 
     @Override

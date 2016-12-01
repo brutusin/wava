@@ -53,14 +53,12 @@ public class Scheduler {
 
     private final String exitToken;
 
-    private final long maxManagedRss;
+    private final long totalManagedRss;
     private final String runningUser;
 
     private volatile boolean closed;
     private volatile String jobList;
 
-    private long maxRssSumMemory;
-    private long availableMemory;
     private long lastPingMillis;
     private long refreshMillis;
 
@@ -70,10 +68,10 @@ public class Scheduler {
             throw new NonRootUserException();
         }
         if (Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes() > 0) {
-            this.maxManagedRss = Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes();
+            this.totalManagedRss = Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes();
         } else {
             try {
-                this.maxManagedRss = LinuxCommands.getInstance().getSystemRSSMemory();
+                this.totalManagedRss = LinuxCommands.getInstance().getMemInfo()[0];
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
@@ -87,7 +85,7 @@ public class Scheduler {
         }
 
         this.exitToken = RandomStringUtils.randomAlphabetic(10);
-        this.jobList = createJobList(false);
+        this.jobList = createJobList(false, getAvailableManagedMemory(0), 0);
 
         this.processingThread = new Thread(this.coreGroup, "processingThread") {
             @Override
@@ -162,7 +160,7 @@ public class Scheduler {
         }
     }
 
-    private long getMaxPromisedMemory() {
+    private long getUsedManagedMemory() {
         synchronized (jobSet) {
             long sum = 0;
             JobSet.RunningIterator it = jobSet.getRunning();
@@ -171,7 +169,6 @@ public class Scheduler {
                 JobInfo ji = jobMap.get(id);
                 sum += ji.getSubmitChannel().getRequest().getMaxRSS();
             }
-            this.maxRssSumMemory = sum;
             return sum;
         }
     }
@@ -236,7 +233,6 @@ public class Scheduler {
             Iterator<Integer> it = jobSet.getRunning();
             while (it.hasNext()) {
                 Integer id = it.next();
-                JobInfo ji = jobMap.get(id);
                 ProcessInfo pi = processMap.get(id);
                 if (pi != null) {
                     pi.setNiceness(NicenessHandler.getInstance().getNiceness(pos, jobSet.countRunning(), Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
@@ -279,7 +275,7 @@ public class Scheduler {
                 }
             }
             if (candidateToKill != null) {
-                if (allJobsBlocked || candidateToKill.getJobInfo().getSubmitChannel().getRequest().isIdempotent() && maxRSsSumOfBlockedJobs > maxManagedRss * Config.getInstance().getSchedulerCfg().getMaxBlockedRssStarvationRatio()) {
+                if (allJobsBlocked || candidateToKill.getJobInfo().getSubmitChannel().getRequest().isIdempotent() && maxRSsSumOfBlockedJobs > totalManagedRss * Config.getInstance().getSchedulerCfg().getMaxBlockedRssStarvationRatio()) {
                     killForStarvationProtection(candidateToKill);
                 }
             }
@@ -304,13 +300,13 @@ public class Scheduler {
         }
     }
 
-    private long getAvailableMemory() throws IOException, InterruptedException {
-        long availableMemory = maxManagedRss - getMaxPromisedMemory();
-        long freeRSS = LinuxCommands.getInstance().getSystemRSSFreeMemory();
-        if (availableMemory > freeRSS) {
-            availableMemory = freeRSS;
+    private long getAvailableManagedMemory(long usedManagedMemory) throws IOException, InterruptedException {
+        long availableManagedMemory = totalManagedRss - usedManagedMemory;
+        long systemAvailableMemory = LinuxCommands.getInstance().getMemInfo()[1];
+        if (availableManagedMemory > systemAvailableMemory) {
+            availableManagedMemory = systemAvailableMemory;
         }
-        return availableMemory;
+        return availableManagedMemory;
     }
 
     private void refresh() throws IOException, InterruptedException {
@@ -321,11 +317,12 @@ public class Scheduler {
             long start = System.currentTimeMillis();
             cleanStalePeers();
             distributeNiceness();
-            this.availableMemory = getAvailableMemory();
-            checkPromises(availableMemory);
-            dequeueJobs(availableMemory);
+            long usedManagedMemory = getUsedManagedMemory();
+            long availableManagedMemory = getAvailableManagedMemory(usedManagedMemory);
+            checkPromises(availableManagedMemory);
+            dequeueJobs(availableManagedMemory);
             sendQueuePositionEvents();
-            this.jobList = createJobList(false);
+            this.jobList = createJobList(false, availableManagedMemory, usedManagedMemory);
             checkStarvation();
             this.refreshMillis = System.currentTimeMillis() - start;
         }
@@ -354,7 +351,7 @@ public class Scheduler {
         }
     }
 
-    private long checkPromises(long availableMemory) throws IOException, InterruptedException {
+    private long checkPromises(long availableManagedMemory) throws IOException, InterruptedException {
         synchronized (jobSet) {
             long currentRSS = 0;
             int[] pIds = getPIds();
@@ -362,26 +359,24 @@ public class Scheduler {
                 long[] treeRSSs = LinuxCommands.getInstance().getTreeRSS(pIds);
                 if (treeRSSs != null) {
                     int i = 0;
-                    {
-                        JobSet.RunningIterator running = jobSet.getRunning();
-                        while (running.hasNext()) {
-                            Integer id = running.next();
-                            ProcessInfo pi = processMap.get(id);
-                            long treeRSS = treeRSSs[i++];
-                            currentRSS += treeRSS;
-                            if (treeRSS != 0) {
-                                if (treeRSS > pi.getMaxSeenRSS()) {
-                                    pi.setMaxSeenRSS(treeRSS);
-                                }
-                                if (pi.getMaxRSS() < treeRSS) {
-                                    boolean allowed = PromiseHandler.getInstance().promiseFailed(availableMemory, pi, treeRSS);
-                                    if (allowed) {
-                                        availableMemory = availableMemory + pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS() - treeRSS;
-                                        pi.setMaxRSS(treeRSS);
-                                        pi.setAllowed(true);
-                                    } else {
-                                        LinuxCommands.getInstance().killTree(pi.getPid());
-                                    }
+                    JobSet.RunningIterator running = jobSet.getRunning();
+                    while (running.hasNext()) {
+                        Integer id = running.next();
+                        ProcessInfo pi = processMap.get(id);
+                        long treeRSS = treeRSSs[i++];
+                        currentRSS += treeRSS;
+                        if (treeRSS != 0) {
+                            if (treeRSS > pi.getMaxSeenRSS()) {
+                                pi.setMaxSeenRSS(treeRSS);
+                            }
+                            if (pi.getMaxRSS() < treeRSS) {
+                                boolean allowed = PromiseHandler.getInstance().promiseFailed(availableManagedMemory, pi, treeRSS);
+                                if (allowed) {
+                                    availableManagedMemory = availableManagedMemory + pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS() - treeRSS;
+                                    pi.setMaxRSS(treeRSS);
+                                    pi.setAllowed(true);
+                                } else {
+                                    LinuxCommands.getInstance().killTree(pi.getPid());
                                 }
                             }
                         }
@@ -404,7 +399,7 @@ public class Scheduler {
             throw new IllegalArgumentException("Request info is required");
         }
 
-        if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && submitChannel.getRequest().getMaxRSS() > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() || maxManagedRss < submitChannel.getRequest().getMaxRSS()) {
+        if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && submitChannel.getRequest().getMaxRSS() > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() || totalManagedRss < submitChannel.getRequest().getMaxRSS()) {
             submitChannel.sendEvent(Event.exceed_global, Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
             submitChannel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
             submitChannel.close();
@@ -423,7 +418,7 @@ public class Scheduler {
             parentId = ji.getSubmitChannel().getRequest().getParentId();
         }
 
-        if (treeRSS > maxManagedRss) {
+        if (treeRSS > totalManagedRss) {
             submitChannel.sendEvent(Event.exceed_tree, treeRSS);
             submitChannel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
             submitChannel.close();
@@ -449,7 +444,7 @@ public class Scheduler {
         }
     }
 
-    private String createJobList(boolean noHeaders) {
+    private String createJobList(boolean noHeaders, long availableManagedMemory, long usedManagedMemory) {
         StringBuilder sb = new StringBuilder(200);
         try {
             if (!noHeaders) {
@@ -646,15 +641,15 @@ public class Scheduler {
                 statSb.append(" ms");
                 statSb.append("\n");
                 statSb.append("  Memory: ");
-                statSb.append(Miscellaneous.humanReadableByteCount(maxManagedRss, Config.getInstance().getuICfg().issIMemoryUnits()));
+                statSb.append(Miscellaneous.humanReadableByteCount(totalManagedRss, Config.getInstance().getuICfg().issIMemoryUnits()));
                 statSb.append(ANSICode.CYAN);
                 statSb.append(" (");
                 statSb.append(ANSICode.GREEN);
-                statSb.append(Miscellaneous.humanReadableByteCount(availableMemory, Config.getInstance().getuICfg().issIMemoryUnits()));
+                statSb.append(Miscellaneous.humanReadableByteCount(availableManagedMemory, Config.getInstance().getuICfg().issIMemoryUnits()));
                 statSb.append(ANSICode.CYAN);
                 statSb.append(" / ");
                 statSb.append(ANSICode.RED);
-                statSb.append(Miscellaneous.humanReadableByteCount(maxRssSumMemory, Config.getInstance().getuICfg().issIMemoryUnits()));
+                statSb.append(Miscellaneous.humanReadableByteCount(usedManagedMemory, Config.getInstance().getuICfg().issIMemoryUnits()));
                 statSb.append(ANSICode.CYAN);
                 statSb.append(")");
                 statSb.append(ANSICode.RESET);
@@ -716,11 +711,15 @@ public class Scheduler {
     public void listJobs(PeerChannel<Void> channel, boolean noHeaders) throws IOException, InterruptedException {
         try {
             if (noHeaders) {
-                PeerChannel.println(channel.getStdoutOs(), createJobList(true));
-            } else if (closed) {
+                long usedManagedMemory = getUsedManagedMemory();
+                long availableManagedMemory = getAvailableManagedMemory(usedManagedMemory);
+                PeerChannel.println(channel.getStdoutOs(), createJobList(true, availableManagedMemory, usedManagedMemory));
+            } else if (!closed) {
                 PeerChannel.println(channel.getStdoutOs(), jobList);
             } else {
-                PeerChannel.println(channel.getStdoutOs(), createJobList(false));
+                long usedManagedMemory = getUsedManagedMemory();
+                long availableManagedMemory = getAvailableManagedMemory(usedManagedMemory);
+                PeerChannel.println(channel.getStdoutOs(), createJobList(false, availableManagedMemory, usedManagedMemory));
             }
         } finally {
             channel.sendEvent(Event.retcode, 0);

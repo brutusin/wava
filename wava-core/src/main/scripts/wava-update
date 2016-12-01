@@ -1,7 +1,7 @@
 #!/bin/bash
 export USER=`whoami`
 export CURRENT_VERSION=${project.version}
-export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-metadata.xml | grep '<latest>' | grep -Eow '[0-9\.]*'` 
+export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-metadata.xml | grep '<release>' | grep -Eow '[0-9\.]*'` 
 
 if [ "$USER" != "root" ]; then
     echo "root user is required to run this script"
