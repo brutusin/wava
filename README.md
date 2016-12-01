@@ -117,7 +117,7 @@ make this variable persistent adding the previous line to the file: `~root/.bash
 
 ### 2. Download latest version:
 ```sh
-export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-metadata.xml | grep '<latest>' | grep -Eow '[0-9\.]*'`
+export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-metadata.xml | grep '<release>' | grep -Eow '[0-9\.]*'`
 wget -O /tmp/wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava-core&c=dist&e=zip&v=$WAVA_VERSION"
 ```
 *This `$WAVA_VERSION` variable has been created only for installation purposes and doesn't need to be persisted for future sessions*
