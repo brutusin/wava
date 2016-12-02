@@ -115,9 +115,15 @@ public class Scheduler {
         this.processingThread.start();
     }
 
-    private GroupInfo createGroupInfo(String name, String user, int priority, int timetoIdleSeconds) {
+    private GroupInfo createGroupInfo(String name, String user, Integer priority, Integer timetoIdleSeconds) {
         synchronized (jobSet) {
             if (!groupMap.containsKey(name)) {
+                if (priority == null) {
+                    priority = 0;
+                }
+                if (timetoIdleSeconds == null) {
+                    timetoIdleSeconds = -1;
+                }
                 GroupInfo gi = new GroupInfo(name, user, timetoIdleSeconds);
                 gi.setPriority(priority);
                 groupMap.put(gi.getGroupName(), gi);
@@ -817,8 +823,8 @@ public class Scheduler {
                         return;
                     }
                 }
-                int newPriority = channel.getRequest().getPriority();
-                if (newPriority != gi.getPriority()) {
+                Integer newPriority = channel.getRequest().getPriority();
+                if (newPriority != null && newPriority != gi.getPriority()) {
                     synchronized (gi.getJobs()) {
                         for (Integer id : gi.getJobs()) {
                             jobSet.setPriority(id, newPriority, gi.getGroupId());
@@ -829,8 +835,8 @@ public class Scheduler {
                     gi.setPriority(newPriority);
                     channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' priority updated successfully");
                 }
-                int newTimetoIdleSeconds = channel.getRequest().getTimetoIdleSeconds();
-                if (newTimetoIdleSeconds != gi.getTimeToIdelSeconds()) {
+                Integer newTimetoIdleSeconds = channel.getRequest().getTimetoIdleSeconds();
+                if (newTimetoIdleSeconds != null && newTimetoIdleSeconds != gi.getTimeToIdelSeconds()) {
                     gi.setTimeToIdelSeconds(newTimetoIdleSeconds);
                     channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' time-to-idle updated successfully");
                 }

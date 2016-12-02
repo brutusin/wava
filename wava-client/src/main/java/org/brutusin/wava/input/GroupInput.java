@@ -3,8 +3,8 @@ package org.brutusin.wava.input;
 public class GroupInput {
 
     private String groupName;
-    private int priority;
-    private int timetoIdleSeconds;
+    private Integer priority;
+    private Integer timetoIdleSeconds;
     private boolean delete;
     private boolean list;
     private boolean noHeaders;
@@ -17,19 +17,19 @@ public class GroupInput {
         this.groupName = groupName;
     }
 
-    public int getPriority() {
+    public Integer getPriority() {
         return priority;
     }
 
-    public void setPriority(int priority) {
+    public void setPriority(Integer priority) {
         this.priority = priority;
     }
 
-    public int getTimetoIdleSeconds() {
+    public Integer getTimetoIdleSeconds() {
         return timetoIdleSeconds;
     }
 
-    public void setTimetoIdleSeconds(int timetoIdleSeconds) {
+    public void setTimetoIdleSeconds(Integer timetoIdleSeconds) {
         this.timetoIdleSeconds = timetoIdleSeconds;
     }
 

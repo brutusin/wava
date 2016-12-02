@@ -102,8 +102,6 @@ public class GroupMain {
                         } catch (NumberFormatException ex) {
                             throw new ParseException("Invalid " + tOpt.getOpt() + " value");
                         }
-                    } else {
-                        gi.setTimetoIdleSeconds(-1);
                     }
                 }
             } else if (cl.hasOption(lOpt.getOpt())) {
