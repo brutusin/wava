@@ -62,7 +62,7 @@ public class Scheduler {
     private long lastPingMillis;
     private long refreshMillis;
 
-    public Scheduler() throws NonRootUserException, IOException, InterruptedException {
+    public Scheduler() throws NonRootUserException {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
         if (!this.runningUser.equals("root")) {
             throw new NonRootUserException();
@@ -106,6 +106,12 @@ public class Scheduler {
                 }
             }
         };
+    }
+
+    public void start() {
+        if (closed) {
+            throw new IllegalStateException("Instance is closed");
+        }
         this.processingThread.start();
     }
 
@@ -202,7 +208,7 @@ public class Scheduler {
                 if (pi != null && !pi.getJobInfo().getSubmitChannel().ping()) {
                     try {
                         LinuxCommands.getInstance().killTree(pi.getPid());
-                    } catch (IOException ex) {
+                    } catch (RuntimeException ex) {
                         LOGGER.log(Level.SEVERE, null, ex);
                     }
                 }
@@ -211,7 +217,7 @@ public class Scheduler {
         lastPingMillis = System.currentTimeMillis();
     }
 
-    private void sendQueuePositionEvents() {
+    private void sendQueuePositionEventsToParentJobs() {
         synchronized (jobSet) {
             int position = 0;
             JobSet.QueueIterator it = jobSet.getQueue();
@@ -219,7 +225,7 @@ public class Scheduler {
                 position++;
                 Integer id = it.next();
                 JobInfo ji = jobMap.get(id);
-                if (position != ji.getPreviousQueuePosition()) {
+                if (ji.getSubmitChannel().getRequest().getParentId() != null && position != ji.getPreviousQueuePosition()) {
                     ji.getSubmitChannel().sendEvent(Event.queued, position);
                     ji.setPreviousQueuePosition(position);
                 }
@@ -300,7 +306,7 @@ public class Scheduler {
         }
     }
 
-    private long getAvailableManagedMemory(long usedManagedMemory) throws IOException, InterruptedException {
+    private long getAvailableManagedMemory(long usedManagedMemory) {
         long availableManagedMemory = totalManagedRss - usedManagedMemory;
         long systemAvailableMemory = LinuxCommands.getInstance().getMemInfo()[1];
         if (availableManagedMemory > systemAvailableMemory) {
@@ -321,7 +327,7 @@ public class Scheduler {
             long availableManagedMemory = getAvailableManagedMemory(usedManagedMemory);
             checkPromises(availableManagedMemory);
             dequeueJobs(availableManagedMemory);
-            sendQueuePositionEvents();
+            sendQueuePositionEventsToParentJobs();
             this.jobList = createJobList(false, availableManagedMemory, usedManagedMemory);
             checkStarvation();
             this.refreshMillis = System.currentTimeMillis() - start;
@@ -1215,10 +1221,12 @@ public class Scheduler {
             this.allowed = allowed;
         }
 
-        public synchronized void setNiceness(int niceness) throws IOException, InterruptedException {
+        public synchronized void setNiceness(int niceness) {
             if (niceness != this.niceness) {
                 LinuxCommands.getInstance().setNiceness(pId, niceness);
-                jobInfo.getSubmitChannel().sendEvent(Event.niceness, niceness);
+                if (jobInfo.getSubmitChannel().getRequest().getParentId() != null) {
+                    jobInfo.getSubmitChannel().sendEvent(Event.niceness, niceness);
+                }
                 this.niceness = niceness;
             }
         }

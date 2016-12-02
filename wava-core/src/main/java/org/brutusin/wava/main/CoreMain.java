@@ -37,6 +37,7 @@ public class CoreMain {
         try {
             Scheduler scheduler = new Scheduler();
             RequestHandler requestHandler = new RequestHandler(scheduler);
+            scheduler.start();
             requestHandler.start();
         } finally {
             lock.release();

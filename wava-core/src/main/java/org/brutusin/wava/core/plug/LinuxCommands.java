@@ -16,7 +16,6 @@
 package org.brutusin.wava.core.plug;
 
 import java.io.File;
-import java.io.IOException;
 import org.brutusin.wava.core.plug.impl.POSIXCommandsImpl;
 
 /**
@@ -31,15 +30,13 @@ public abstract class LinuxCommands {
         return INSTANCE;
     }
 
-    public abstract void setImmutable(File f, boolean immutable) throws IOException, InterruptedException;
-
-    public abstract void setNiceness(int pId, int niceness) throws IOException, InterruptedException;
+    public abstract void setNiceness(int pId, int niceness);
 
     public abstract String[] decorateWithCPUAffinity(String[] cmd, String affinity);
 
-    public abstract long[] getTreeRSS(int[] pids) throws IOException, InterruptedException;
+    public abstract long[] getTreeRSS(int[] pids);
 
-    public abstract void killTree(int pid) throws IOException, InterruptedException;
+    public abstract void killTree(int pid);
     
     /**
      * Returns an array of length 2 being ret[0]: total RAM, and ret[1]:
@@ -51,8 +48,8 @@ public abstract class LinuxCommands {
 
     public abstract String[] getRunAsCommand(String user, String[] cmd);
 
-    public abstract String getFileOwner(File f) throws IOException, InterruptedException;
+    public abstract String getFileOwner(File f);
 
-    public abstract String getRunningUser() throws IOException, InterruptedException;
+    public abstract String getRunningUser();
 
 }

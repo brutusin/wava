@@ -49,7 +49,11 @@ public class RequestExecutor {
         final File eventsNamedPipe = new File(streamRoot, NamedPipe.events.name());
         final File stdoutNamedPipe = new File(streamRoot, NamedPipe.stdout.name());
         final File stderrNamedPipe = new File(streamRoot, NamedPipe.stderr.name());
-        ProcessUtils.createPOSIXNamedPipes(eventsNamedPipe, stderrNamedPipe, stdoutNamedPipe);
+        try {
+            ProcessUtils.createPOSIXNamedPipes(eventsNamedPipe, stderrNamedPipe, stdoutNamedPipe);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
         final Bean<Integer> retCode = new Bean<>();
         final Bean<FileInputStream> eventsStreamBean = new Bean<>();
         final Bean<FileInputStream> stdoutStreamBean = new Bean<>();

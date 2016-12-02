@@ -17,7 +17,6 @@ package org.brutusin.wava.core.plug.impl;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -38,51 +37,38 @@ public class POSIXCommandsImpl extends LinuxCommands {
 
     private static final File FILE_MEMINFO = new File("/proc/meminfo");
 
-    private static String executeBashCommand(String command) throws IOException, InterruptedException {
+    private static String executeBashCommand(String command) throws ProcessException, InterruptedException {
         String[] cmd = {"/bin/bash", "-c", command};
-        Process p = Runtime.getRuntime().exec(cmd);
-        String[] ret = ProcessUtils.execute(p);
-        return ret[0];
+        return ProcessUtils.executeProcess(cmd);
     }
 
     @Override
-    public void setNiceness(int pId, int niceness) throws IOException, InterruptedException {
+    public void setNiceness(int pId, int niceness) {
         try {
             String[] cmd = {"renice", "-n", String.valueOf(niceness), "-p", String.valueOf(pId)};
-            Runtime.getRuntime().exec(cmd);
-            Process p = Runtime.getRuntime().exec(cmd);
-            ProcessUtils.execute(p);
-            Process getChildrenProcess = Runtime.getRuntime().exec(new String[]{"ps", "-o", "pid", "--no-headers", "--ppid", String.valueOf(pId)});
-            String output = ProcessUtils.execute(getChildrenProcess)[0];
+            ProcessUtils.executeProcess(cmd);
+            String output = ProcessUtils.executeProcess(new String[]{"ps", "-o", "pid", "--no-headers", "--ppid", String.valueOf(pId)});
             if (output != null) {
                 String[] childrenIds = output.split("\n");
                 for (String childrenId : childrenIds) {
                     setNiceness(Integer.valueOf(childrenId.trim()), niceness);
                 }
             }
-        } catch (ProcessException pe) {
-            // Ignore process non-zero retcodes
+        } catch (ProcessException ex) {
+            // Silently continue if executed command doesn't return 0
+        } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
     @Override
-    public void setImmutable(File f, boolean immutable) throws IOException, InterruptedException {
-        String[] cmd = {"chattr", immutable ? "+i" : "-i", f.getAbsolutePath()};
-        Process p = Runtime.getRuntime().exec(cmd);
-        ProcessUtils.execute(p);
-    }
-
-    @Override
-    public void killTree(int pId) throws IOException, InterruptedException {
+    public void killTree(int pId) {
         Thread t1 = new Thread() {
             @Override
             public void run() {
-                try {
-                    Set<Integer> visitedIds = new HashSet<>();
-                    getTree(visitedIds, pId, false);
-                    kill(visitedIds, 15); // SIGTERM
-                } catch (InterruptedException ex) {
-                }
+                Set<Integer> visitedIds = new HashSet<>();
+                getTree(visitedIds, pId, false);
+                kill(visitedIds, 15); // SIGTERM
             }
         };
         t1.setName("SIGTERM " + pId);
@@ -104,33 +90,29 @@ public class POSIXCommandsImpl extends LinuxCommands {
 
     }
 
-    private void getTree(Set<Integer> visited, int pId, boolean stop) throws InterruptedException {
+    private void getTree(Set<Integer> visited, int pId, boolean stop) {
         try {
             if (stop) {
                 // needed to stop quickly forking parent from producing children between child killing and parent killing
-                Process stopProcess = Runtime.getRuntime().exec(new String[]{"kill", "-stop", String.valueOf(pId)});
-                ProcessUtils.execute(stopProcess);
+                ProcessUtils.executeProcess(new String[]{"kill", "-stop", String.valueOf(pId)});
             }
-            Process getChildrenProcess = Runtime.getRuntime().exec(new String[]{"ps", "-o", "pid", "--no-headers", "--ppid", String.valueOf(pId)});
-            String output = ProcessUtils.execute(getChildrenProcess)[0];
+            String output = ProcessUtils.executeProcess(new String[]{"ps", "-o", "pid", "--no-headers", "--ppid", String.valueOf(pId)});
             if (output != null) {
                 String[] pIds = output.split("\n");
                 for (int i = 0; i < pIds.length; i++) {
                     getTree(visited, Integer.valueOf(pIds[i].trim()), stop);
                 }
             }
-        } catch (Exception ex) {
-            if (ex instanceof InterruptedException) {
-                throw (InterruptedException) ex;
-            } else {
-                // Silently continue if executed commands don't return 0
-            }
+        } catch (ProcessException ex) {
+            // Silently continue if executed command doesn't return 0
+        } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
         } finally {
             visited.add(pId);
         }
     }
 
-    private void kill(Set<Integer> pIds, int signal) throws InterruptedException {
+    private void kill(Set<Integer> pIds, int signal) {
         try {
             String[] cmd = new String[3 + pIds.size()];
             cmd[0] = "kill";
@@ -140,32 +122,30 @@ public class POSIXCommandsImpl extends LinuxCommands {
             for (int i = 3; i < cmd.length; i++) {
                 cmd[i] = String.valueOf(it.next());
             }
-            Process p = Runtime.getRuntime().exec(cmd);
-            ProcessUtils.execute(p);
-        } catch (Exception ex) {
-            if (ex instanceof InterruptedException) {
-                throw (InterruptedException) ex;
-            } else {
-                // Silently continue if executed command doesn't return 0
-            }
+            ProcessUtils.executeProcess(cmd);
+        } catch (ProcessException ex) {
+            // Silently continue if executed command doesn't return 0
+        } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
     @Override
-    public long[] getTreeRSS(int[] pIds) throws IOException, InterruptedException {
+    public long[] getTreeRSS(int[] pIds) {
         long[] ret = new long[pIds.length];
         Map<Integer, Integer> indexes = new HashMap<>();
         for (int i = 0; i < pIds.length; i++) {
             indexes.put(pIds[i], i);
         }
         String[] cmd = {"ps", "axo", "pid,ppid,rss", "--no-headers", "--sort=start_time"};
-        Process p = Runtime.getRuntime().exec(cmd);
         String stdout;
         try {
-            stdout = ProcessUtils.execute(p)[0];
-        } catch (RuntimeException ex) {
+            stdout = ProcessUtils.executeProcess(cmd);
+        } catch (ProcessException ex) {
             // no processes exist retcode=1
             return null;
+        } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
         }
         if (stdout != null) {
             String[] lines = stdout.split("\n");
@@ -234,14 +214,21 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     @Override
-    public String getRunningUser() throws IOException, InterruptedException {
-        String[] cmd = {"id", "-un"};
-        Process p = Runtime.getRuntime().exec(cmd);
-        return ProcessUtils.execute(p)[0];
+    public String getRunningUser() {
+        try {
+            String[] cmd = {"id", "-un"};
+            return ProcessUtils.executeProcess(cmd);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     @Override
-    public String getFileOwner(File f) throws IOException, InterruptedException {
-        return executeBashCommand("ls -ld \"" + f.getAbsolutePath() + "\" | awk 'NR==1 {print $3}'");
+    public String getFileOwner(File f) {
+        try {
+            return executeBashCommand("ls -ld \"" + f.getAbsolutePath() + "\" | awk 'NR==1 {print $3}'");
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }
