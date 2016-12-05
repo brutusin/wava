@@ -887,10 +887,9 @@ public class Scheduler {
             @Override
             public void run() {
                 String[] cmd = ji.getSubmitChannel().getRequest().getCommand();
-                if (Scheduler.this.runningUser.equals("root")) {
-                    cmd = LinuxCommands.getInstance().getRunAsCommand(ji.getSubmitChannel().getUser(), cmd);
-                }
+                cmd = LinuxCommands.getInstance().decorateRunAsCommand(cmd, ji.getSubmitChannel().getUser());
                 cmd = LinuxCommands.getInstance().decorateWithCPUAffinity(cmd, Config.getInstance().getProcessCfg().getCpuAfinity());
+                cmd = LinuxCommands.getInstance().decorateWithBatchSchedulerPolicy(cmd);
                 ProcessBuilder pb = new ProcessBuilder(cmd);
                 pb.environment().clear();
                 pb.directory(ji.getSubmitChannel().getRequest().getWorkingDirectory());
@@ -1044,7 +1043,14 @@ public class Scheduler {
             it = jobSet.getRunning();
             while (it.hasNext()) {
                 Integer id = it.next();
-                ProcessInfo pi = processMap.get(id);
+                ProcessInfo pi;
+                while ((pi = processMap.get(id)) == null) {
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException ex) {
+                        LOGGER.log(Level.SEVERE, null, ex);
+                    }
+                }
                 pi.getJobInfo().getSubmitChannel().sendEvent(Event.shutdown, runningUser);
                 try {
                     LinuxCommands.getInstance().killTree(pi.getPid());
