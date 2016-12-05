@@ -32,7 +32,11 @@ public abstract class LinuxCommands {
 
     public abstract void setNiceness(int pId, int niceness);
 
+    public abstract String[] decorateRunAsCommand(String[] cmd, String user);
+    
     public abstract String[] decorateWithCPUAffinity(String[] cmd, String affinity);
+    
+    public abstract String[] decorateWithBatchSchedulerPolicy(String[] cmd);
 
     public abstract long[] getTreeRSS(int[] pids);
 
@@ -45,8 +49,6 @@ public abstract class LinuxCommands {
      * @return
      */
     public abstract long[] getMemInfo();
-
-    public abstract String[] getRunAsCommand(String user, String[] cmd);
 
     public abstract String getFileOwner(File f);
 
