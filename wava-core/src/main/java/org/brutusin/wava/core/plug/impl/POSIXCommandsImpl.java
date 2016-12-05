@@ -181,6 +181,18 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     @Override
+    public String[] decorateWithBatchSchedulerPolicy(String[] cmd) {
+        String[] ret = new String[cmd.length + 3];
+        ret[0] = "chrt";
+        ret[1] = "-b";
+        ret[2] = "0";
+        for (int i = 3; i < ret.length; i++) {
+            ret[i] = cmd[i - 3];
+        }
+        return ret;
+    }
+
+    @Override
     public long[] getMemInfo() {
         long[] ret = {-1, -1};
         try (Scanner scanner = new Scanner(FILE_MEMINFO).useDelimiter("\\s*:\\s*|\n")) {
@@ -202,7 +214,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     @Override
-    public String[] getRunAsCommand(String user, String[] cmd) {
+    public String[] decorateRunAsCommand(String[] cmd, String user) {
         StringBuilder sb = new StringBuilder("");
         for (int i = 0; i < cmd.length; i++) {
             if (i > 0) {
