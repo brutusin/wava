@@ -15,8 +15,6 @@
  */
 package org.brutusin.wava.cfg.impl;
 
-import java.io.File;
-
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
