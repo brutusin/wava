@@ -41,14 +41,18 @@ public abstract class NicenessHandler {
     }
 
     /**
-     * Returns the niceness of the i-th process out of a total of {@code total}
+     * Returns the niceness of the processPosition-th process out of a total of
+     * {@code total}
      *
-     * @param i from {@code 0} to {@code total -1}, in decreasing order of
-     * priority
-     * @param total total number of running processes
+     * @param processPosition from {@code 0} to {@code processCount -1}, in decreasing
+     * order of priority
+     * @param processCount total number of running processes
+     * @param groupPosition from {@code 0} to {@code groupCount -1}, in decreasing
+     * order of priority
+     * @param groupCount total number of groups with running processes
      * @param minNiceness
      * @param maxNiceness
-     * @return
+     * @return a value within the range [minNiceness,maxNiceness]
      */
-    public abstract int getNiceness(int i, int total, int minNiceness, int maxNiceness);
+    public abstract int getNiceness(int processPosition, int processCount, int groupPosition, int groupCount, int minNiceness, int maxNiceness);
 }

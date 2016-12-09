@@ -13,30 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.brutusin.wava.core.plug.impl;
+package org.brutusin.wava.core.plug.impl.promise;
 
-import org.brutusin.wava.core.plug.impl.niceness.HomogeneusSpreadNicenessHandler;
-import org.junit.Test;
+import java.io.IOException;
+import org.brutusin.wava.io.Event;
+import org.brutusin.wava.core.plug.PromiseHandler;
+import org.brutusin.wava.core.Scheduler;
 
 /**
+ * Disallow continuing executing jobs with failed promises
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
-public class HomogeneusSpreadNicenessHandlerTest {
+public final class StrictPromiseHandler extends PromiseHandler {
 
-    public HomogeneusSpreadNicenessHandlerTest() {
-    }
-
-    @Test
-    public void distribute() {
-        int minNiceness = -20;
-        int maxNiceness = 19;
-        for (int total = 0; total < 100; total++) {
-            System.out.print(total + ":");
-            for (int i = 0; i < total; i++) {
-                System.out.print(" " + HomogeneusSpreadNicenessHandler.distribute(i, total, minNiceness, maxNiceness));
-            }
-            System.out.println();
-        }
+    @Override
+    public boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException {
+        pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_disallowed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
+        return false;
     }
 }

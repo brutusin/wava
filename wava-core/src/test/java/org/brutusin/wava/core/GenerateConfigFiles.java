@@ -19,8 +19,8 @@ import java.io.File;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.cfg.impl.ConfigImpl;
-import org.brutusin.wava.core.plug.impl.HomogeneusSpreadNicenessHandler;
-import org.brutusin.wava.core.plug.impl.LaxPromiseHandler;
+import org.brutusin.wava.core.plug.impl.niceness.HomogeneusSpreadNicenessHandler;
+import org.brutusin.wava.core.plug.impl.promise.LaxPromiseHandler;
 
 /**
  *

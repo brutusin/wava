@@ -239,17 +239,47 @@ public class Scheduler {
         }
     }
 
-    private void distributeNiceness() throws IOException, InterruptedException {
+    private int getGroupsRunning() {
+        int ret = 0;
         synchronized (jobSet) {
-            int pos = 0;
+            ProcessInfo prev = null;
             Iterator<Integer> it = jobSet.getRunning();
             while (it.hasNext()) {
                 Integer id = it.next();
                 ProcessInfo pi = processMap.get(id);
                 if (pi != null) {
-                    pi.setNiceness(NicenessHandler.getInstance().getNiceness(pos, jobSet.countRunning(), Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
+                    if (prev == null || !prev.getJobInfo().getSubmitChannel().getRequest().getGroupName().equals(pi.getJobInfo().getSubmitChannel().getRequest().getGroupName())) {
+                        ret++;
+                    }
+                }
+                prev = pi;
+            }
+        }
+        return ret;
+
+    }
+
+    private void distributeNiceness() throws IOException, InterruptedException {
+        synchronized (jobSet) {
+            int groupsRunning = getGroupsRunning();
+            int pos = 0;
+            int gpos = 0;
+            ProcessInfo prev = null;
+            Iterator<Integer> it = jobSet.getRunning();
+            while (it.hasNext()) {
+                Integer id = it.next();
+                ProcessInfo pi = processMap.get(id);
+                if (pi != null) {
+                    if (prev != null && !prev.getJobInfo().getSubmitChannel().getRequest().getGroupName().equals(pi.getJobInfo().getSubmitChannel().getRequest().getGroupName())) {
+                        gpos++;
+                        if (groupsRunning <= gpos) {
+                            groupsRunning = gpos + 1;
+                        }
+                    }
+                    pi.setNiceness(NicenessHandler.getInstance().getNiceness(pos, jobSet.countRunning(), gpos, groupsRunning, Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
                 }
                 pos++;
+                prev = pi;
             }
         }
     }
@@ -340,26 +370,35 @@ public class Scheduler {
         }
     }
 
-    private void updateNiceness(ProcessInfo pi, int position) throws IOException, InterruptedException {
-        pi.setNiceness(NicenessHandler.getInstance().getNiceness(position, jobSet.countRunning(), Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
-    }
-
-    private int getRunningPosition(ProcessInfo pi) throws IOException, InterruptedException {
+    /**
+     *
+     * @param pi
+     * @return ret[0]: job position, ret[1]: group position
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private int[] getRunningPosition(ProcessInfo pi) throws IOException, InterruptedException {
         synchronized (jobSet) {
             JobSet.RunningIterator running = jobSet.getRunning();
-            int i = 0;
+            int pos = 0;
+            int gpos = 0;
+            ProcessInfo prev = null;
             while (running.hasNext()) {
                 Integer id = running.next();
                 ProcessInfo p = processMap.get(id);
                 if (p == null) {
                     continue;
                 }
-                if (pi.getJobInfo().getId() == p.getJobInfo().getId()) {
-                    return i;
+                if (prev != null && !prev.getJobInfo().getSubmitChannel().getRequest().getGroupName().equals(p.getJobInfo().getSubmitChannel().getRequest().getGroupName())) {
+                    gpos++;
                 }
-                i++;
+                if (pi.getJobInfo().getId() == p.getJobInfo().getId()) {
+                    return new int[]{pos, gpos};
+                }
+                pos++;
+                prev = p;
             }
-            return -1;
+            return null;
         }
     }
 
@@ -913,8 +952,15 @@ public class Scheduler {
                             pi = new ProcessInfo(ji, pId);
                             ji.getSubmitChannel().sendEvent(Event.running, pId);
                             processMap.put(ji.getId(), pi);
-                            updateNiceness(pi, getRunningPosition(pi));
-
+                            int[] positions = getRunningPosition(pi);
+                            if (positions == null) {
+                                throw new AssertionError();
+                            }
+                            int groupCount = getGroupsRunning();
+                            if (positions[1] >= groupCount) {
+                                groupCount = positions[1] + 1;
+                            }
+                            pi.setNiceness(NicenessHandler.getInstance().getNiceness(positions[0], jobSet.countRunning(), positions[1], groupCount, Config.getInstance().getProcessCfg().getNicenessRange()[0], Config.getInstance().getProcessCfg().getNicenessRange()[1]));
                         }
                     } catch (Exception ex) {
                         ji.getSubmitChannel().sendEvent(Event.error, JsonCodec.getInstance().transform(Miscellaneous.getStrackTrace(ex)));
@@ -996,6 +1042,10 @@ public class Scheduler {
                         LOGGER.log(Level.SEVERE, th.getMessage(), th);
                     }
                 }
+            }
+
+            private void groupsRunning() {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
         };
         t.start();
