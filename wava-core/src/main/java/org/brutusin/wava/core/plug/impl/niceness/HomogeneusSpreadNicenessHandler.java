@@ -36,19 +36,14 @@ public final class HomogeneusSpreadNicenessHandler extends NicenessHandler {
     }
 
     public static int distribute(int i, int total, int min, int max) {
-        try {
-            int s = max - min + 1;
-            int r = (total - 1) / s + 1;
-            int c = total - (s * (r - 1));
-            int l = c * r;
-            if (i + 1 <= l) {
-                return min + i / r;
-            } else {
-                return min + c + (i - l) / (r - 1);
-            }
-        } catch (RuntimeException e) {
-            e.printStackTrace();
-            throw (e);
+        int s = max - min + 1;
+        int r = (total - 1) / s + 1;
+        int c = total - (s * (r - 1));
+        int l = c * r;
+        if (i + 1 <= l) {
+            return min + i / r;
+        } else {
+            return min + c + (i - l) / (r - 1);
         }
     }
 }
