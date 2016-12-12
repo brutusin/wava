@@ -231,7 +231,7 @@ public class Scheduler {
                 position++;
                 Integer id = it.next();
                 JobInfo ji = jobMap.get(id);
-                if (ji.getSubmitChannel().getRequest().getParentId() != null && position != ji.getPreviousQueuePosition()) {
+                if (ji.getSubmitChannel().getRequest().getParentId() == null && position != ji.getPreviousQueuePosition()) {
                     ji.getSubmitChannel().sendEvent(Event.queued, position);
                     ji.setPreviousQueuePosition(position);
                 }
