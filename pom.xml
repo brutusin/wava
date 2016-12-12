@@ -9,7 +9,7 @@
     <groupId>org.brutusin</groupId>
     <artifactId>wava-root</artifactId>
     <packaging>pom</packaging>   
-    <version>1.6.2-SNAPSHOT</version>
+    <version>1.6.2</version>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>A RSS-memory-aware scheduler for Linux batch processes</description>
     
@@ -29,7 +29,7 @@
         <url>https://github.com/brutusin/wava</url>
         <connection>scm:git:https://github.com/brutusin/wava.git</connection>
         <developerConnection>scm:git:https://github.com/brutusin/wava.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>v1.6.2</tag>
     </scm>
     
     <properties>
