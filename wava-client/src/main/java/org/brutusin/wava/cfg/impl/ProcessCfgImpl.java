@@ -25,7 +25,7 @@ public class ProcessCfgImpl implements ProcessCfg {
 
     private static final String DEFAULT_CPU_AFINITY_ENV = "DEFAULT_CPU_AFINITY";
 
-    private int[] nicenessRange = {-20, 19};
+    private int[] nicenessRange = {1, 19};
 
     private String cpuAfinity = "$" + DEFAULT_CPU_AFINITY_ENV;
 
