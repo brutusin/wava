@@ -94,7 +94,7 @@ public class RequestExecutor {
                 try {
                     FileInputStream is = new FileInputStream(stdoutNamedPipe);
                     stdoutStreamBean.setValue(is);
-                    Miscellaneous.pipeAsynchronously(is, true, stdoutStream);
+                    Miscellaneous.pipeSynchronously(is, true, stdoutStream);
                 } catch (Throwable th) {
                     LOGGER.log(Level.SEVERE, th.getMessage(), th);
                 }

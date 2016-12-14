@@ -97,7 +97,13 @@ public class PeerChannel<T> {
 
     public static boolean println(OutputStream os, String message) {
         try {
-            os.write(message.getBytes());
+            byte[] bytes = message.getBytes();
+            for (int i = 0; i < bytes.length; i++) {
+                os.write(bytes[i]);
+                if (i > 0 && i % 1024 == 0) {
+                    os.flush();
+                }
+            }
             os.write("\n".getBytes());
             os.flush();
             return true;
