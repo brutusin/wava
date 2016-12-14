@@ -24,7 +24,6 @@ import org.apache.commons.cli.ParseException;
 import org.brutusin.wava.core.io.CommandLineRequestExecutor;
 import org.brutusin.wava.utils.CoreUtils;
 import org.brutusin.wava.io.OpName;
-import org.brutusin.wava.io.RequestExecutor;
 import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.io.RetCode;
 
