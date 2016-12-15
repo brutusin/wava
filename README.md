@@ -152,36 +152,46 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
 
 ```javascript
 {
-  "uICfg" : {
-    "ansiColors" : true,
-    "sIMemoryUnits" : true
+  "tempFolder": "/dev/shm/wava/$WAVA_HOME",
+  "uICfg": {
+    "ansiColors": true,
+    "sIMemoryUnits": true
   },
-  "schedulerCfg" : {
-    "promiseHandlerClassName" : "org.brutusin.wava.core.plug.impl.StrictPromiseHandler",
-    "nicenessHandlerClassName" : "org.brutusin.wava.core.plug.impl.HomogeneusSpreadNicenessHandler",
-    "pollingSecs" : 5,
-    "maxTotalRSSBytes" : -1,
-    "maxJobRSSBytes" : -1,
-    "commandTTLCacheSecs" : 2,
-    "sigKillDelaySecs" : 5
+  "schedulerCfg": {
+    "promiseHandlerClassName": "org.brutusin.wava.core.plug.impl.promise.LaxPromiseHandler",
+    "nicenessHandlerClassName": "org.brutusin.wava.core.plug.impl.niceness.HomogeneusSpreadNicenessHandler",
+    "refreshLoopSleepMillisecs": 10,
+    "pingMillisecs": 1000,
+    "maxTotalRSSBytes": -1,
+    "maxJobRSSBytes": -1,
+    "commandTTLCacheSecs": 2,
+    "sigKillDelaySecs": 5,
+    "maxBlockedRssStarvationRatio": 0.5
   },
-  "processCfg" : {
-    "nicenessRange" : [ -20, 19 ],
-    "cpuAfinity" : "$DEFAULT_CPU_AFINITY"
+  "processCfg": {
+    "nicenessRange": [
+      1,
+      19
+    ],
+    "cpuAfinity": "$DEFAULT_CPU_AFINITY"
   },
-  "groupCfg" : {
-    "dynamicGroupIdleSeconds" : 10,
-    "predefinedGroups" : [ {
-      "name" : "high",
-      "priority" : -10,
-      "timeToIdleSeconds" : -1
-    }, {
-      "name" : "low",
-      "priority" : 10,
-      "timeToIdleSeconds" : -1
-    } ]
+  "groupCfg": {
+    "dynamicGroupIdleSeconds": 10,
+    "predefinedGroups": [
+      {
+        "name": "high",
+        "priority": -10,
+        "timeToIdleSeconds": -1
+      },
+      {
+        "name": "low",
+        "priority": 10,
+        "timeToIdleSeconds": -1
+      }
+    ]
   }
 }
+
 ```
 ### Configuration description
 Property                               | Description
