@@ -16,10 +16,10 @@
 package org.brutusin.wava.core.plug.impl.promise;
 
 import java.io.IOException;
-import org.brutusin.wava.io.Event;
 import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.Scheduler;
 import org.brutusin.wava.cfg.Config;
+import org.brutusin.wava.io.Event;
 
 /**
  * Allows the execution of promise-failing jobs as long as the total-max-RSS and
@@ -30,19 +30,14 @@ import org.brutusin.wava.cfg.Config;
 public final class LaxPromiseHandler extends PromiseHandler {
 
     @Override
-    public boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException {
-        if (availableMemory <= 0) {
-            pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_disallowed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
-            return false;
-        } else if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && treeRSS > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes()) {
+    public FailingAction promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long currentTotalUsedRss, long schedulerManagedRss) throws IOException, InterruptedException {
+        if (currentTotalUsedRss < schedulerManagedRss) {
+            return FailingAction.tolerate;
+        } else if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && pi.getMaxSeenRSS() > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes()) {
             pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_global, Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
-            pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_disallowed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
-            return false;
+            return FailingAction.kill;
         } else {
-            if (!pi.isAllowed()) {
-                pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_allowed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
-            }
-            return true;
+            return FailingAction.reenqueue;
         }
     }
 }

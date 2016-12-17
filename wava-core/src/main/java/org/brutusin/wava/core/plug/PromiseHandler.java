@@ -25,6 +25,20 @@ import org.brutusin.wava.cfg.Config;
  */
 public abstract class PromiseHandler {
 
+    public static enum FailingAction {
+        /**
+         * Tolerate failed promise
+         */
+        tolerate,
+        /**
+         * Stop and reenqueue failing promise job
+         */
+        reenqueue,
+        /**
+         * Kill failing promise job
+         */
+        kill
+    }
     private volatile static PromiseHandler instance;
 
     public static PromiseHandler getInstance() {
@@ -44,13 +58,15 @@ public abstract class PromiseHandler {
 
     /**
      *
-     * @param availableMemory
-     * @param pi
-     * @param treeRSS
+     * @param availableMemory non allocated memory
+     * @param pi 
+     * @param currentTotalUsedRss currently used memory by all jobs
+     * @param schedulerManagedRss maximum memory managed by scheduler
+     * schedulerManagedRss
      * @return true if the process is allowed to continue executing, false
      * otherwise
      * @throws IOException
      * @throws InterruptedException
      */
-    public abstract boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException;
+    public abstract FailingAction promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long currentTotalUsedRss, long schedulerManagedRss) throws IOException, InterruptedException;
 }

@@ -16,7 +16,6 @@
 package org.brutusin.wava.core.plug.impl.promise;
 
 import java.io.IOException;
-import org.brutusin.wava.io.Event;
 import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.Scheduler;
 
@@ -28,8 +27,7 @@ import org.brutusin.wava.core.Scheduler;
 public final class StrictPromiseHandler extends PromiseHandler {
 
     @Override
-    public boolean promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long treeRSS) throws IOException, InterruptedException {
-        pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_disallowed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
-        return false;
+    public FailingAction promiseFailed(long availableMemory, Scheduler.ProcessInfo pi, long currentTotalUsedRss, long schedulerManagedRss) throws IOException, InterruptedException {
+        return FailingAction.kill;
     }
 }
