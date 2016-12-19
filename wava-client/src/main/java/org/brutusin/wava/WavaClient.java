@@ -37,7 +37,7 @@ public class WavaClient {
     private final RequestExecutor executor = new RequestExecutor();
     
     public void submit(SubmitInput input, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws WavaNotRunningException {
-        int retCode;
+        Integer retCode;
         try {
             ExtendedSubmitInput esi = new ExtendedSubmitInput(input);
             String parentId = System.getenv(EnvEntry.WAVA_JOB_ID.name());
