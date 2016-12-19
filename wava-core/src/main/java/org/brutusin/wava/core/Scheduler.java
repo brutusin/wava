@@ -23,6 +23,7 @@ import org.brutusin.commons.utils.ErrorHandler;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.cfg.GroupCfg;
+import org.brutusin.wava.core.plug.LinuxCommands.TreeStats;
 import org.brutusin.wava.core.plug.NicenessHandler;
 import org.brutusin.wava.env.EnvEntry;
 import org.brutusin.wava.input.CancelInput;
@@ -103,7 +104,7 @@ public class Scheduler {
                         if (th instanceof InterruptedException) {
                             break;
                         }
-                        LOGGER.log(Level.SEVERE, null, th);
+                        LOGGER.log(Level.SEVERE, th.getMessage(), th);
                     }
                 }
             }
@@ -147,7 +148,7 @@ public class Scheduler {
             }
             LinuxCommands.getInstance().killTree(pi.getPid());
         } catch (Exception ex) {
-            LOGGER.log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
         }
     }
 
@@ -217,7 +218,7 @@ public class Scheduler {
                     try {
                         LinuxCommands.getInstance().killTree(pi.getPid());
                     } catch (RuntimeException ex) {
-                        LOGGER.log(Level.SEVERE, null, ex);
+                        LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
                     }
                 }
             }
@@ -355,10 +356,10 @@ public class Scheduler {
 
     private long getCurrentlyUsedManagedMemory() {
         int[] pIds = getPIds();
-        long[] treeRSSs = LinuxCommands.getInstance().getTreeRSS(pIds);
+        TreeStats[] treeStats = LinuxCommands.getInstance().getTreeStats(pIds);
         long ret = 0;
-        for (int i = 0; i < treeRSSs.length; i++) {
-            ret += treeRSSs[i];
+        for (int i = 0; i < treeStats.length; i++) {
+            ret += treeStats[i].rssBytes;
         }
         return ret;
     }
@@ -419,22 +420,23 @@ public class Scheduler {
             long totalCurrentRss = 0;
             int[] pIds = getPIds();
             if (pIds.length > 0) {
-                long[] treeRSSs = LinuxCommands.getInstance().getTreeRSS(pIds);
-                if (treeRSSs != null) {
+                TreeStats[] treeStats = LinuxCommands.getInstance().getTreeStats(pIds);
+                if (treeStats != null) {
                     JobSet.RunningIterator running = jobSet.getRunning();
                     int i = 0;
                     LinkedList<ProcessInfo> exceedingProcesses = new LinkedList<>();
                     while (running.hasNext()) {
                         Integer id = running.next();
                         ProcessInfo pi = processMap.get(id);
-                        long jobCurrentRss = treeRSSs[i++];
-                        totalCurrentRss += jobCurrentRss;
-                        pi.setCurrentRSS(jobCurrentRss);
-                        if (jobCurrentRss != 0) {
-                            if (jobCurrentRss > pi.getMaxSeenRSS()) {
-                                pi.setMaxSeenRSS(jobCurrentRss);
+                        TreeStats st = treeStats[i++];
+                        totalCurrentRss += st.rssBytes;
+                        pi.setCurrentRSS(st.rssBytes);
+                        pi.setCurrentCpuUsage(st.cpuPercentage);
+                        if (st.rssBytes != 0) {
+                            if (st.rssBytes > pi.getMaxSeenRSS()) {
+                                pi.setMaxSeenRSS(st.rssBytes);
                             }
-                            if (pi.getMaxRSS() < jobCurrentRss) {
+                            if (pi.getMaxRSS() < st.rssBytes) {
                                 exceedingProcesses.addFirst(pi);
                             }
                         }
@@ -547,6 +549,8 @@ public class Scheduler {
                 sb.append(" ");
                 sb.append(StringUtils.leftPad("CURR_RSS", 10));
                 sb.append(" ");
+                sb.append(StringUtils.leftPad("CPU%", 6));
+                sb.append(" ");
                 sb.append("CMD");
                 sb.append(ANSICode.END_OF_LINE.getCode());
                 sb.append(ANSICode.RESET.getCode());
@@ -616,6 +620,8 @@ public class Scheduler {
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(ANSICode.RESET.getCode());
                         sb.append(" ");
+                        sb.append(StringUtils.leftPad(String.format("%.1f", pi.getCurrentCpuUsage()), 6));
+                        sb.append(" ");
                         sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
                         sb.append(" ");
                     } else { // process not stated yet
@@ -645,6 +651,8 @@ public class Scheduler {
                         sb.append(StringUtils.leftPad("", 10));
                         sb.append(" ");
                         sb.append(StringUtils.leftPad("", 10));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 6));
                         sb.append(" ");
                         sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
                         sb.append(" ");
@@ -684,6 +692,8 @@ public class Scheduler {
                     sb.append(StringUtils.leftPad("", 10));
                     sb.append(" ");
                     sb.append(StringUtils.leftPad("", 10));
+                    sb.append(" ");
+                    sb.append(StringUtils.leftPad("", 6));
                     sb.append(" ");
                     sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
                     sb.append(" ");
@@ -1011,7 +1021,7 @@ public class Scheduler {
                         try {
                             LinuxCommands.getInstance().killTree(pId);
                         } catch (Throwable th) {
-                            LOGGER.log(Level.SEVERE, th.getMessage());
+                            LOGGER.log(Level.SEVERE, th.getMessage(), th);
                         }
 //                        stoutReaderThread.interrupt();
 //                        sterrReaderThread.interrupt();
@@ -1053,7 +1063,7 @@ public class Scheduler {
                                                 if (th instanceof InterruptedException) {
                                                     return;
                                                 }
-                                                LOGGER.log(Level.SEVERE, null, th);
+                                                LOGGER.log(Level.SEVERE, th.getMessage(), th);
                                             }
                                         }
                                     };
@@ -1131,14 +1141,14 @@ public class Scheduler {
                     try {
                         Thread.sleep(10);
                     } catch (InterruptedException ex) {
-                        LOGGER.log(Level.SEVERE, null, ex);
+                        LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
                     }
                 }
                 pi.getJobInfo().getSubmitChannel().sendEvent(Event.shutdown, runningUser);
                 try {
                     LinuxCommands.getInstance().killTree(pi.getPid());
                 } catch (Exception ex) {
-                    LOGGER.log(Level.SEVERE, null, ex);
+                    LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
                 }
             }
         }
@@ -1272,6 +1282,7 @@ public class Scheduler {
         private volatile long maxRSS;
         private volatile long maxSeenRSS;
         private volatile long currentRSS;
+        private volatile double currentCpuUsage;
         private volatile int niceness = Integer.MAX_VALUE;
         private boolean allowed;
 
@@ -1323,6 +1334,14 @@ public class Scheduler {
 
         public void setCurrentRSS(long currentRSS) {
             this.currentRSS = currentRSS;
+        }
+
+        public double getCurrentCpuUsage() {
+            return currentCpuUsage;
+        }
+
+        public void setCurrentCpuUsage(double currentCpuUsage) {
+            this.currentCpuUsage = currentCpuUsage;
         }
 
         public synchronized void setNiceness(int niceness) {

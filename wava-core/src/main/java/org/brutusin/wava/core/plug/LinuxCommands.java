@@ -33,15 +33,15 @@ public abstract class LinuxCommands {
     public abstract void setNiceness(int pId, int niceness);
 
     public abstract String[] decorateRunAsCommand(String[] cmd, String user);
-    
+
     public abstract String[] decorateWithCPUAffinity(String[] cmd, String affinity);
-    
+
     public abstract String[] decorateWithBatchSchedulerPolicy(String[] cmd);
 
-    public abstract long[] getTreeRSS(int[] pids);
+    public abstract TreeStats[] getTreeStats(int[] pids);
 
     public abstract void killTree(int pid);
-    
+
     /**
      * Returns an array of length 2 being ret[0]: total RAM, and ret[1]:
      * available RAM
@@ -54,4 +54,9 @@ public abstract class LinuxCommands {
 
     public abstract String getRunningUser();
 
+    public static class TreeStats {
+
+        public long rssBytes;
+        public double cpuPercentage;
+    }
 }

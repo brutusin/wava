@@ -131,13 +131,13 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     @Override
-    public long[] getTreeRSS(int[] pIds) {
-        long[] ret = new long[pIds.length];
+    public TreeStats[] getTreeStats(int[] pIds) {
+        TreeStats[] ret = new TreeStats[pIds.length];
         Map<Integer, Integer> indexes = new HashMap<>();
         for (int i = 0; i < pIds.length; i++) {
             indexes.put(pIds[i], i);
         }
-        String[] cmd = {"ps", "axo", "pid,ppid,rss", "--no-headers", "--sort=start_time"};
+        String[] cmd = {"ps", "axo", "pid,ppid,rss,%cpu", "--no-headers", "--sort=start_time"};
         String stdout;
         try {
             stdout = ProcessUtils.executeProcess(cmd);
@@ -161,7 +161,13 @@ public class POSIXCommandsImpl extends LinuxCommands {
                     }
                 }
                 if (index != null) {
-                    ret[index] += Long.valueOf(cols[2].trim()) * 1000;
+                    TreeStats st = ret[index];
+                    if (st == null) {
+                        st = new TreeStats();
+                        ret[index] = st;
+                    }
+                    st.rssBytes += Long.valueOf(cols[2].trim()) * 1000;
+                    st.cpuPercentage += Double.valueOf(cols[3].trim());
                 }
             }
         }
