@@ -1036,7 +1036,7 @@ public class Scheduler {
                             stoutReaderThread.join();
                             sterrReaderThread.join();
                         } catch (Throwable th) {
-                            LOGGER.log(Level.SEVERE, th.getMessage());
+                            LOGGER.log(Level.SEVERE, th.getMessage(), th);
                         }
                     }
                 } finally {
