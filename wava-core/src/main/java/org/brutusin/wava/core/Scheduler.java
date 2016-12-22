@@ -428,6 +428,9 @@ public class Scheduler {
                     while (running.hasNext()) {
                         Integer id = running.next();
                         ProcessInfo pi = processMap.get(id);
+                        if (pi == null) {
+                            continue;
+                        }
                         TreeStats st = treeStats[i++];
                         totalCurrentRss += st.rssBytes;
                         pi.setCurrentRSS(st.rssBytes);
