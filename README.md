@@ -30,7 +30,7 @@ In particular job submissions are performed by separate peer processes (`wava -r
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/process-diagram.png)
 
-The scheduler pipes job `stderr` and `stdout` to the respective streams of their peers. Additionally, it pipes scheduler [events](#events) to the peer `stderr` unless an event file has been specified in submission (`wava -r -e <file>`).
+The scheduler pipes standard io-streams between the job processes and their respective peer processes. Additionally, it pipes scheduler [events](#events) to the peer `stderr` unless an event file has been specified in submission (`wava -r -e <file>`).
 
 ### Memory promises
 Each job is submitted with a promise of maximum RSS usage, and enqueued according to specific [ordering](#job-order) rules. The scheduler keeps track of these needs in order to guarantee that the set of running jobs never exceed a ([configurable](#configuration-description)) total amount of physical memory.
