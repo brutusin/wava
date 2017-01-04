@@ -432,15 +432,17 @@ public class Scheduler {
                             continue;
                         }
                         TreeStats st = treeStats[i++];
-                        totalCurrentRss += st.rssBytes;
-                        pi.setCurrentRSS(st.rssBytes);
-                        pi.setCurrentCpuUsage(st.cpuPercentage);
-                        if (st.rssBytes != 0) {
-                            if (st.rssBytes > pi.getMaxSeenRSS()) {
-                                pi.setMaxSeenRSS(st.rssBytes);
-                            }
-                            if (pi.getMaxRSS() < st.rssBytes) {
-                                exceedingProcesses.addFirst(pi);
+                        if (st != null) {
+                            totalCurrentRss += st.rssBytes;
+                            pi.setCurrentRSS(st.rssBytes);
+                            pi.setCurrentCpuUsage(st.cpuPercentage);
+                            if (st.rssBytes != 0) {
+                                if (st.rssBytes > pi.getMaxSeenRSS()) {
+                                    pi.setMaxSeenRSS(st.rssBytes);
+                                }
+                                if (pi.getMaxRSS() < st.rssBytes) {
+                                    exceedingProcesses.addFirst(pi);
+                                }
                             }
                         }
                     }
@@ -980,6 +982,7 @@ public class Scheduler {
                 }
                 pb.environment().put(EnvEntry.WAVA_JOB_ID.name(), String.valueOf(id));
                 ProcessInfo pi = null;
+                Thread isThread = null;
                 Process process;
                 int pId;
                 try {
@@ -991,6 +994,7 @@ public class Scheduler {
                                 return;
                             }
                             process = pb.start();
+                            isThread = Miscellaneous.pipeAsynchronously(ji.getSubmitChannel().getStdinIs(), process.getOutputStream());
                             pId = Miscellaneous.getUnixId(process);
                             pi = new ProcessInfo(ji, pId);
                             ji.getSubmitChannel().sendEvent(Event.running, pId);
@@ -1016,6 +1020,7 @@ public class Scheduler {
                     sterrReaderThread.setName("stderr-pid-" + pId);
                     try {
                         int code = process.waitFor();
+                        isThread.interrupt();
                         if (!ji.isRelaunched()) {
                             ji.getSubmitChannel().sendEvent(Event.maxrss, pi.getMaxSeenRSS());
                             ji.getSubmitChannel().sendEvent(Event.retcode, code);

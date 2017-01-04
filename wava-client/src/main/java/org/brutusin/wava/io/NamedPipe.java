@@ -22,6 +22,7 @@ package org.brutusin.wava.io;
 public enum NamedPipe {
 
     events,
+    stdin,
     stdout,
     stderr
 }

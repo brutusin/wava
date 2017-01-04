@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Date;
 import java.util.logging.Level;
@@ -43,6 +44,8 @@ public class PeerChannel<T> {
     private final T request;
     private boolean closed = false;
 
+    private final FileInputStream stdinIs;
+
     private final FileOutputStream eventsOs;
     private final FileOutputStream stdoutOs;
     private final FileOutputStream stderrOs;
@@ -50,9 +53,12 @@ public class PeerChannel<T> {
     public PeerChannel(String user, T input, File namedPipesRoot) throws OrphanChannelException, IOException {
         this.user = user;
         this.request = input;
+
+        File stdinNamedPipe = new File(namedPipesRoot, NamedPipe.stdin.name());
         File eventsNamedPipe = new File(namedPipesRoot, NamedPipe.events.name());
         File stdoutNamedPipe = new File(namedPipesRoot, NamedPipe.stdout.name());
         File stderrNamedPipe = new File(namedPipesRoot, NamedPipe.stderr.name());
+
         final Bean<Boolean> initializedBean = new Bean<>();
         Thread t = new Thread() {
             @Override
@@ -74,6 +80,10 @@ public class PeerChannel<T> {
                                 new FileInputStream(stderrNamedPipe).close();
                             } catch (Exception ex) {
                             }
+                            try {
+                                new FileOutputStream(stdinNamedPipe).close();
+                            } catch (Exception ex) {
+                            }
                         }
                     }
                 } catch (InterruptedException ex) {
@@ -86,6 +96,7 @@ public class PeerChannel<T> {
         this.eventsOs = new FileOutputStream(eventsNamedPipe);
         this.stdoutOs = new FileOutputStream(stdoutNamedPipe);
         this.stderrOs = new FileOutputStream(stderrNamedPipe);
+        this.stdinIs = new FileInputStream(stdinNamedPipe);
         synchronized (initializedBean) {
             if (initializedBean.getValue() != null) {
                 throw new OrphanChannelException();
@@ -127,6 +138,10 @@ public class PeerChannel<T> {
 
     public OutputStream getStderrOs() {
         return stderrOs;
+    }
+
+    public InputStream getStdinIs() {
+        return stdinIs;
     }
 
     public synchronized boolean log(ANSICode color, String message) {

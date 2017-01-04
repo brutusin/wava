@@ -18,6 +18,7 @@ package org.brutusin.wava.io;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -46,6 +47,7 @@ public class RequestExecutor {
         String json = JsonCodec.getInstance().transform(input);
         File streamRoot = new File(WavaTemp.getInstance().getTemp(), "streams/" + id);
         Miscellaneous.createDirectory(streamRoot);
+        final File stdinNamedPipe = new File(streamRoot, NamedPipe.stdin.name());
         final File eventsNamedPipe = new File(streamRoot, NamedPipe.events.name());
         final File stdoutNamedPipe = new File(streamRoot, NamedPipe.stdout.name());
         final File stderrNamedPipe = new File(streamRoot, NamedPipe.stderr.name());
@@ -55,9 +57,25 @@ public class RequestExecutor {
             throw new RuntimeException(ex);
         }
         final Bean<Integer> retCode = new Bean<>();
+        final Bean<FileOutputStream> stdinStreamBean = new Bean<>();
         final Bean<FileInputStream> eventsStreamBean = new Bean<>();
         final Bean<FileInputStream> stdoutStreamBean = new Bean<>();
         final Bean<FileInputStream> stderrStreamBean = new Bean<>();
+        
+        Thread stdinThread = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    FileOutputStream os = new FileOutputStream(stdinNamedPipe);
+                    stdinStreamBean.setValue(os);
+                    Miscellaneous.pipeSynchronously(System.in, true, os);
+                } catch (Throwable th) {
+                    LOGGER.log(Level.SEVERE, th.getMessage(), th);
+                }
+            }
+        };
+        stdinThread.start();
+        
         Thread eventsThread = new Thread() {
             @Override
             public void run() {
