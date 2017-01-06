@@ -178,6 +178,7 @@ public class PeerChannel<T> {
         this.eventsOs.flush();
         this.stdoutOs.flush();
         this.stderrOs.flush();
+        this.stdinIs.close();
         this.eventsOs.close();
         this.stdoutOs.close();
         this.stderrOs.close();
