@@ -52,7 +52,7 @@ public class RequestExecutor {
         final File stdoutNamedPipe = new File(streamRoot, NamedPipe.stdout.name());
         final File stderrNamedPipe = new File(streamRoot, NamedPipe.stderr.name());
         try {
-            ProcessUtils.createPOSIXNamedPipes(eventsNamedPipe, stderrNamedPipe, stdoutNamedPipe);
+            ProcessUtils.createPOSIXNamedPipes(stdinNamedPipe, eventsNamedPipe, stderrNamedPipe, stdoutNamedPipe);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
@@ -61,7 +61,7 @@ public class RequestExecutor {
         final Bean<FileInputStream> eventsStreamBean = new Bean<>();
         final Bean<FileInputStream> stdoutStreamBean = new Bean<>();
         final Bean<FileInputStream> stderrStreamBean = new Bean<>();
-        
+
         Thread stdinThread = new Thread() {
             @Override
             public void run() {
@@ -74,8 +74,9 @@ public class RequestExecutor {
                 }
             }
         };
+        stdinThread.setDaemon(true);
         stdinThread.start();
-        
+
         Thread eventsThread = new Thread() {
             @Override
             public void run() {
@@ -150,6 +151,14 @@ public class RequestExecutor {
             eventsThread.join();
             outThread.join();
         } catch (InterruptedException i) {
+        } finally {
+            if (stdinStreamBean.getValue() != null) {
+                try {
+                    stdinStreamBean.getValue().close();
+                } catch (IOException ex) {
+                    LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
+                }
+            }
             if (eventsStreamBean.getValue() != null) {
                 try {
                     eventsStreamBean.getValue().close();
