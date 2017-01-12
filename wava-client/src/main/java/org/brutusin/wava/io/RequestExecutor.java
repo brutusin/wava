@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -42,7 +43,7 @@ public class RequestExecutor {
     private static final Logger LOGGER = Logger.getLogger(RequestExecutor.class.getName());
     private static final File COUNTER_FILE = new File(WavaTemp.getInstance().getTemp(), "state/.seq");
 
-    public Integer executeRequest(OpName opName, Object input, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws IOException {
+    public Integer executeRequest(OpName opName, Object input, final InputStream stdinStream, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws IOException {
         long id = Miscellaneous.getGlobalAutoIncremental(COUNTER_FILE);
         String json = JsonCodec.getInstance().transform(input);
         File streamRoot = new File(WavaTemp.getInstance().getTemp(), "streams/" + id);
@@ -68,7 +69,9 @@ public class RequestExecutor {
                 try {
                     FileOutputStream os = new FileOutputStream(stdinNamedPipe);
                     stdinStreamBean.setValue(os);
-                    Miscellaneous.pipeSynchronously(System.in, true, os);
+                    if (stdinStream != null) {
+                        Miscellaneous.pipeSynchronously(stdinStream, true, os);
+                    }
                 } catch (Throwable th) {
                     LOGGER.log(Level.SEVERE, th.getMessage(), th);
                 }

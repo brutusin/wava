@@ -16,6 +16,7 @@
 package org.brutusin.wava;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import org.brutusin.wava.env.EnvEntry;
 import org.brutusin.wava.input.CancelInput;
@@ -36,7 +37,7 @@ public class WavaClient {
     
     private final RequestExecutor executor = new RequestExecutor();
     
-    public void submit(SubmitInput input, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws WavaNotRunningException {
+    public void submit(SubmitInput input, final InputStream stdinStream, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws WavaNotRunningException {
         Integer retCode;
         try {
             ExtendedSubmitInput esi = new ExtendedSubmitInput(input);
@@ -44,7 +45,7 @@ public class WavaClient {
             if (parentId != null) {
                 esi.setParentId(Integer.valueOf(parentId));
             }
-            retCode = executor.executeRequest(OpName.submit, esi, stdoutStream, stderrListener, eventListener);
+            retCode = executor.executeRequest(OpName.submit, esi, stdinStream, stdoutStream, stderrListener, eventListener);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
@@ -67,7 +68,7 @@ public class WavaClient {
         };
         int retCode;
         try {
-            retCode = executor.executeRequest(opName, input, stdoutOs, stderrListener, null);
+            retCode = executor.executeRequest(opName, input, null, stdoutOs, stderrListener, null);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }

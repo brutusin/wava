@@ -114,6 +114,6 @@ public class CommandLineRequestExecutor extends RequestExecutor {
                 System.err.println(line);
             }
         };
-        return executeRequest(opName, input, System.out, sterrListener, evtListener);
+        return executeRequest(opName, input, System.in, System.out, sterrListener, evtListener);
     }
 }
