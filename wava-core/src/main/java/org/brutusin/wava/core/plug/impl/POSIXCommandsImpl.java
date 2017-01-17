@@ -17,12 +17,14 @@ package org.brutusin.wava.core.plug.impl;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.regex.Matcher;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.commons.utils.ProcessException;
 import org.brutusin.commons.utils.ProcessUtils;
@@ -226,7 +228,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             if (i > 0) {
                 sb.append(" ");
             }
-            sb.append("\"").append(cmd[i]).append("\"");
+            sb.append("\"").append(cmd[i].replaceAll("\"", "\\\\\"")).append("\"");
         }
         return new String[]{"runuser", "-p", user, "-c", sb.toString()};
     }
@@ -248,5 +250,12 @@ public class POSIXCommandsImpl extends LinuxCommands {
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
+    }
+
+    public static void main(String[] args) {
+        POSIXCommandsImpl pi = new POSIXCommandsImpl();
+        String[] cmd = {"echo", "{\"refVersion\":\"human/19/GRCh37\",\"flankSize\":1000,\"targetSize\":40,\"productSizeRange\":\"175-275\",\"maxPrimerNumber\":5}"};
+        String[] decorateRunAsCommand = pi.decorateRunAsCommand(cmd, "nacho");
+        System.out.println(Arrays.toString(decorateRunAsCommand));
     }
 }
