@@ -18,6 +18,7 @@ package org.brutusin.wava.core.io;
 import org.brutusin.wava.io.OpName;
 import org.brutusin.wava.io.Event;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Date;
 import java.util.logging.Level;
@@ -26,6 +27,7 @@ import org.brutusin.json.ParseException;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.json.spi.JsonNode;
 import org.brutusin.wava.Utils;
+import org.brutusin.wava.env.EnvEntry;
 import org.brutusin.wava.io.EventListener;
 import org.brutusin.wava.io.LineListener;
 import org.brutusin.wava.io.RequestExecutor;
@@ -114,6 +116,12 @@ public class CommandLineRequestExecutor extends RequestExecutor {
                 System.err.println(line);
             }
         };
-        return executeRequest(opName, input, System.in, System.out, sterrListener, evtListener);
+        InputStream stdinStream;
+        if (System.getenv(EnvEntry.STDIN_TTY.name()) != null) {
+            stdinStream = null;
+        } else {
+            stdinStream = System.in;
+        }
+        return super.executeRequest(opName, input, stdinStream, System.out, sterrListener, evtListener);
     }
 }

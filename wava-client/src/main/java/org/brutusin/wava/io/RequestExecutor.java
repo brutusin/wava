@@ -71,6 +71,8 @@ public class RequestExecutor {
                     stdinStreamBean.setValue(os);
                     if (stdinStream != null) {
                         Miscellaneous.pipeSynchronously(stdinStream, true, os);
+                    } else {
+                        os.close();
                     }
                 } catch (Throwable th) {
                     LOGGER.log(Level.SEVERE, th.getMessage(), th);

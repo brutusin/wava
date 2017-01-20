@@ -21,5 +21,6 @@ package org.brutusin.wava.env;
  */
 public enum EnvEntry {
     WAVA_HOME,
-    WAVA_JOB_ID
+    WAVA_JOB_ID,
+    STDIN_TTY
 }

@@ -16,7 +16,6 @@
 package org.brutusin.wava.env;
 
 import java.io.File;
-import org.brutusin.wava.env.EnvEntry;
 
 /**
  *
