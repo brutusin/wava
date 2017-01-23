@@ -1,5 +1,8 @@
 #!/bin/bash
 export DEFAULT_CPU_AFINITY=`lscpu | awk -F ":" '$1 ~ /list/{ print $2; }' | sed 's/^ *//;s/ *$//'`
+if [ -t 0 ]; then
+    export STDIN_TTY=true;
+fi
 if [ -z "$JAVA_HOME" ]; then 
     echo "JAVA_HOME environment variable not set"; 
     exit 1;
