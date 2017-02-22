@@ -21,7 +21,7 @@ package org.brutusin.wava.cfg;
  */
 public interface SchedulerCfg {
 
-    public String getPromiseHandlerClassName();
+    public String getMemoryCgroupBasePath();
 
     public String getNicenessHandlerClassName();
 

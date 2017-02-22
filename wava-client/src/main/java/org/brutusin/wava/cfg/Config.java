@@ -39,8 +39,8 @@ public class Config {
         StringBuilder sb = new StringBuilder(str);
         for (String envEntry : System.getenv().keySet()) {
             String entryName = "$" + envEntry;
-            int i = sb.indexOf(entryName);
-            if (i >= 0) {
+            int i;
+            while ((i = sb.indexOf(entryName)) >= 0) {
                 sb.replace(i, i + entryName.length(), System.getenv().get(envEntry));
             }
         }

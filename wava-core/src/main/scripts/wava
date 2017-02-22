@@ -1,5 +1,10 @@
 #!/bin/bash
 export DEFAULT_CPU_AFINITY=`lscpu | awk -F ":" '$1 ~ /list/{ print $2; }' | sed 's/^ *//;s/ *$//'`
+
+WAVA_ID=${WAVA_HOME%/}
+WAVA_ID=${WAVA_ID////.}
+export WAVA_ID=${WAVA_ID#.}
+
 if [ -t 0 ]; then
     export STDIN_TTY=true;
 fi

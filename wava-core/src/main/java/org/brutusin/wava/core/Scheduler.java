@@ -3,14 +3,12 @@ package org.brutusin.wava.core;
 import org.brutusin.wava.io.Event;
 import org.brutusin.wava.core.io.PeerChannel;
 import org.brutusin.wava.cfg.Config;
-import org.brutusin.wava.core.plug.PromiseHandler;
 import org.brutusin.wava.core.plug.LinuxCommands;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -60,7 +58,6 @@ public class Scheduler {
 
     private volatile boolean closed;
     private volatile String jobList;
-    private volatile ProcessInfo killingByFailingPromise;
 
     private long lastPingMillis;
     private long refreshMillis;
@@ -69,6 +66,10 @@ public class Scheduler {
         this.runningUser = LinuxCommands.getInstance().getRunningUser();
         if (!this.runningUser.equals("root")) {
             throw new NonRootUserException();
+        }
+        boolean cgroupCreated = LinuxCommands.getInstance().createWavaMemoryCgroup();
+        if (!cgroupCreated) {
+            throw new RuntimeException("Unable to create base cgroup folder");
         }
         if (Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes() > 0) {
             this.totalManagedRss = Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes();
@@ -374,7 +375,7 @@ public class Scheduler {
             distributeNiceness();
             long allocatedManagedMemory = getAllocatedManagedMemory();
             long availableManagedMemory = getAvailableManagedMemory(allocatedManagedMemory);
-            long currentlyUsedManagedMemory = checkPromises(availableManagedMemory);
+            long currentlyUsedManagedMemory = getStats();
             dequeueJobs(availableManagedMemory);
             sendQueuePositionEventsToParentJobs();
             this.jobList = createJobList(false, availableManagedMemory, allocatedManagedMemory, currentlyUsedManagedMemory);
@@ -415,7 +416,7 @@ public class Scheduler {
         }
     }
 
-    private long checkPromises(long availableManagedMemory) throws IOException, InterruptedException {
+    private long getStats() throws IOException, InterruptedException {
         synchronized (jobSet) {
             long totalCurrentRss = 0;
             int[] pIds = getPIds();
@@ -424,7 +425,6 @@ public class Scheduler {
                 if (treeStats != null) {
                     JobSet.RunningIterator running = jobSet.getRunning();
                     int i = 0;
-                    LinkedList<ProcessInfo> exceedingProcesses = new LinkedList<>();
                     while (running.hasNext()) {
                         Integer id = running.next();
                         ProcessInfo pi = processMap.get(id);
@@ -440,30 +440,6 @@ public class Scheduler {
                                 if (st.rssBytes > pi.getMaxSeenRSS()) {
                                     pi.setMaxSeenRSS(st.rssBytes);
                                 }
-                                if (pi.getMaxRSS() < st.rssBytes) {
-                                    exceedingProcesses.addFirst(pi);
-                                }
-                            }
-                        }
-                    }
-                    if (killingByFailingPromise == null) {
-                        for (ProcessInfo pi : exceedingProcesses) {
-                            PromiseHandler.FailingAction fa = PromiseHandler.getInstance().promiseFailed(availableManagedMemory, pi, totalCurrentRss, totalManagedRss);
-                            if (fa == PromiseHandler.FailingAction.tolerate) {
-                                if (!pi.isAllowed()) {
-                                    pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_allowed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
-                                }
-                                pi.setAllowed(true);
-                            } else {
-                                if (fa == PromiseHandler.FailingAction.reenqueue) {
-                                    pi.getJobInfo().setRelaunched(true);
-                                } else {
-                                    pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_global, Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
-                                }
-                                pi.getJobInfo().getSubmitChannel().sendEvent(Event.exceed_disallowed, pi.getJobInfo().getSubmitChannel().getRequest().getMaxRSS());
-                                killingByFailingPromise = pi;
-                                LinuxCommands.getInstance().killTree(pi.getPid());
-                                break;
                             }
                         }
                     }
@@ -967,6 +943,7 @@ public class Scheduler {
         if (ji == null) {
             throw new IllegalArgumentException("Id is required");
         }
+        LinuxCommands.getInstance().createJobMemoryCgroup(id, ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes());
         Thread t = new Thread(this.processGroup, "scheduled process " + id) {
             @Override
             public void run() {
@@ -974,6 +951,7 @@ public class Scheduler {
                 cmd = LinuxCommands.getInstance().decorateRunAsCommand(cmd, ji.getSubmitChannel().getUser());
                 cmd = LinuxCommands.getInstance().decorateWithCPUAffinity(cmd, Config.getInstance().getProcessCfg().getCpuAfinity());
                 cmd = LinuxCommands.getInstance().decorateWithBatchSchedulerPolicy(cmd);
+                cmd = LinuxCommands.getInstance().decorateRunInCgroup(cmd, id);
                 ProcessBuilder pb = new ProcessBuilder(cmd);
                 pb.environment().clear();
                 pb.directory(ji.getSubmitChannel().getRequest().getWorkingDirectory());
@@ -1079,16 +1057,13 @@ public class Scheduler {
                                     t.start();
                                 }
                             }
-                            if (killingByFailingPromise == pi) {
-                                killingByFailingPromise = null;
-                            }
                             if (ji.isRelaunched()) {
                                 submit(ji.getSubmitChannel());
                             } else {
                                 ji.getSubmitChannel().close();
                             }
                         }
-
+                        LinuxCommands.getInstance().removeJobMemoryCgroup(id);
                     } catch (Throwable th) {
                         LOGGER.log(Level.SEVERE, th.getMessage(), th);
                     }

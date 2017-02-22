@@ -30,6 +30,12 @@ public abstract class LinuxCommands {
         return INSTANCE;
     }
 
+    public abstract boolean createWavaMemoryCgroup();
+
+    public abstract void removeJobMemoryCgroup(int jobId);
+
+    public abstract void createJobMemoryCgroup(int jobId, long maxRSSBytes, long maxTotalRSSBytes);
+
     public abstract void setNiceness(int pId, int niceness);
 
     public abstract String[] decorateRunAsCommand(String[] cmd, String user);
@@ -37,6 +43,8 @@ public abstract class LinuxCommands {
     public abstract String[] decorateWithCPUAffinity(String[] cmd, String affinity);
 
     public abstract String[] decorateWithBatchSchedulerPolicy(String[] cmd);
+
+    public abstract String[] decorateRunInCgroup(String[] cmd, int jobId);
 
     public abstract TreeStats[] getTreeStats(int[] pids);
 

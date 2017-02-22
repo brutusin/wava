@@ -15,6 +15,7 @@
  */
 package org.brutusin.wava.cfg.impl;
 
+import java.io.File;
 import org.brutusin.wava.cfg.SchedulerCfg;
 
 /**
@@ -23,9 +24,8 @@ import org.brutusin.wava.cfg.SchedulerCfg;
  */
 public class SchedulerCfgImpl implements SchedulerCfg {
 
-    private String promiseHandlerClassName;
     private String nicenessHandlerClassName;
-
+    private String memoryCgroupBasePath;
     private int refreshLoopSleepMillisecs = 10;
     private int pingMillisecs = 1000;
     private long maxTotalRSSBytes = -1;
@@ -35,12 +35,12 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     private float maxBlockedRssStarvationRatio = 0.5f;
 
     @Override
-    public String getPromiseHandlerClassName() {
-        return promiseHandlerClassName;
+    public String getMemoryCgroupBasePath() {
+        return memoryCgroupBasePath;
     }
 
-    public void setPromiseHandlerClassName(String promiseHandlerClassName) {
-        this.promiseHandlerClassName = promiseHandlerClassName;
+    public void setMemoryCgroupBasePath(String memoryCgroupBasePath) {
+        this.memoryCgroupBasePath = memoryCgroupBasePath;
     }
 
     @Override

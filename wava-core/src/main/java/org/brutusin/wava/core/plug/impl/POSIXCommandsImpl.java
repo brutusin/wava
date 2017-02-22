@@ -17,6 +17,7 @@ package org.brutusin.wava.core.plug.impl;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,7 +25,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
-import java.util.regex.Matcher;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.commons.utils.ProcessException;
 import org.brutusin.commons.utils.ProcessUtils;
@@ -42,6 +42,64 @@ public class POSIXCommandsImpl extends LinuxCommands {
     private static String executeBashCommand(String command) throws ProcessException, InterruptedException {
         String[] cmd = {"/bin/bash", "-c", command};
         return ProcessUtils.executeProcess(cmd);
+    }
+
+    @Override
+    public boolean createWavaMemoryCgroup() {
+        try {
+            File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath());
+            removeLeafFolder(f);
+            String[] cmd = {"mkdir", f.getAbsolutePath()};
+            ProcessUtils.executeProcess(cmd);
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    private void removeLeafFolder(File folder) throws ProcessException, InterruptedException {
+        if (!folder.exists()) {
+            return;
+        }
+        File[] children = folder.listFiles();
+        if (children != null) {
+            for (int i = 0; i < children.length; i++) {
+                File ch = children[i];
+                if (ch.isDirectory()) {
+                    removeLeafFolder(ch);
+                }
+            }
+        }
+        String[] cmd = {"rmdir", folder.getAbsolutePath()};
+        ProcessUtils.executeProcess(cmd);
+    }
+
+    @Override
+    public void createJobMemoryCgroup(int jobId, long maxJobRSSBytes, long maxTotalRSSBytes) {
+        try {
+            File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + String.valueOf(jobId));
+            String[] cmd = {"mkdir", f.getAbsolutePath()};
+            ProcessUtils.executeProcess(cmd);
+            FileOutputStream fos = new FileOutputStream(new File(f, "memory.soft_limit_in_bytes"));
+            fos.write(String.valueOf(maxJobRSSBytes).getBytes());
+            fos.close();
+            fos = new FileOutputStream(new File(f, "memory.limit_in_bytes"));
+            fos.write(String.valueOf(maxTotalRSSBytes).getBytes());
+            fos.close();
+
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+    
+    @Override
+    public void removeJobMemoryCgroup(int jobId) {
+        try {
+            File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + String.valueOf(jobId));
+            removeLeafFolder(f);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     @Override
@@ -231,6 +289,21 @@ public class POSIXCommandsImpl extends LinuxCommands {
             sb.append("\"").append(cmd[i].replaceAll("\"", "\\\\\"")).append("\"");
         }
         return new String[]{"runuser", "-p", user, "-c", sb.toString()};
+    }
+
+    @Override
+    public String[] decorateRunInCgroup(String[] cmd, int jobId) {
+        File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + jobId + "/cgroup.procs");
+        StringBuilder sb = new StringBuilder("echo $$ >");
+        sb.append(f.getAbsolutePath());
+        sb.append(" && ");
+        for (int i = 0; i < cmd.length; i++) {
+            if (i > 0) {
+                sb.append(" ");
+            }
+           sb.append("\"").append(cmd[i].replaceAll("\"", "\\\\\"")).append("\"");
+        }
+        return new String[]{"/bin/bash", "-c", sb.toString()};
     }
 
     @Override
