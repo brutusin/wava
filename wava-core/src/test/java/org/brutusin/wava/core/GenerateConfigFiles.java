@@ -30,8 +30,8 @@ public class GenerateConfigFiles {
     public static void main(String[] args) throws Exception {
         File cfgFile = new File("cfg.json");
         ConfigImpl defaultImpl = new ConfigImpl();
-        defaultImpl.setTempFolder("/dev/shm/wava:$WAVA_ID");
-        defaultImpl.getSchedulerCfg().setMemoryCgroupBasePath("/sys/fs/cgroup/memory/wava:$WAVA_ID");
+        defaultImpl.setTempFolder("/dev/shm");
+        defaultImpl.getSchedulerCfg().setMemoryCgroupBasePath("/sys/fs/cgroup/memory");
         defaultImpl.getSchedulerCfg().setNicenessHandlerClassName(HomogeneusSpreadNicenessHandler.class.getName());
         Miscellaneous.writeStringToFile(cfgFile, JsonCodec.getInstance().prettyPrint(JsonCodec.getInstance().transform(defaultImpl)), "UTF-8");
     }

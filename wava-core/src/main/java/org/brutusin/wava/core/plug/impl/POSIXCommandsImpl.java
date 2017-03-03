@@ -16,8 +16,9 @@
 package org.brutusin.wava.core.plug.impl;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -30,6 +31,7 @@ import org.brutusin.commons.utils.ProcessException;
 import org.brutusin.commons.utils.ProcessUtils;
 import org.brutusin.wava.cfg.Config;
 import org.brutusin.wava.core.plug.LinuxCommands;
+import org.brutusin.wava.env.WavaHome;
 
 /**
  *
@@ -47,10 +49,13 @@ public class POSIXCommandsImpl extends LinuxCommands {
     @Override
     public boolean createWavaMemoryCgroup() {
         try {
-            File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath());
+            File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + WavaHome.getInstance().getId());
             removeLeafFolder(f);
             String[] cmd = {"mkdir", f.getAbsolutePath()};
             ProcessUtils.executeProcess(cmd);
+            Miscellaneous.writeStringToFile(new File(f, "memory.limit_in_bytes"), String.valueOf(Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes()), "UTF-8");
+            Miscellaneous.writeStringToFile(new File(f, "memory.use_hierarchy"), "1", "UTF-8");
+
             return true;
         } catch (Exception ex) {
             return false;
@@ -75,27 +80,48 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     @Override
-    public void createJobMemoryCgroup(int jobId, long maxJobRSSBytes, long maxTotalRSSBytes) {
+    public void createJobMemoryCgroup(int jobId, long maxJobRSSBytes) {
         try {
-            File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + String.valueOf(jobId));
+            File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + WavaHome.getInstance().getId() + "/" + String.valueOf(jobId));
             String[] cmd = {"mkdir", f.getAbsolutePath()};
             ProcessUtils.executeProcess(cmd);
-            FileOutputStream fos = new FileOutputStream(new File(f, "memory.soft_limit_in_bytes"));
-            fos.write(String.valueOf(maxJobRSSBytes).getBytes());
-            fos.close();
-            fos = new FileOutputStream(new File(f, "memory.limit_in_bytes"));
-            fos.write(String.valueOf(maxTotalRSSBytes).getBytes());
-            fos.close();
+            Miscellaneous.writeStringToFile(new File(f, "memory.soft_limit_in_bytes"), String.valueOf(maxJobRSSBytes), "UTF-8");
+            Miscellaneous.writeStringToFile(new File(f, "memory.limit_in_bytes"), String.valueOf(Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes()), "UTF-8");
 
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
     }
-    
+
+    @Override
+    public CgroupMemoryStats getCgroupMemoryStats(int jobId) {
+        File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + WavaHome.getInstance().getId() + "/" + String.valueOf(jobId) + "/memory.stat");
+        try {
+            String content = Miscellaneous.toString(new FileInputStream(f), "UTF-8");
+            String[] lines = content.split("\n");
+            CgroupMemoryStats ret = new CgroupMemoryStats();
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i];
+                String[] tokens = line.split("\\s+");
+                if (tokens[0].equals("rss")) {
+                    ret.rssBytes = Long.valueOf(tokens[1]);
+                } else if (tokens[0].equals("swap")) {
+                    ret.swapBytes = Long.valueOf(tokens[1]);
+                    break;
+                }
+            }
+            return ret;
+        } catch (FileNotFoundException ex) {
+            return null;
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
     @Override
     public void removeJobMemoryCgroup(int jobId) {
         try {
-            File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + String.valueOf(jobId));
+            File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + WavaHome.getInstance().getId() + "/" + String.valueOf(jobId));
             removeLeafFolder(f);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
@@ -293,7 +319,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
 
     @Override
     public String[] decorateRunInCgroup(String[] cmd, int jobId) {
-        File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + jobId + "/cgroup.procs");
+        File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + WavaHome.getInstance().getId() + "/" + jobId + "/cgroup.procs");
         StringBuilder sb = new StringBuilder("echo $$ >");
         sb.append(f.getAbsolutePath());
         sb.append(" && ");
@@ -301,7 +327,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             if (i > 0) {
                 sb.append(" ");
             }
-           sb.append("\"").append(cmd[i].replaceAll("\"", "\\\\\"")).append("\"");
+            sb.append("\"").append(cmd[i].replaceAll("\"", "\\\\\"")).append("\"");
         }
         return new String[]{"/bin/bash", "-c", sb.toString()};
     }

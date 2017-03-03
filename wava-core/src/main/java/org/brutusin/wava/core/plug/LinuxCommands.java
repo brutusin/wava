@@ -34,7 +34,7 @@ public abstract class LinuxCommands {
 
     public abstract void removeJobMemoryCgroup(int jobId);
 
-    public abstract void createJobMemoryCgroup(int jobId, long maxRSSBytes, long maxTotalRSSBytes);
+    public abstract void createJobMemoryCgroup(int jobId, long maxRSSBytes);
 
     public abstract void setNiceness(int pId, int niceness);
 
@@ -47,6 +47,8 @@ public abstract class LinuxCommands {
     public abstract String[] decorateRunInCgroup(String[] cmd, int jobId);
 
     public abstract TreeStats[] getTreeStats(int[] pids);
+
+    public abstract CgroupMemoryStats getCgroupMemoryStats(int jobId);
 
     public abstract void killTree(int pid);
 
@@ -66,5 +68,11 @@ public abstract class LinuxCommands {
 
         public long rssBytes;
         public double cpuPercentage;
+    }
+
+    public static class CgroupMemoryStats {
+
+        public long rssBytes;
+        public long swapBytes;
     }
 }

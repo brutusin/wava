@@ -4,12 +4,12 @@
     <parent>
         <groupId>org.brutusin</groupId>
         <artifactId>wava-root</artifactId>
-        <version>1.8.6-SNAPSHOT</version>
+        <version>2.0.0-SNAPSHOT</version>
     </parent>
     <groupId>org.brutusin</groupId>
     <artifactId>wava-client</artifactId>
     <packaging>jar</packaging>   
-    <version>1.8.6-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
     <name>${project.groupId}:${project.artifactId}</name>
          
     <dependencies>

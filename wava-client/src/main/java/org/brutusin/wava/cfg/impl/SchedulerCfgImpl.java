@@ -15,7 +15,6 @@
  */
 package org.brutusin.wava.cfg.impl;
 
-import java.io.File;
 import org.brutusin.wava.cfg.SchedulerCfg;
 
 /**

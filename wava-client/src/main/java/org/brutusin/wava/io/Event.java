@@ -36,6 +36,7 @@ public enum Event {
     exceed_tree,
     shutdown,
     maxrss,
+    maxswap,
     starvation_relaunch,
     deadlock_stop;
 }

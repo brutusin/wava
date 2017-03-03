@@ -321,8 +321,13 @@ public class Scheduler {
                 }
             }
             if (candidateToKill != null) {
-                if (allJobsBlocked || candidateToKill.getJobInfo().getSubmitChannel().getRequest().isIdempotent() && maxRSsSumOfBlockedJobs > totalManagedRss * Config.getInstance().getSchedulerCfg().getMaxBlockedRssStarvationRatio()) {
+                if (maxRSsSumOfBlockedJobs > totalManagedRss * Config.getInstance().getSchedulerCfg().getMaxBlockedRssStarvationRatio()) {
                     killForStarvationProtection(candidateToKill);
+                } else if (allJobsBlocked) {
+                    JobInfo firstQueued = jobMap.get(jobSet.getQueue().next());
+                    if (maxRSsSumOfBlockedJobs + firstQueued.getSubmitChannel().getRequest().getMaxRSS() > Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes()) {
+                        killForStarvationProtection(candidateToKill);
+                    }
                 }
             }
         }
@@ -431,16 +436,21 @@ public class Scheduler {
                         if (pi == null) {
                             continue;
                         }
+                        LinuxCommands.CgroupMemoryStats cgroupMemoryStats = LinuxCommands.getInstance().getCgroupMemoryStats(id);
+                        if (cgroupMemoryStats != null) {
+                            pi.setRss(cgroupMemoryStats.rssBytes);
+                            if (pi.getRss() > pi.getMaxRss()) {
+                                pi.setMaxRss(pi.getRss());
+                            }
+                            pi.setSwap(cgroupMemoryStats.swapBytes);
+                            if (pi.getSwap() > pi.getMaxSwap()) {
+                                pi.setMaxSwap(pi.getSwap());
+                            }
+                            totalCurrentRss += cgroupMemoryStats.rssBytes;
+                        }
                         TreeStats st = treeStats[i++];
                         if (st != null) {
-                            totalCurrentRss += st.rssBytes;
-                            pi.setCurrentRSS(st.rssBytes);
-                            pi.setCurrentCpuUsage(st.cpuPercentage);
-                            if (st.rssBytes != 0) {
-                                if (st.rssBytes > pi.getMaxSeenRSS()) {
-                                    pi.setMaxSeenRSS(st.rssBytes);
-                                }
-                            }
+                            pi.setCpuUsage(st.cpuPercentage);
                         }
                     }
                 }
@@ -461,11 +471,11 @@ public class Scheduler {
             throw new IllegalArgumentException("Request info is required");
         }
 
-        if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && submitChannel.getRequest().getMaxRSS() > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() || totalManagedRss < submitChannel.getRequest().getMaxRSS()) {
-            submitChannel.sendEvent(Event.exceed_global, Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
-            submitChannel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
-            submitChannel.close();
-            return;
+        if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && submitChannel.getRequest().getMaxRSS() > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes()) {
+            submitChannel.getRequest().setMaxRSS(Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
+        }
+        if (totalManagedRss < submitChannel.getRequest().getMaxRSS()) {
+            submitChannel.getRequest().setMaxRSS(totalManagedRss);
         }
 
         long treeRSS = submitChannel.getRequest().getMaxRSS();
@@ -512,6 +522,21 @@ public class Scheduler {
             if (!noHeaders) {
                 sb.append(ANSICode.BLACK.getCode());
                 sb.append(ANSICode.BG_GREEN.getCode());
+                sb.append(ANSICode.BOLD.getCode());
+                sb.append(StringUtils.center("JOB INFO", 46));
+                sb.append(ANSICode.BG_BLACK.getCode());
+                sb.append(" ");
+                sb.append(ANSICode.BG_GREEN.getCode());
+                sb.append(StringUtils.center("PROCESS STATS", 64));
+                sb.append(ANSICode.BG_BLACK.getCode());
+                sb.append(" ");
+                sb.append(ANSICode.BG_GREEN.getCode());
+                sb.append(" COMMAND");
+                sb.append(ANSICode.END_OF_LINE.getCode());
+                sb.append(ANSICode.RESET.getCode());
+                sb.append(ANSICode.BLACK.getCode());
+                sb.append(ANSICode.BG_GREEN.getCode());
+                sb.append("\n");
                 sb.append(StringUtils.leftPad("JOB ID", 8));
                 sb.append(" ");
                 sb.append(StringUtils.leftPad("PARENT", 8));
@@ -520,19 +545,26 @@ public class Scheduler {
                 sb.append(" ");
                 sb.append(StringUtils.rightPad("USER", 8));
                 sb.append(" ");
+                sb.append(StringUtils.leftPad("JOB_RSS", 10));
+                sb.append(ANSICode.BG_BLACK.getCode());
+                sb.append(" ");
+                sb.append(ANSICode.BG_GREEN.getCode());
                 sb.append(StringUtils.leftPad("PID", 8));
                 sb.append(" ");
                 sb.append(StringUtils.leftPad("NICE", 4));
                 sb.append(" ");
-                sb.append(StringUtils.leftPad("USER_RSS", 10));
-                sb.append(" ");
                 sb.append(StringUtils.leftPad("MAX_RSS", 10));
                 sb.append(" ");
-                sb.append(StringUtils.leftPad("CURR_RSS", 10));
+                sb.append(StringUtils.leftPad("RSS  ", 10));
+                sb.append(" ");
+                sb.append(StringUtils.leftPad("MAX_SWAP", 10));
+                sb.append(" ");
+                sb.append(StringUtils.leftPad("SWAP  ", 10));
                 sb.append(" ");
                 sb.append(StringUtils.leftPad("CPU%", 6));
+                sb.append(ANSICode.BG_BLACK.getCode());
                 sb.append(" ");
-                sb.append("CMD");
+                sb.append(ANSICode.BG_GREEN.getCode());
                 sb.append(ANSICode.END_OF_LINE.getCode());
                 sb.append(ANSICode.RESET.getCode());
             } else {
@@ -570,38 +602,48 @@ public class Scheduler {
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
                         sb.append(" ");
-                        sb.append(StringUtils.leftPad(String.valueOf(pi.getPid()), 8));
-                        sb.append(" ");
-                        sb.append(StringUtils.leftPad(String.valueOf(pi.getNiceness()), 4));
-                        sb.append(" ");
                         String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                         sb.append(StringUtils.leftPad(mem[0], 6));
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(" ");
-                        if (pi.getMaxSeenRSS() > ji.getSubmitChannel().getRequest().getMaxRSS()) {
+                        sb.append(StringUtils.leftPad(String.valueOf(pi.getPid()), 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad(String.valueOf(pi.getNiceness()), 4));
+                        sb.append(" ");
+                        mem = Miscellaneous.humanReadableByteCount(pi.getMaxRss(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        sb.append(StringUtils.leftPad(mem[0], 6));
+                        sb.append(" ");
+                        sb.append(StringUtils.rightPad(mem[1], 3));
+                        sb.append(" ");
+                        mem = Miscellaneous.humanReadableByteCount(pi.getRss(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        sb.append(StringUtils.leftPad(mem[0], 6));
+                        sb.append(" ");
+                        sb.append(StringUtils.rightPad(mem[1], 3));
+                        sb.append(" ");
+                        if (pi.getMaxSwap() > ji.getSubmitChannel().getRequest().getMaxRSS() / 2) {
                             sb.append(ANSICode.RED.getCode());
-                        } else if (pi.getMaxSeenRSS() > 0.8 * ji.getSubmitChannel().getRequest().getMaxRSS()) {
+                        } else if (pi.getMaxSwap() > 0) {
                             sb.append(ANSICode.YELLOW.getCode());
                         }
-                        mem = Miscellaneous.humanReadableByteCount(pi.getMaxSeenRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        mem = Miscellaneous.humanReadableByteCount(pi.getMaxSwap(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                         sb.append(StringUtils.leftPad(mem[0], 6));
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(ANSICode.RESET.getCode());
                         sb.append(" ");
-                        if (pi.getCurrentRSS() > ji.getSubmitChannel().getRequest().getMaxRSS()) {
+                        if (pi.getSwap() > ji.getSubmitChannel().getRequest().getMaxRSS() / 2) {
                             sb.append(ANSICode.RED.getCode());
-                        } else if (pi.getCurrentRSS() > 0.8 * ji.getSubmitChannel().getRequest().getMaxRSS()) {
+                        } else if (pi.getSwap() > 0) {
                             sb.append(ANSICode.YELLOW.getCode());
                         }
-                        mem = Miscellaneous.humanReadableByteCount(pi.getCurrentRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        mem = Miscellaneous.humanReadableByteCount(pi.getSwap(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                         sb.append(StringUtils.leftPad(mem[0], 6));
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(ANSICode.RESET.getCode());
                         sb.append(" ");
-                        sb.append(StringUtils.leftPad(String.format("%.1f", pi.getCurrentCpuUsage()), 6));
+                        sb.append(StringUtils.leftPad(String.format("%.1f", pi.getCpuUsage()), 6));
                         sb.append(" ");
                         sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
                         sb.append(" ");
@@ -620,14 +662,18 @@ public class Scheduler {
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
                         sb.append(" ");
-                        sb.append(StringUtils.leftPad("", 8));
-                        sb.append(" ");
-                        sb.append(StringUtils.leftPad("", 4));
-                        sb.append(" ");
                         String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                         sb.append(StringUtils.leftPad(mem[0], 6));
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(mem[1], 3));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 8));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 4));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 10));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 10));
                         sb.append(" ");
                         sb.append(StringUtils.leftPad("", 10));
                         sb.append(" ");
@@ -661,14 +707,18 @@ public class Scheduler {
                     sb.append(" ");
                     sb.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
                     sb.append(" ");
-                    sb.append(StringUtils.leftPad("", 8));
-                    sb.append(" ");
-                    sb.append(StringUtils.leftPad("", 4));
-                    sb.append(" ");
                     String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                     sb.append(StringUtils.leftPad(mem[0], 6));
                     sb.append(" ");
                     sb.append(StringUtils.rightPad(mem[1], 3));
+                    sb.append(" ");
+                    sb.append(StringUtils.leftPad("", 8));
+                    sb.append(" ");
+                    sb.append(StringUtils.leftPad("", 4));
+                    sb.append(" ");
+                    sb.append(StringUtils.leftPad("", 10));
+                    sb.append(" ");
+                    sb.append(StringUtils.leftPad("", 10));
                     sb.append(" ");
                     sb.append(StringUtils.leftPad("", 10));
                     sb.append(" ");
@@ -943,7 +993,7 @@ public class Scheduler {
         if (ji == null) {
             throw new IllegalArgumentException("Id is required");
         }
-        LinuxCommands.getInstance().createJobMemoryCgroup(id, ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes());
+        LinuxCommands.getInstance().createJobMemoryCgroup(id, ji.getSubmitChannel().getRequest().getMaxRSS());
         Thread t = new Thread(this.processGroup, "scheduled process " + id) {
             @Override
             public void run() {
@@ -972,7 +1022,7 @@ public class Scheduler {
                                 return;
                             }
                             process = pb.start();
-                            isThread = Miscellaneous.pipeAsynchronously(ji.getSubmitChannel().getStdinIs(), process.getOutputStream());
+                            isThread = Miscellaneous.pipeAsynchronously(ji.getSubmitChannel().getStdinIs(), (ErrorHandler) null, true, process.getOutputStream());
                             pId = Miscellaneous.getUnixId(process);
                             pi = new ProcessInfo(ji, pId);
                             ji.getSubmitChannel().sendEvent(Event.running, pId);
@@ -1000,7 +1050,8 @@ public class Scheduler {
                         int code = process.waitFor();
                         isThread.interrupt();
                         if (!ji.isRelaunched()) {
-                            ji.getSubmitChannel().sendEvent(Event.maxrss, pi.getMaxSeenRSS());
+                            ji.getSubmitChannel().sendEvent(Event.maxrss, pi.getMaxRss());
+                            ji.getSubmitChannel().sendEvent(Event.maxswap, pi.getMaxSwap());
                             ji.getSubmitChannel().sendEvent(Event.retcode, code);
                         }
                     } catch (InterruptedException ex) {
@@ -1009,11 +1060,6 @@ public class Scheduler {
                         } catch (Throwable th) {
                             LOGGER.log(Level.SEVERE, th.getMessage(), th);
                         }
-//                        stoutReaderThread.interrupt();
-//                        sterrReaderThread.interrupt();
-//                        process.destroy();
-//                        channel.log(Event.interrupted, ex.getMessage());
-//                        return;
                     } finally {
                         try {
                             stoutReaderThread.join();
@@ -1068,10 +1114,6 @@ public class Scheduler {
                         LOGGER.log(Level.SEVERE, th.getMessage(), th);
                     }
                 }
-            }
-
-            private void groupsRunning() {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
         };
         t.start();
@@ -1262,29 +1304,61 @@ public class Scheduler {
 
         private final JobInfo jobInfo;
         private final int pId;
-        private volatile long maxRSS;
-        private volatile long maxSeenRSS;
-        private volatile long currentRSS;
-        private volatile double currentCpuUsage;
+        private volatile long rss;
+        private volatile long maxRss;
+        private volatile long swap;
+        private volatile long maxSwap;
+        private volatile double cpuUsage;
         private volatile int niceness = Integer.MAX_VALUE;
         private boolean allowed;
 
         public ProcessInfo(JobInfo jobInfo, int pId) {
             this.jobInfo = jobInfo;
             this.pId = pId;
-            this.maxRSS = jobInfo.getSubmitChannel().getRequest().getMaxRSS();
+        }
+
+        public long getRss() {
+            return rss;
+        }
+
+        public void setRss(long rss) {
+            this.rss = rss;
+        }
+
+        public long getMaxRss() {
+            return maxRss;
+        }
+
+        public void setMaxRss(long maxRss) {
+            this.maxRss = maxRss;
+        }
+
+        public long getMaxSwap() {
+            return maxSwap;
+        }
+
+        public void setMaxSwap(long maxSwap) {
+            this.maxSwap = maxSwap;
+        }
+
+        public double getCpuUsage() {
+            return cpuUsage;
+        }
+
+        public void setCpuUsage(double cpuUsage) {
+            this.cpuUsage = cpuUsage;
         }
 
         public int getPid() {
             return pId;
         }
 
-        public long getMaxSeenRSS() {
-            return maxSeenRSS;
+        public long getSwap() {
+            return swap;
         }
 
-        public void setMaxSeenRSS(long maxSeenRSS) {
-            this.maxSeenRSS = maxSeenRSS;
+        public void setSwap(long swap) {
+            this.swap = swap;
         }
 
         public int getNiceness() {
@@ -1295,36 +1369,12 @@ public class Scheduler {
             return jobInfo;
         }
 
-        public long getMaxRSS() {
-            return maxRSS;
-        }
-
-        public void setMaxRSS(long maxRSS) {
-            this.maxRSS = maxRSS;
-        }
-
         public boolean isAllowed() {
             return allowed;
         }
 
         public void setAllowed(boolean allowed) {
             this.allowed = allowed;
-        }
-
-        public long getCurrentRSS() {
-            return currentRSS;
-        }
-
-        public void setCurrentRSS(long currentRSS) {
-            this.currentRSS = currentRSS;
-        }
-
-        public double getCurrentCpuUsage() {
-            return currentCpuUsage;
-        }
-
-        public void setCurrentCpuUsage(double currentCpuUsage) {
-            this.currentCpuUsage = currentCpuUsage;
         }
 
         public synchronized void setNiceness(int niceness) {

@@ -25,7 +25,7 @@ public class Config {
             String str = Miscellaneous.toString(new FileInputStream(cfgFile), "UTF-8");
             this.impl = JsonCodec.getInstance().parse(replaceEnvEntries(str), ConfigImpl.class);
             if (impl.getTempFolder() != null) {
-                this.tempFolder = new File(impl.getTempFolder());
+                this.tempFolder = new File(impl.getTempFolder() + "/" + WavaHome.getInstance().getId());
             } else {
                 this.tempFolder = null;
             }
