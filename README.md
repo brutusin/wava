@@ -7,7 +7,6 @@
 **Table of contents**
 - [Top](#orgbrutusinwava--)
 - [Overview](#overview)
-  * [Memory promises](#memory-promises)
 - [Priority and groups](#priority-and-groups)
   * [Job order](#job-order)
   * [Niceness](#niceness)
@@ -25,6 +24,12 @@
 Traditionally fixed-sized queues were used for enqueueing jobs, but when used over a heterogeneus (in terms of memory demands) set of jobs, they show two (opposite) weaknesses: inefficient resource utilization and system performance degradation. 
 
 `wava` scheduler is designed to overcome this: without losing easy of use, provide a sandboxed environment that guarantes system stability and that is dynamic in the number of concurrent running processes (depending on the current jobs memory demands, and the scheduler capacity), offering better resource utilization rates.
+
+## Features
+### Capacity Guarantees
+### Security
+### Resource-based Scheduling
+### Priority-based Scheduling
 
 is a Linux command-line tool that allows to enqueue batch jobs, to be run in a memory-limiting [cgroup](https://en.wikipedia.org/wiki/Cgroups), according to user-specified parameters, and once running, manages their process nicenesses.
 
