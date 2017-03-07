@@ -1,6 +1,6 @@
 ## org.brutusin:wava [![Build Status](https://api.travis-ci.org/brutusin/wava.svg?branch=master)](https://travis-ci.org/brutusin/wava) [![Maven Central Latest Version](https://maven-badges.herokuapp.com/maven-central/org.brutusin/wava-root/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.brutusin/wava-root/)
 
-`wava` is a Linux command-line tool that allows to enqueue batch jobs, to be run in a memory-limiting [cgroup](https://en.wikipedia.org/wiki/Cgroups), according to user-specified parameters, and once running, manages their process nicenesses.
+`wava` scheduler is designed to run batch processes in a single Linux machine in an operator-friendly manner while imposing memory usage limits in both: across the overall job set (strict limits), and on a per-job basis (soft limits).
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/wava-menu.gif)
 
@@ -21,10 +21,12 @@
 
 
 ## Overview
-`wava` scheduler is designed to run batch processes in a single Linux machine in an operator-friendly manner while imposing memory usage limits in both: across the overall job set (strict limits), and on a per-job basis (soft limits).
 
-Traditionally fixed-sized queues were used for enqueueing jobs, but they presented two main problems when used wi
+Traditionally fixed-sized queues were used for enqueueing jobs, but when used over a heterogeneus (in terms of memory demands) set of jobs, they offered a weak scenario ranging from inefficient resource utilization to system performance degradation. 
 
+`wava` scheduler is designed to overcome this: without losing easy of use, provide a sandboxed environment that guarantes system stability and that is dynamic in the number of concurrent running processes (depending on the current jobs memory demands, and the scheduler capacity), offering better resource utilization rates.
+
+is a Linux command-line tool that allows to enqueue batch jobs, to be run in a memory-limiting [cgroup](https://en.wikipedia.org/wiki/Cgroups), according to user-specified parameters, and once running, manages their process nicenesses.
 
 
 Job submission requires a memory parameter (`-m`) that is used for two different pursposes:
