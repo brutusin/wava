@@ -21,7 +21,14 @@
 
 
 ## Overview
+`wava` scheduler is designed to run batch processes in a single Linux machine in an operator-friendly manner while imposing memory usage limits by both: across the overall job set (strict limits), and on a per job basis (soft limits)
 
+Job submission requires a memory parameter (`-m`) that is used for two different pursposes:
+1. **Memory-based Scheduling:** This memory value is 
+2. **Runtime memory limitation:** Limiting the amount of resident memory used by the job process tree (soft limit)
+ 
+
+Job memory limit is used 
 This scheduler is specially suited for enqueuing a high number of heterogeneous (in terms of memory demands) long-running jobs and run as many of them as possible concurrently without exhausting physical memory (avoiding virtual memory paging and swapping) in order to not penalize the performance of other services running in the system.
 
 The scheduler runs as a centralized process (`wava -s`) and all interaction with it is performed by separated client processes started when invoking the other command options.  
