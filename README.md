@@ -28,7 +28,7 @@ Traditionally fixed-sized queues were used for enqueueing jobs, but when used ov
 `wava` scheduler is designed to overcome this, that is, without losing easy of use, providing guarantes for both system stability and job resource allocation and, on the other side, offering better resource utilization rates. 
 
 ## Features
-### Capacity Guarantees
+### Capacity guarantees
 Jobs are submitted with a minimum memory size parameter (job size), enqueded, and finally executed in a sandboxed environment (implemented via [cgroups](https://en.wikipedia.org/wiki/Cgroups)) with a hard-limited capacity (scheduler capacity).
 
 At runtime, the whole job process tree will be allowed to have allocated an amount of resident memory up to the scheduler-capacity   (this would be the case when no more jobs are scheduled), and in case of memory pressure forced to swap out.
@@ -95,7 +95,7 @@ ${time-millis}:${event-type}[:${event-value}]
 For peer processes these events are output to `stderr` after being formatted as `[wava] [date] [${event-type}:${event-value}]` unless a file is specified (`wava -r -e <file>`) for redirecting them.
 
 Event type ([`Events.java`](wava-client/src/main/java/org/brutusin/wava/io/Event.java)) | Valued | Description
--------------- | --- | -----
+------------------ | --- | -----
 `id`               | yes | Id assigned to the job.
 `queued`           | yes | Position in the queue, if the job is queued.
 `priority`         | yes | Piority of the job, given by its group. 
@@ -103,16 +103,14 @@ Event type ([`Events.java`](wava-client/src/main/java/org/brutusin/wava/io/Event
 `niceness`         | yes | Niceness set to the job process.   
 `cancelled`        | yes | User cancelling the job. 
 `ping`             | no  | Send periodically to detect stale peers.
-`exceed_allowed`   | yes | Memory promise failed but execution allowed
-`exceed_disallowed`| yes | Memory promise failed and execution disallowed 
-`exceed_global`    | yes | Memory promise too high (more than [config](#configuration-description) param `maxJobRSSBytes`)
-`exceed_tree      `| yes |  
-`shutdown`         | yes | Memory promise failed and execution disallowed 
-`maxrss`           | yes | Max RSS used by a finished job process (and their decendents).
+`exceed_tree      `| yes | Memory claim exceeds capacity
+`shutdown`         | yes | Scheduler is being stopped 
+`maxrss`           | yes | Max RSS allocated to the process tree
+`maxswap`          | yes | Max swap allocated to the process tree
 `error`            | yes | To send information about an error.
 `retcode`          | yes | Return code for the client process to use.
-`deadlock_relaunch`| yes | 
-`deadlock_stop`    | yes |
+`deadlock_relaunch`| yes | Indicates that the job has been reenqueued for avoiding a [deadlock scenario](#deadlock-prevention) (applies for idempotent jobs)
+`deadlock_stop`    | yes | Indicates that the job has been stopped for avoiding a deadlock scenario (applies for non-idempotent jobs)
 
 ## Job hierarchy
 
