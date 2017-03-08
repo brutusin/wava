@@ -18,6 +18,7 @@
   * [Niceness](#niceness)
 - [Events](#events)
 - [Job hierarchy](#job-hierarchy)
+  * [Blocked state](#blocked-state)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
@@ -123,7 +124,7 @@ Event type ([`Events.java`](wava-client/src/main/java/org/brutusin/wava/io/Event
 Running Job can submit more jobs, thus a job hierarchy is created. This potentially can lead to deadlock scenarios, when a parent (running) job waits for a child job (queded) to finish.
 
 ### Blocked state
- All parent job with no children running is considered blocked.
+ All parent jobs with no children running are considered blocked, that is waiting for their queued children to finish.
 
 ### Deadlock prevention
 In order to avoid deadlock, and prevent from starvation (having too much jobs blocked by a waiting children), the follows a series of rules that may force a running blocking job to be requeued (if submitted as 'idempotent') or even stoped.
