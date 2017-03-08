@@ -30,7 +30,7 @@
 
 ## Overview
 
-`wava` scheduler is designed to run batch processes in a single Linux machine in an operator-friendly manner while imposing memory usage limits both across the overall job set (strict limits) and guaranteeing a minimum of available memory per job (soft limits).
+`wava` scheduler is designed to run batch processes in a single Linux machine in an operator-friendly manner while imposing a memory limit across the overall job set (strict limits) and guaranteeing a minimum of available memory per job (soft limits).
 
 Traditionally fixed-sized queues were used for enqueueing jobs, but when used over a heterogeneus (in terms of memory demands) set of jobs, they show different weaknesses: inefficient resource utilization, system performance degradation, and job resource competition.
 
