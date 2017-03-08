@@ -31,7 +31,9 @@ Traditionally fixed-sized queues were used for enqueueing jobs, but when used ov
 ### Capacity Guarantees
 Jobs are submitted with a minimum memory size parameter (job size), scheduled, and finally executed in a sandboxed environment (implemented via [cgroups](https://en.wikipedia.org/wiki/Cgroups)) with a hard-limited capacity (scheduler capacity).
 
-Jobs are allowed to use more memory than their declared sizes (used as soft limit) as long as the total amount of used memory doesn't exceed that hard limit. On the other hand, the scheduler guareantes that each job will always have at its disposition at least the amount of memory the job declared.
+The whole job process tree will be allowed to have up the scheduler-capacity of resident memory allocated (this would be the case when no more jobs are scheduled), and in case of memory pressure forced to swap out.
+
+The scheduler guareantes that each job process tree will always have at its disposition at least the amount of memory the job declared.
 
 ### Security
 Job processes are run by the same machine user that submitted the job, so the scheduler can not be used to [escale the running privileges](https://en.wikipedia.org/wiki/Privilege_escalation) of a user.
