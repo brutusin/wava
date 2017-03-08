@@ -25,7 +25,7 @@
 
 Traditionally fixed-sized queues were used for enqueueing jobs, but when used over a heterogeneus (in terms of memory demands) set of jobs, they show different weaknesses: inefficient resource utilization, system performance degradation, and job resource competition.
 
-`wava` scheduler is designed to overcome this, that is, without losing easy of use, providing guarantes for both system stability and job resource allocation, and on the other side, offering better resource utilization rates. 
+`wava` scheduler is designed to overcome this, that is, without losing easy of use, providing guarantes for both system stability and job resource allocation and, on the other side, offering better resource utilization rates. 
 
 ## Features
 ### Capacity Guarantees
@@ -37,7 +37,9 @@ Jobs are allowed to use more memory than their declared sizes (used as soft limi
 Job processes are run by the same machine user that submitted the job, so the scheduler can not be used to [escale the running privileges](https://en.wikipedia.org/wiki/Privilege_escalation) of a user.
 
 ### Resource-based scheduling
-Scheduling is based on memory. The scheduler is configured to have a certain capacity and each job has an associated minimum memory size. The main scheduling constraint is the following: the sum of the running jobs minimum memory size never can not exceed the scheduler capacity. 
+Scheduling is based on memory. The scheduler is configured to have a certain capacity and each job has an associated minimum memory size. 
+
+The main **scheduling constraint** is the following: the sum of the running jobs minimum memory size never can not exceed the scheduler capacity. 
 
 ### Priority-based scheduling
 
