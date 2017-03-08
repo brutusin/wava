@@ -59,7 +59,7 @@ In particular job submissions are performed by separate peer processes (`wava -r
 The scheduler pipes standard io-streams between the job processes and their respective peer processes. Additionally, it pipes scheduler [events](#events) to the peer `stderr` unless an event file has been specified in submission (`wava -r -e <file>`).
 
 ![wava example](https://github.com/brutusin/wava/raw/master/img/wava-example2.gif)
-*Running a loop that prints the date each 1 second with an excesive promise of max memory of 100 MB that makes the command to be  temporary queued. Observe also that this command runs untils user 'nacho' cancels it, returning a non-zero return code*
+*Running an example command requiring a minimum of 100MB. Observe also that this command runs untils user 'nacho' cancels it, returning a non-zero return code*
 
 ## Priority and groups
 
