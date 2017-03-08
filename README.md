@@ -1,6 +1,6 @@
 ## org.brutusin:wava [![Build Status](https://api.travis-ci.org/brutusin/wava.svg?branch=master)](https://travis-ci.org/brutusin/wava) [![Maven Central Latest Version](https://maven-badges.herokuapp.com/maven-central/org.brutusin/wava-root/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.brutusin/wava-root/)
 
-`wava` is a linux command line tool wich allows for multiple users to securely run batch processes, scheduded in a timely manner under contraints of allocated memory capacities.
+`wava` is a linux command line tool wich allows for multiple users to securely run batch processes, scheduded in a timely manner under contraints of allocated (resident) memory capacities.
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/wava-menu.gif)
 
@@ -21,20 +21,28 @@
 
 ## Overview
 
-`wava` scheduler is designed to run batch processes in a single Linux machine in an operator-friendly manner while imposing memory usage limits both across the overall job set (strict limits), and on a per-job basis (soft limits).
+`wava` scheduler is designed to run batch processes in a single Linux machine in an operator-friendly manner while imposing memory usage limits both across the overall job set (strict limits) and guaranteeing a minimum of available memory per job (soft limits).
 
 Traditionally fixed-sized queues were used for enqueueing jobs, but when used over a heterogeneus (in terms of memory demands) set of jobs, they show two (opposite) weaknesses: inefficient resource utilization and system performance degradation. 
 
-`wava` scheduler is designed to overcome this: without losing easy of use, provide a sandboxed environment that guarantes system stability and that is dynamic in the number of concurrent running processes (depending on the current jobs memory demands, and the scheduler capacity), offering better resource utilization rates.
+`wava` scheduler is designed to overcome this: without losing easy of use, providing guarantes for system stability and job resource allocation and offering better resource utilization rates. 
+
+a sandboxed environment that guarantes , offering job resource allocation gGuarantees and that is dynamic in the number of concurrent running processes (depending on the current jobs memory demands, and the scheduler capacity), offering better resource utilization rates.
 
 ## Features
 ### Capacity Guarantees
-All jobs submitted to the scheduler have access to the capacity allocated to the scheduler. This maximum capacity imposes a hard limit on job memory usage. Jobs are allowed to use more memory than their declared sizes (ie, soft limits) as long as the total amount of used memory doesn't exceed that hard limit. On the other hand, the scheduler guareantes that each job will always have at its disposition at least the amount of memory the job declared.
+Jobs are submitted with a minimum memory size parameter (job size), scheduled, and finally executed in a sandboxed environment (implemented via [cgroups](https://en.wikipedia.org/wiki/Cgroups)) with a hard-limited capacity (scheduler capacity).
+
+Jobs are allowed to use more memory than their declared sizes (ie, soft limits) as long as the total amount of used memory doesn't exceed that hard limit. On the other hand, the scheduler guareantes that each job will always have at its disposition at least the amount of memory the job declared. 
+The scheduler a sandboxed environment that guarantes
+
 ### Security
 Job processes are run by the same machine user that submitted the job, so the scheduler can not be used to [escale the running privileges](https://en.wikipedia.org/wiki/Privilege_escalation) of a user.
-### Resource-based Scheduling
 
-### Priority-based Scheduling
+### Resource-based scheduling
+Performed scheduling is based on memory. The scheduler is configured to have a capacity (max memory usage), 
+
+### Priority-based scheduling
 
 is a Linux command-line tool that allows to enqueue batch jobs, to be run in a memory-limiting [cgroup](https://en.wikipedia.org/wiki/Cgroups), according to user-specified parameters, and once running, manages their process nicenesses.
 
