@@ -33,7 +33,7 @@ Jobs are submitted with a minimum memory size parameter (job size), enqueded, an
 
 At runtime, the whole job process tree will be allowed to have allocated an amount of resident memory up to the scheduler-capacity   (this would be the case when no more jobs are scheduled), and in case of memory pressure forced to swap out.
 
-The scheduler guareantes that each job process tree will always have at its disposition at least the amount of minimum memory the job claimed.
+The scheduler guareantees that each job process tree will always have at its disposition at least the amount of minimum memory they claimed.
 
 ### Security
 Job processes are run by the same machine user that submitted the job, so the scheduler can not be used to [escale the running privileges](https://en.wikipedia.org/wiki/Privilege_escalation) of a user.
@@ -44,14 +44,11 @@ Scheduling is based on memory. The scheduler is configured to have a certain cap
 The main **scheduling constraint** is the following: the sum of the running jobs minimum memory size never can not exceed the scheduler capacity. 
 
 ### Priority-based scheduling
+This feature allows jobs to be submitted and scheduled with different priorities. Priority is not set directly to the jobs but instead the concept of priority group is used.
 
-is a Linux command-line tool that allows to enqueue batch jobs, to be run in a memory-limiting [cgroup](https://en.wikipedia.org/wiki/Cgroups), according to user-specified parameters, and once running, manages their process nicenesses.
+All jobs belong (implicity or explicity) to a priority group that determines their global ordering, used for positioning in the queue and assigning a process niceness when running.
 
-
-Job submission requires a memory parameter (`-m`) that is used for two different pursposes:
-1. **Memory-based Scheduling:** This memory value is 
-2. **Runtime memory limitation:** Limiting the amount of resident memory used by the job process tree (soft limit)
- 
+### Runtime scheduling policy
 
 Job memory limit is used 
 This scheduler is specially suited for enqueuing a high number of heterogeneous (in terms of memory demands) long-running jobs and run as many of them as possible concurrently without exhausting physical memory (avoiding virtual memory paging and swapping) in order to not penalize the performance of other services running in the system.
