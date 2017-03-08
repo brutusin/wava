@@ -1,6 +1,6 @@
 ## org.brutusin:wava [![Build Status](https://api.travis-ci.org/brutusin/wava.svg?branch=master)](https://travis-ci.org/brutusin/wava) [![Maven Central Latest Version](https://maven-badges.herokuapp.com/maven-central/org.brutusin/wava-root/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.brutusin/wava-root/)
 
-`wava` scheduler is designed to run batch processes in a single Linux machine in an operator-friendly manner while imposing memory usage limits both across the overall job set (strict limits), and on a per-job basis (soft limits).
+`wava` is a linux command line tool wich allows for multiple users to securely run batch processes, scheduded in a timely manner under contraints of allocated memory capacities.
 
 ![wava menu](https://github.com/brutusin/wava/raw/master/img/wava-menu.gif)
 
@@ -20,6 +20,8 @@
 
 
 ## Overview
+
+`wava` scheduler is designed to run batch processes in a single Linux machine in an operator-friendly manner while imposing memory usage limits both across the overall job set (strict limits), and on a per-job basis (soft limits).
 
 Traditionally fixed-sized queues were used for enqueueing jobs, but when used over a heterogeneus (in terms of memory demands) set of jobs, they show two (opposite) weaknesses: inefficient resource utilization and system performance degradation. 
 
