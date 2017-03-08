@@ -168,63 +168,58 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
 
 ```javascript
 {
-  "tempFolder": "/dev/shm/wava/$WAVA_HOME",
-  "uICfg": {
-    "ansiColors": true,
-    "sIMemoryUnits": true
+  "tempFolder" : "/dev/shm/wava/$WAVA_HOME",
+  "uICfg" : {
+    "ansiColors" : true,
+    "sIMemoryUnits" : true
   },
-  "schedulerCfg": {
-    "promiseHandlerClassName": "org.brutusin.wava.core.plug.impl.promise.LaxPromiseHandler",
-    "nicenessHandlerClassName": "org.brutusin.wava.core.plug.impl.niceness.HomogeneusSpreadNicenessHandler",
-    "refreshLoopSleepMillisecs": 10,
-    "pingMillisecs": 1000,
-    "maxTotalRSSBytes": -1,
-    "maxJobRSSBytes": -1,
-    "commandTTLCacheSecs": 2,
-    "sigKillDelaySecs": 5,
-    "maxBlockedRssStarvationRatio": 0.5
+  "schedulerCfg" : {
+    "nicenessHandlerClassName" : "org.brutusin.wava.core.plug.impl.niceness.HomogeneusSpreadNicenessHandler",
+    "memoryCgroupBasePath" : "/sys/fs/cgroup/memory/wava/$WAVA_HOME",
+    "refreshLoopSleepMillisecs" : 10,
+    "pingMillisecs" : 1000,
+    "maxTotalRSSBytes" : -1,
+    "maxJobRSSBytes" : -1,
+    "commandTTLCacheSecs" : 2,
+    "sigKillDelaySecs" : 5,
+    "maxBlockedRssStarvationRatio" : 0.5
   },
-  "processCfg": {
-    "nicenessRange": [
-      1,
-      19
-    ],
-    "cpuAfinity": "$DEFAULT_CPU_AFINITY"
+  "processCfg" : {
+    "nicenessRange" : [ 1, 19 ],
+    "cpuAfinity" : "$DEFAULT_CPU_AFINITY"
   },
-  "groupCfg": {
-    "dynamicGroupIdleSeconds": 10,
-    "predefinedGroups": [
-      {
-        "name": "high",
-        "priority": -10,
-        "timeToIdleSeconds": -1
-      },
-      {
-        "name": "low",
-        "priority": 10,
-        "timeToIdleSeconds": -1
-      }
-    ]
+  "groupCfg" : {
+    "dynamicGroupIdleSeconds" : 10,
+    "predefinedGroups" : [ {
+      "name" : "high",
+      "priority" : -10,
+      "timeToIdleSeconds" : -1
+    }, {
+      "name" : "low",
+      "priority" : 10,
+      "timeToIdleSeconds" : -1
+    } ]
   }
 }
-
 ```
 ### Configuration description
-Property                               | Description
---------                               | -----------
-`uICfg.ansiColors`                     | Use ANSI escape code sequences to highlight UI.
-`uICfg.sIMemoryUnits`                  | Use units from the International System for output memory values. `true`: kB based, `false`:[KiB](https://en.wikipedia.org/wiki/Kibibyte) based
-`schedulerCfg.promiseHandlerClassName` | FQN of the [`PromiseHandler`](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java) implementation (see [`impl`](https://github.com/brutusin/wava/tree/master/src/main/java/org/brutusin/wava/core/plug/impl) package) to use.
-`schedulerCfg.nicenessHandlerClassName` | FQN of the [`NicenessHandler`](src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation (see [`impl`](https://github.com/brutusin/wava/tree/master/src/main/java/org/brutusin/wava/core/plug/impl) package) to use.
-`schedulerCfg.pollingSecs`             | Polling time interval for promises verification and ping events.
-`schedulerCfg.maxTotalRSSBytes`        | Maximum amount of physical memory permitted for all jobs. If `-1` the total amount of physical memory is considered.
-`schedulerCfg.maxJobRSSBytes`          | Maximum permitted RSS promise for a job. If `-1` there is no limit.
-`schedulerCfg.commandTTLCacheSecs`     | Cache TTL in seconds, for some commands used to query information to the system.
-`schedulerCfg.sigKillDelaySecs`        | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
-`processCfg.nicenessRange`             | Minimum (most favorable) and maximum (less favorable) niceness to be assigned to a job process tree
-`processCfg.cpuAfinity`                | CPU affinity to be set to the job processes. In a format supported by the `-c` parameter of [taskset](http://linuxcommand.org/man_pages/taskset1.html).
-`groupCfg.dynamicGroupIdleSeconds`     | Idle time for [dynamic groups](#priority-and-groups) in seconds.
-`groupCfg.predefinedGroups`            | Set of groups to be available since startup.
+Property                                    | Description
+--------                                    | -----------
+`uICfg.ansiColors`                          | Use ANSI escape code sequences to highlight UI.
+`uICfg.sIMemoryUnits`                       | Use units from the International System for output memory values. `true`: kB based, `false`:[KiB](https://en.wikipedia.org/wiki/Kibibyte) based
+`schedulerCfg.nicenessHandlerClassName`     | FQN of the [`NicenessHandler`](src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation (see [`impl`](https://github.com/brutusin/wava/tree/master/src/main/java/org/brutusin/wava/core/plug/impl) package) to use.
+`schedulerCfg.memoryCgroupBasePath`         | Root path to the parent memory cgroup
+`schedulerCfg.refreshLoopSleepMillisecs`    | Waiting time for the main looping thread.
+`schedulerCfg.pingMillisecs`                | Time interval between ping events to peer processes.
+`schedulerCfg.maxTotalRSSBytes`             | Scheduler capacity. Maximum amount of physical memory permitted for all jobs. If `-1` the total amount of physical memory is considered.
+`schedulerCfg.maxJobRSSBytes`               | Maximum value for a job memory claim. If `-1` there is no limit.
+`schedulerCfg.commandTTLCacheSecs`          | Cache TTL in seconds, for some commands used to query information to the system.
+`schedulerCfg.sigKillDelaySecs`             | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
+`schedulerCfg.maxBlockedRssStarvationRatio` | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
+`processCfg.nicenessRange`                  | Minimum (most favorable) and maximum (less favorable) niceness to be assigned to a job process tree
+`processCfg.cpuAfinity`                     | CPU affinity to be set to the job processes. In a format supported by the `-c` parameter of [taskset](http://linuxcommand.org/man_pages/taskset1.html).
+`groupCfg.dynamicGroupIdleSeconds`          | Idle time for [dynamic groups](#priority-and-groups) in seconds.
+`groupCfg.predefinedGroups`                 | Set of groups to be available since startup.
 ## Support bugs and requests
 https://github.com/brutusin/wava/issues
 
