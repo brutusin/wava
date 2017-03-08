@@ -55,7 +55,7 @@ The main **scheduling constraint** is the following: the sum of the running jobs
 ### Priority-based scheduling
 This feature allows jobs to be submitted and scheduled with different priorities. 
 
-All jobs belong (implicity or explicity) to a priority group that determines their global ordering, used for positioning in the queue and assigning a process niceness when running.
+All jobs belong (implicity or explicity) to a [priority group]((#priority-and-groups)) that determines their global ordering, used for positioning in the queue and assigning a process niceness when running.
 
 ## Architecture
 
