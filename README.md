@@ -42,7 +42,7 @@ Jobs are submitted with a minimum memory claim (job size), enqueded, and finally
 
 At runtime, the whole job process tree will be allowed to have allocated an amount of resident memory up to the scheduler-capacity   (this would be the case when no more jobs are scheduled), and in case of memory pressure forced to swap out.
 
-The scheduler guareantees that each job process tree will always have at its disposition at least the amount of minimum memory they claimed.
+The scheduler guareantees that each job process tree will always have at its disposition at least the amount of minimum memory claimed at job submission.
 
 ### Security
 Job processes are run by the same machine user that submitted the job, so the scheduler can not be used to [escale the running privileges](https://en.wikipedia.org/wiki/Privilege_escalation) of a user.
