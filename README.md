@@ -23,24 +23,21 @@
 
 `wava` scheduler is designed to run batch processes in a single Linux machine in an operator-friendly manner while imposing memory usage limits both across the overall job set (strict limits) and guaranteeing a minimum of available memory per job (soft limits).
 
-Traditionally fixed-sized queues were used for enqueueing jobs, but when used over a heterogeneus (in terms of memory demands) set of jobs, they show two (opposite) weaknesses: inefficient resource utilization and system performance degradation. 
+Traditionally fixed-sized queues were used for enqueueing jobs, but when used over a heterogeneus (in terms of memory demands) set of jobs, they show different weaknesses: inefficient resource utilization, system performance degradation, and job resource competition.
 
-`wava` scheduler is designed to overcome this: without losing easy of use, providing guarantes for system stability and job resource allocation and offering better resource utilization rates. 
-
-a sandboxed environment that guarantes , offering job resource allocation gGuarantees and that is dynamic in the number of concurrent running processes (depending on the current jobs memory demands, and the scheduler capacity), offering better resource utilization rates.
+`wava` scheduler is designed to overcome this, that is, without losing easy of use, providing guarantes for both system stability and job resource allocation, and on the other side, offering better resource utilization rates. 
 
 ## Features
 ### Capacity Guarantees
 Jobs are submitted with a minimum memory size parameter (job size), scheduled, and finally executed in a sandboxed environment (implemented via [cgroups](https://en.wikipedia.org/wiki/Cgroups)) with a hard-limited capacity (scheduler capacity).
 
-Jobs are allowed to use more memory than their declared sizes (ie, soft limits) as long as the total amount of used memory doesn't exceed that hard limit. On the other hand, the scheduler guareantes that each job will always have at its disposition at least the amount of memory the job declared. 
-The scheduler a sandboxed environment that guarantes
+Jobs are allowed to use more memory than their declared sizes (used as soft limit) as long as the total amount of used memory doesn't exceed that hard limit. On the other hand, the scheduler guareantes that each job will always have at its disposition at least the amount of memory the job declared.
 
 ### Security
 Job processes are run by the same machine user that submitted the job, so the scheduler can not be used to [escale the running privileges](https://en.wikipedia.org/wiki/Privilege_escalation) of a user.
 
 ### Resource-based scheduling
-Performed scheduling is based on memory. The scheduler is configured to have a capacity (max memory usage), 
+Scheduling is based on memory. The scheduler is configured to have a certain capacity and each job has an associated minimum memory size. The main scheduling constraint is the following: the sum of the running jobs minimum memory size never can not exceed the scheduler capacity. 
 
 ### Priority-based scheduling
 
