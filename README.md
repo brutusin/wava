@@ -29,7 +29,7 @@ Traditionally fixed-sized queues were used for enqueueing jobs, but when used ov
 
 ## Features
 ### Capacity Guarantees
-All jobs submitted to the scheduler have access to the capacity allocated to the scheduler. This maximum capacity imposes a hard limit on job memory usage. Jobs are allowed to use more memory than their declared sizes (ie, soft limits) when the total amount of used memory doesn't exceed that hard limit. The scheduler guareantes that each job will always have at its disposition at least this amount of memory.
+All jobs submitted to the scheduler have access to the capacity allocated to the scheduler. This maximum capacity imposes a hard limit on job memory usage. Jobs are allowed to use more memory than their declared sizes (ie, soft limits) as long as the total amount of used memory doesn't exceed that hard limit. On the other hand, the scheduler guareantes that each job will always have at its disposition at least the amount of memory it declared.
 ### Security
 Job processes are run by the same machine user that submitted the job, so the scheduler can not be used to [escale the running privileges](https://en.wikipedia.org/wiki/Privilege_escalation) of a user.
 ### Resource-based Scheduling
