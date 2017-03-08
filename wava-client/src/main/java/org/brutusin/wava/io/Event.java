@@ -30,13 +30,10 @@ public enum Event {
     cancelled,
     ping,
     error,
-    exceed_allowed,
-    exceed_disallowed,
-    exceed_global,
     exceed_tree,
     shutdown,
     maxrss,
     maxswap,
     starvation_relaunch,
-    deadlock_stop;
+    starvation_stop;
 }

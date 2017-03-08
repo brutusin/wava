@@ -145,7 +145,7 @@ public class Scheduler {
                 pi.getJobInfo().setRelaunched(true);
             } else {
                 LOGGER.log(Level.SEVERE, "Starvation scenario found. Killing non-idempotent job {0} ({1})", new Object[]{pi.getJobInfo().getId(), pi.getJobInfo().getSubmitChannel().getRequest().getGroupName()});
-                pi.getJobInfo().getSubmitChannel().sendEvent(Event.deadlock_stop, runningUser);
+                pi.getJobInfo().getSubmitChannel().sendEvent(Event.starvation_stop, runningUser);
             }
             LinuxCommands.getInstance().killTree(pi.getPid());
         } catch (Exception ex) {

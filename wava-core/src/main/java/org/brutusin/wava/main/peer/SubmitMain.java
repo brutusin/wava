@@ -71,7 +71,7 @@ public class SubmitMain {
                 .longOpt("memory")
                 .argName("mem value")
                 .hasArg()
-                .desc("promised maximum RSS memory to be allocated by the process at any time, in bytes, if no unit is specified")
+                .desc("required RSS memory")
                 .required()
                 .build();
         Option eOpt = Option.builder("e")

@@ -80,12 +80,6 @@ public class CommandLineRequestExecutor extends RequestExecutor {
                             } else {
                                 color = ANSICode.RED;
                             }
-                        } else if (evt == Event.exceed_allowed) {
-                            color = ANSICode.YELLOW;
-                        } else if (evt == Event.exceed_disallowed) {
-                            color = ANSICode.RED;
-                        } else if (evt == Event.exceed_global) {
-                            color = ANSICode.YELLOW;
                         } else if (evt == Event.error) {
                             color = ANSICode.RED;
                             if (value != null) {
