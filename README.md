@@ -19,6 +19,7 @@
 - [Events](#events)
 - [Job hierarchy](#job-hierarchy)
   * [Blocked state](#blocked-state)
+  * [Deadlock prevention](#deadlock-prevention)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
