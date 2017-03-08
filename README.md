@@ -95,22 +95,22 @@ ${time-millis}:${event-type}[:${event-value}]
 For peer processes these events are output to `stderr` after being formatted as `[wava] [date] [${event-type}:${event-value}]` unless a file is specified (`wava -r -e <file>`) for redirecting them.
 
 Event type ([`Events.java`](wava-client/src/main/java/org/brutusin/wava/io/Event.java)) | Valued | Description
------------------- | --- | -----
-`id`               | yes | Id assigned to the job.
-`queued`           | yes | Position in the queue, if the job is queued.
-`priority`         | yes | Piority of the job, given by its group. 
-`running`          | yes | Root pId of the job process when started.  
-`niceness`         | yes | Niceness set to the job process.   
-`cancelled`        | yes | User cancelling the job. 
-`ping`             | no  | Send periodically to detect stale peers.
-`exceed_tree      `| yes | Memory claim exceeds capacity
-`shutdown`         | yes | Scheduler is being stopped 
-`maxrss`           | yes | Max RSS allocated to the process tree
-`maxswap`          | yes | Max swap allocated to the process tree
-`error`            | yes | To send information about an error.
-`retcode`          | yes | Return code for the client process to use.
-`deadlock_relaunch`| yes | Indicates that the job has been reenqueued for avoiding a [deadlock scenario](#deadlock-prevention) (applies for idempotent jobs)
-`deadlock_stop`    | yes | Indicates that the job has been stopped for avoiding a deadlock scenario (applies for non-idempotent jobs)
+------------------   | --- | -----
+`id`                 | yes | Id assigned to the job.
+`queued`             | yes | Position in the queue, if the job is queued.
+`priority`           | yes | Piority of the job, given by its group. 
+`running`            | yes | Root pId of the job process when started.  
+`niceness`           | yes | Niceness set to the job process.   
+`cancelled`          | yes | User cancelling the job. 
+`ping`               | no  | Send periodically to detect stale peers.
+`exceed_tree        `| yes | Memory claim exceeds capacity
+`shutdown`           | yes | Scheduler is being stopped 
+`maxrss`             | yes | Max RSS allocated to the process tree
+`maxswap`            | yes | Max swap allocated to the process tree
+`error`              | yes | To send information about an error.
+`retcode`            | yes | Return code for the client process to use.
+`starvation_relaunch`| yes | Indicates that the job has been reenqueued due to a [starvation scenario](#deadlock-prevention) (applies for idempotent jobs)
+`starvation_stop`    | yes | Indicates that the job has been stopped due to a starvation scenario (applies for non-idempotent jobs)
 
 ## Job hierarchy
 
@@ -209,13 +209,13 @@ Property                                    | Description
 `uICfg.sIMemoryUnits`                       | Use units from the International System for output memory values. `true`: kB based, `false`:[KiB](https://en.wikipedia.org/wiki/Kibibyte) based
 `schedulerCfg.nicenessHandlerClassName`     | FQN of the [`NicenessHandler`](src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation (see [`impl`](https://github.com/brutusin/wava/tree/master/src/main/java/org/brutusin/wava/core/plug/impl) package) to use.
 `schedulerCfg.memoryCgroupBasePath`         | Root path to the parent memory cgroup
-`schedulerCfg.refreshLoopSleepMillisecs`    | Waiting time for the main looping thread.
+`schedulerCfg.refreshLoopSleepMillisecs`    | Sleeping time for the main looping thread.
 `schedulerCfg.pingMillisecs`                | Time interval between ping events to peer processes.
 `schedulerCfg.maxTotalRSSBytes`             | Scheduler capacity. Maximum amount of physical memory permitted for all jobs. If `-1` the total amount of physical memory is considered.
 `schedulerCfg.maxJobRSSBytes`               | Maximum value for a job memory claim. If `-1` there is no limit.
 `schedulerCfg.commandTTLCacheSecs`          | Cache TTL in seconds, for some commands used to query information to the system.
 `schedulerCfg.sigKillDelaySecs`             | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
-`schedulerCfg.maxBlockedRssStarvationRatio` | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
+`schedulerCfg.maxBlockedRssStarvationRatio` | Maximum ratio between the sum of memory claims of the blocked jobs divided by the scheduler capacity. If exceeded the [starvation prevention mechanism](#deadlock-prevention) is triggered.
 `processCfg.nicenessRange`                  | Minimum (most favorable) and maximum (less favorable) niceness to be assigned to a job process tree
 `processCfg.cpuAfinity`                     | CPU affinity to be set to the job processes. In a format supported by the `-c` parameter of [taskset](http://linuxcommand.org/man_pages/taskset1.html).
 `groupCfg.dynamicGroupIdleSeconds`          | Idle time for [dynamic groups](#priority-and-groups) in seconds.
