@@ -50,7 +50,7 @@ Job processes are run by the same machine user that submitted the job, so the sc
 ### Resource-based scheduling
 Scheduling is based on memory. The scheduler is configured to have a certain capacity and each job has an associated minimum memory size. 
 
-The main **scheduling constraint** is the following: the sum of the running jobs minimum memory size never can not exceed the scheduler capacity. 
+The main **scheduling constraint** is the following: the sum of the running jobs minimum memory size cannot exceed the scheduler capacity. 
 
 ### Priority-based scheduling
 This feature allows jobs to be submitted and scheduled with different priorities. 
