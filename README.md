@@ -7,10 +7,17 @@
 **Table of contents**
 - [Top](#orgbrutusinwava--)
 - [Overview](#overview)
+- [Features](#features)
+  * [Capacity guarantees](#capacity-guarantees)
+  * [Security](#security)
+  * [Resource-based scheduling](#resource-based-scheduling)
+  * [Priority-based scheduling](#priority-based-scheduling)
+- [Architecture](#architecture)
 - [Priority and groups](#priority-and-groups)
   * [Job order](#job-order)
   * [Niceness](#niceness)
 - [Events](#events)
+- [Job hierarchy](#job-hierarchy)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
@@ -115,13 +122,13 @@ Event type ([`Events.java`](wava-client/src/main/java/org/brutusin/wava/io/Event
 ## Job hierarchy
 Running Job can submit more jobs, thus a job hierarchy is created. This potentially can lead to deadlock scenarios, when a parent (running) job waits for a child job (queded) to finish.
 
+### Blocked state
+ All parent job with no children running is considered blocked.
+
 ### Deadlock prevention
 In order to avoid deadlock, and prevent from starvation (having too much jobs blocked by a waiting children), the follows a series of rules that may force a running blocking job to be requeued (if submitted as 'idempotent') or even stoped.
 
 First the candidate job to be preempted is chosen based on its idempotency (idempotent first) and priority (low priority first) and in case that the maximum ratio between the sum of memory claims of all the blocked jobs divided by the scheduler capacity exceeds a configurable value, the scenario is considered as starving, and the candidate is preempted to make room for a potentially blocking job to run.
-
->Note about job hierarchies: All parent job with no children running is considered blocked.
-
 
 ## Requirements
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
