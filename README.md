@@ -113,8 +113,15 @@ Event type ([`Events.java`](wava-client/src/main/java/org/brutusin/wava/io/Event
 `starvation_stop`    | yes | Indicates that the job has been stopped due to a starvation scenario (applies for non-idempotent jobs)
 
 ## Job hierarchy
+Running Job can submit more jobs, thus a job hierarchy is created. This potentially can lead to deadlock scenarios, when a parent (running) job waits for a child job (queded) to finish.
 
 ### Deadlock prevention
+In order to avoid deadlock, and prevent from starvation (having too much jobs blocked by a waiting children), the follows a series of rules that may force a running blocking job to be requeued (if submitted as 'idempotent') or even stoped.
+
+First the candidate job to be preempted is chosen based on its idempotency (idempotent first) and priority (low priority first) and in case that the maximum ratio between the sum of memory claims of all the blocked jobs divided by the scheduler capacity exceeds a configurable value, the scenario is considered as starving, and the candidate is preempted to make room for a potentially blocking job to run.
+
+>Note about job hierarchies: All parent job with no children running is considered blocked.
+
 
 ## Requirements
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
@@ -160,7 +167,7 @@ wava
 ```
 
 ### 7. Run on startup
-Optinally, create a service to run the following command at startup by the "root" user: `wava -s`. Details are not given here since it varies depending on the Linux distribution.
+Optionally, create a service to run the following command at startup by the "root" user: `wava -s`. Details are not given here since it varies depending on the Linux distribution.
 
 ## Configuration
 Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables can be used in this file.
