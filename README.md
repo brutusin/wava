@@ -38,7 +38,7 @@ Traditionally fixed-sized queues were used for enqueueing jobs, but when used ov
 
 ## Features
 ### Capacity guarantees
-Jobs are submitted with a minimum memory size parameter (job size), enqueded, and finally executed in a sandboxed environment (implemented via [cgroups](https://en.wikipedia.org/wiki/Cgroups)) with a hard-limited capacity (scheduler capacity).
+Jobs are submitted with a minimum memory claim (job size), enqueded, and finally executed in a sandboxed environment (implemented via [cgroups](https://en.wikipedia.org/wiki/Cgroups)) with a hard-limited capacity (scheduler capacity).
 
 At runtime, the whole job process tree will be allowed to have allocated an amount of resident memory up to the scheduler-capacity   (this would be the case when no more jobs are scheduled), and in case of memory pressure forced to swap out.
 
