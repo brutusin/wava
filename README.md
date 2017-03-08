@@ -34,7 +34,7 @@
 
 Traditionally fixed-sized queues were used for enqueueing jobs, but when used over a heterogeneus (in terms of memory demands) set of jobs, they show different weaknesses: inefficient resource utilization, system performance degradation, and job resource competition.
 
-`wava` scheduler is designed to overcome this, that is, without losing easy of use, providing guarantes for both system stability and job resource allocation and, on the other side, offering better resource utilization rates. 
+`wava` scheduler is designed to overcome this, that is, without losing easy of use, providing guarantees for both system stability and job resource allocation and, on the other side, offering better resource utilization rates. 
 
 ## Features
 ### Capacity guarantees
