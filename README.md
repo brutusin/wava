@@ -44,14 +44,11 @@ Scheduling is based on memory. The scheduler is configured to have a certain cap
 The main **scheduling constraint** is the following: the sum of the running jobs minimum memory size never can not exceed the scheduler capacity. 
 
 ### Priority-based scheduling
-This feature allows jobs to be submitted and scheduled with different priorities. Priority is not set directly to the jobs but instead the concept of priority group is used.
+This feature allows jobs to be submitted and scheduled with different priorities. 
 
 All jobs belong (implicity or explicity) to a priority group that determines their global ordering, used for positioning in the queue and assigning a process niceness when running.
 
-### Runtime scheduling policy
-
-Job memory limit is used 
-This scheduler is specially suited for enqueuing a high number of heterogeneous (in terms of memory demands) long-running jobs and run as many of them as possible concurrently without exhausting physical memory (avoiding virtual memory paging and swapping) in order to not penalize the performance of other services running in the system.
+## Architecture
 
 The scheduler runs as a centralized process (`wava -s`) and all interaction with it is performed by separated client processes started when invoking the other command options.  
 
@@ -61,16 +58,7 @@ In particular job submissions are performed by separate peer processes (`wava -r
 
 The scheduler pipes standard io-streams between the job processes and their respective peer processes. Additionally, it pipes scheduler [events](#events) to the peer `stderr` unless an event file has been specified in submission (`wava -r -e <file>`).
 
-### Memory promises
-Each job is submitted with a promise of maximum RSS usage, and enqueued according to specific [ordering](#job-order) rules. The scheduler keeps track of these needs in order to guarantee that the set of running jobs never exceed a ([configurable](#configuration-description)) total amount of physical memory.
-
-Since promises might be wrong, the scheduler periodically verifies them for the running jobs, and in case of failing, an action is performed (configurable implementation of [`PromiseHandler`](src/main/java/org/brutusin/wava/core/plug/PromiseHandler.java)); by default: killing the job process tree.
-
-
-![wava example 1](https://github.com/brutusin/wava/raw/master/img/wava-example1.gif)
-*Running `ls` with a promise of max memory of 100 B. The duration is of the job is too short for the scheduler detecting that it promised memory is too low*
-
-![wava example 2](https://github.com/brutusin/wava/raw/master/img/wava-example2.gif)
+![wava example](https://github.com/brutusin/wava/raw/master/img/wava-example2.gif)
 *Running a loop that prints the date each 1 second with an excesive promise of max memory of 100 MB that makes the command to be  temporary queued. Observe also that this command runs untils user 'nacho' cancels it, returning a non-zero return code*
 
 ## Priority and groups
@@ -127,6 +115,7 @@ Event type ([`Events.java`](wava-client/src/main/java/org/brutusin/wava/io/Event
 `deadlock_stop`    | yes |
 
 ## Job hierarchy
+
 ### Deadlock prevention
 
 ## Requirements
