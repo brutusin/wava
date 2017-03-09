@@ -223,7 +223,7 @@ Property                                    | Description
 --------                                    | -----------
 `uICfg.ansiColors`                          | Use ANSI escape code sequences to highlight UI.
 `uICfg.sIMemoryUnits`                       | Use units from the International System for output memory values. `true`: kB based, `false`:[KiB](https://en.wikipedia.org/wiki/Kibibyte) based
-`schedulerCfg.nicenessHandlerClassName`     | FQN of the [`NicenessHandler`](src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation (see [`impl`](https://github.com/brutusin/wava/tree/master/src/main/java/org/brutusin/wava/core/plug/impl) package) to use.
+`schedulerCfg.nicenessHandlerClassName`     | FQN of the [`NicenessHandler`](wava-core/src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation (see [`impl`](rwava-core/src/main/java/org/brutusin/wava/core/plug/impl) package) to use.
 `schedulerCfg.memoryCgroupBasePath`         | Root path to the parent memory cgroup
 `schedulerCfg.refreshLoopSleepMillisecs`    | Sleeping time for the main looping thread.
 `schedulerCfg.pingMillisecs`                | Time interval between ping events to peer processes.
