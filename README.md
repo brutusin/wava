@@ -94,7 +94,7 @@ Jobs are ordered by the following rules:
 *Sample output of command `wava -j` for querying jobs (white: running, yellow: queued). This scheduler instance has a capacity of 100 KB*
 
 ### Niceness
-The scheduler sets the niceness of the job processes according to their global ordering within the working niceness range. The concrete strategy is determined by the [`NicenessHandler`](src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation used (set the [configuration](#configuration-description)). 
+The scheduler sets the niceness of the job processes according to their global ordering within the working niceness range. The concrete strategy is determined by the [`NicenessHandler`](wava-core/src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation used (set the [configuration](#configuration-description)). 
 
 ## Events
 Besides `stderr` and `stdout`, the scheduler process maintains a dedicated channel (named pipe) for communicating events to client processes. These events are serialized in the form:
