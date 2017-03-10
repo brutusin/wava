@@ -128,7 +128,7 @@ Running jobs can submit more jobs, thus a job hierarchy is established. This pot
  All parent jobs with no children running are considered blocked, ie waiting for their queued children to finish.
 
 ### Deadlock prevention
-In order to avoid deadlock, and prevent from starvation (having too much jobs blocked by a waiting children), the scheduler follows a series of rules that may force a running blocking job to be requeued (if submitted as 'idempotent') or even stoped.
+In order to avoid deadlock, and prevent from starvation (having too much jobs blocked by a waiting children), the scheduler follows a series of rules that may force a running blocking job to be re-enqueued (if submitted as 'idempotent') or even stoped.
 
 First the candidate job to be preempted is chosen based on its idempotency (idempotent first) and priority (low priority first) and in case that the maximum ratio between the sum of memory claims of all the blocked jobs divided by the scheduler capacity exceeds a configurable value, the scenario is considered as starving, and the candidate is preempted to make room for a potentially blocking job to run.
 
