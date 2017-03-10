@@ -38,7 +38,7 @@ Traditionally fixed-sized queues were used for enqueueing jobs, but when used ov
 
 ## Features
 ### Capacity guarantees
-Jobs are submitted with a minimum memory claim (job size), then enqueued, and finally executed in a sandboxed environment (implemented via [cgroups](https://en.wikipedia.org/wiki/Cgroups)) with a hard-limited capacity (scheduler capacity).
+Jobs are submitted with a minimum memory claim (job size), then enqueued, and finally executed in a sandboxed environment (implemented via [cgroups](https://en.wikipedia.org/wiki/Cgroups)) with the scheduler capacity as hard limit and the jobs size as soft limit.
 
 At runtime, the job process tree is allowed to allocate an amount of resident memory up to the scheduler-capacity (if no more jobs are scheduled), and in case of memory pressure forced to swap out.
 
@@ -90,8 +90,8 @@ Jobs are ordered by the following rules:
 - Then by group id (incremental). In case of same priority, jobs of the oldest group go first.
 - Finally, by job id (incremental). For jobs inside the same group, FIFO ordering.
 
-![wava job listing](https://github.com/brutusin/wava/raw/master/img/wava-jobs.gif)
-*Sample output of command `wava -j` for querying jobs (white: running, yellow: queued). This scheduler instance has a capacity of 100 KB*
+![wava job listing](https://github.com/brutusin/wava/raw/master/img/wava-jobs-2.0.gif)
+*Sample output of command `wava -j` for querying jobs (white: running, yellow: queued). This scheduler instance has a capacity of 500 MB*
 
 ### Niceness
 The scheduler sets the niceness of the job processes according to their global ordering within the working niceness range. The concrete strategy is determined by the [`NicenessHandler`](wava-core/src/main/java/org/brutusin/wava/core/plug/NicenessHandler.java) implementation used (set the [configuration](#configuration-description)). 
