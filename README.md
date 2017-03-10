@@ -132,7 +132,8 @@ In order to avoid deadlock, and prevent from starvation (having too much jobs bl
 
 On each scheduler monitoring iteration:
 
-1. The scheduler choses a candidate job to be preempted, based on its idempotency (idempotent first) and priority (low priority first) 2. In case that the ratio of the sum of the sizes of the blocked jobs to the scheduler capacity exceeds a configurable value, the scenario is considered as starving, and the scheduler preempts the candidate job to make room for a potentially blocking job to run.
+1. The scheduler choses a candidate job to be preempted, based on its idempotency (idempotent first) and priority (low priority first).
+2. In case that the ratio of the sum of the sizes of the blocked jobs to the scheduler capacity exceeds a configurable value, the scenario is considered as starving, and the scheduler preempts the candidate job to make room for a potentially blocking job to run.
 
 ## Requirements
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
