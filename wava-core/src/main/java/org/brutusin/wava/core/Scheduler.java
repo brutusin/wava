@@ -67,10 +67,7 @@ public class Scheduler {
         if (!this.runningUser.equals("root")) {
             throw new NonRootUserException();
         }
-        boolean cgroupCreated = LinuxCommands.getInstance().createWavaMemoryCgroup();
-        if (!cgroupCreated) {
-            throw new RuntimeException("Unable to create base cgroup folder");
-        }
+
         if (Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes() > 0) {
             this.totalManagedRss = Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes();
         } else {
@@ -79,6 +76,10 @@ public class Scheduler {
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
+        }
+        boolean cgroupCreated = LinuxCommands.getInstance().createWavaMemoryCgroup(totalManagedRss);
+        if (!cgroupCreated) {
+            throw new RuntimeException("Unable to create base cgroup folder");
         }
         createGroupInfo(DEFAULT_GROUP_NAME, this.runningUser, 0, EVICTION_ETERNAL);
         GroupCfg.Group[] predefinedGroups = Config.getInstance().getGroupCfg().getPredefinedGroups();
@@ -325,7 +326,7 @@ public class Scheduler {
                     killForStarvationProtection(candidateToKill);
                 } else if (allJobsBlocked) {
                     JobInfo firstQueued = jobMap.get(jobSet.getQueue().next());
-                    if (maxRSsSumOfBlockedJobs + firstQueued.getSubmitChannel().getRequest().getMaxRSS() > Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes()) {
+                    if (maxRSsSumOfBlockedJobs + firstQueued.getSubmitChannel().getRequest().getMaxRSS() > this.totalManagedRss) {
                         killForStarvationProtection(candidateToKill);
                     }
                 }

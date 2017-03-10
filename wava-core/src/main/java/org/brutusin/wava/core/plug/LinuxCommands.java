@@ -30,7 +30,7 @@ public abstract class LinuxCommands {
         return INSTANCE;
     }
 
-    public abstract boolean createWavaMemoryCgroup();
+    public abstract boolean createWavaMemoryCgroup(long totalManagedRss);
 
     public abstract void removeJobMemoryCgroup(int jobId);
 

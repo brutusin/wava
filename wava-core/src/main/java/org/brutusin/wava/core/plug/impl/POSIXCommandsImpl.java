@@ -47,13 +47,13 @@ public class POSIXCommandsImpl extends LinuxCommands {
     }
 
     @Override
-    public boolean createWavaMemoryCgroup() {
+    public boolean createWavaMemoryCgroup(long totalManagedRss) {
         try {
             File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + WavaHome.getInstance().getId());
             removeLeafFolder(f);
             String[] cmd = {"mkdir", f.getAbsolutePath()};
             ProcessUtils.executeProcess(cmd);
-            Miscellaneous.writeStringToFile(new File(f, "memory.limit_in_bytes"), String.valueOf(Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes()), "UTF-8");
+            Miscellaneous.writeStringToFile(new File(f, "memory.limit_in_bytes"), String.valueOf(totalManagedRss), "UTF-8");
             Miscellaneous.writeStringToFile(new File(f, "memory.use_hierarchy"), "1", "UTF-8");
 
             return true;
