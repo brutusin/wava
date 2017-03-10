@@ -130,7 +130,8 @@ Running jobs can submit more jobs, thus a job hierarchy is established. This pot
 ### Deadlock prevention
 In order to avoid deadlock, and prevent from starvation (having too much jobs blocked by a waiting children), the scheduler follows a series of rules that may force a running blocking job to be re-enqueued (if submitted as 'idempotent') or even stoped.
 
-First the candidate job to be preempted is chosen based on its idempotency (idempotent first) and priority (low priority first) and in case that the ratio of the sum of the sizes of the blocked jobs to the scheduler capacity exceeds a configurable value, the scenario is considered as starving, and the candidate is preempted to make room for a potentially blocking job to run.
+On each scheduler monitoring iteration:
+1. The scheduler choses a candidate job to be preempted, based on its idempotency (idempotent first) and priority (low priority first) 2. In case that the ratio of the sum of the sizes of the blocked jobs to the scheduler capacity exceeds a configurable value, the scenario is considered as starving, and the scheduler preempts the candidate job to make room for a potentially blocking job to run.
 
 ## Requirements
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
