@@ -149,6 +149,8 @@ export WAVA_HOME=/opt/wava
 ```
 make this variable persistent adding the previous line to the file: `~root/.bashrc`
 
+> Multiple scheduler instances are supported in a single machine. Just change the current `WAVA_HOME`value to point to one or another
+
 
 ### 2. Download latest version:
 ```sh
