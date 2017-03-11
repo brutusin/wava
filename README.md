@@ -234,7 +234,6 @@ Property                                    | Description
 `schedulerCfg.pingMillisecs`                | Time interval between ping events to peer processes.
 `schedulerCfg.maxTotalRSSBytes`             | Scheduler capacity. Maximum amount of physical memory permitted for all jobs. If `-1` the total amount of physical memory is considered.
 `schedulerCfg.maxJobRSSBytes`               | Maximum value for a job memory claim. If `-1` there is no limit.
-`schedulerCfg.commandTTLCacheSecs`          | Cache TTL in seconds, for some commands used to query information to the system.
 `schedulerCfg.sigKillDelaySecs`             | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
 `schedulerCfg.maxBlockedRssStarvationRatio` | Maximum ratio between the sum of memory claims of the blocked jobs divided by the scheduler capacity. If exceeded the [starvation prevention mechanism](#deadlock-prevention) is triggered.
 `processCfg.nicenessRange`                  | Minimum (most favorable) and maximum (less favorable) niceness to be assigned to a job process tree
