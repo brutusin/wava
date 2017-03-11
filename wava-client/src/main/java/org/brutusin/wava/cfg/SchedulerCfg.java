@@ -35,7 +35,5 @@ public interface SchedulerCfg {
 
     public long getMaxJobRSSBytes();
 
-    public int getCommandTTLCacheSecs();
-
     public int getSigKillDelaySecs();
 }

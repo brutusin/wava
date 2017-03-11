@@ -29,7 +29,6 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     private int pingMillisecs = 1000;
     private long maxTotalRSSBytes = -1;
     private long maxJobRSSBytes = -1;
-    private int commandTTLCacheSecs = 2;
     private int sigKillDelaySecs = 5;
     private float maxBlockedRssStarvationRatio = 0.5f;
 
@@ -76,15 +75,6 @@ public class SchedulerCfgImpl implements SchedulerCfg {
 
     public void setMaxJobRSSBytes(long maxJobRSSBytes) {
         this.maxJobRSSBytes = maxJobRSSBytes;
-    }
-
-    @Override
-    public int getCommandTTLCacheSecs() {
-        return commandTTLCacheSecs;
-    }
-
-    public void setCommandTTLCacheSecs(int commandTTLCacheSecs) {
-        this.commandTTLCacheSecs = commandTTLCacheSecs;
     }
 
     @Override
