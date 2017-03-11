@@ -122,7 +122,7 @@ Event type ([`Events.java`](wava-client/src/main/java/org/brutusin/wava/io/Event
 `starvation_stop`    | yes | Indicates that the job has been stopped due to a starvation scenario (applies for non-idempotent jobs)
 
 ## Job hierarchy
-Running jobs can submit more jobs, thus a job hierarchy is established. This potentially can lead to deadlock scenarios, when a parent (running) job waits for a child job (queded) to finish.
+Running jobs can submit more jobs, thus a job hierarchy is established. This potentially can lead to a deadlock scenario, when all parent (running) jobs are waiting for a queued child job to finish.
 
 ### Blocked state
  All parent jobs with no children running are considered blocked, ie waiting for their queued children to finish.
