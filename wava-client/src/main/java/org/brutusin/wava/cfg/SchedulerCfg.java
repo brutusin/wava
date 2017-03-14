@@ -36,4 +36,8 @@ public interface SchedulerCfg {
     public long getMaxJobRSSBytes();
 
     public int getSigKillDelaySecs();
+
+    public long getMaxTotalSwapBytes();
+
+    public boolean isOutOfMemoryKillerEnabled();
 }

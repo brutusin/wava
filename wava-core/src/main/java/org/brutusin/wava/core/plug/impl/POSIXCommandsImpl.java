@@ -54,8 +54,12 @@ public class POSIXCommandsImpl extends LinuxCommands {
             String[] cmd = {"mkdir", f.getAbsolutePath()};
             ProcessUtils.executeProcess(cmd);
             Miscellaneous.writeStringToFile(new File(f, "memory.limit_in_bytes"), String.valueOf(totalManagedRss), "UTF-8");
+            long maxTotalSwapBytes = Config.getInstance().getSchedulerCfg().getMaxTotalSwapBytes();
+            if (maxTotalSwapBytes > 0) {
+                Miscellaneous.writeStringToFile(new File(f, "memory.memsw.limit_in_bytes"), String.valueOf(totalManagedRss + maxTotalSwapBytes), "UTF-8");
+            }
+            Miscellaneous.writeStringToFile(new File(f, "memory.oom_control"), Config.getInstance().getSchedulerCfg().isOutOfMemoryKillerEnabled() ? "0" : "1", "UTF-8");
             Miscellaneous.writeStringToFile(new File(f, "memory.use_hierarchy"), "1", "UTF-8");
-
             return true;
         } catch (Exception ex) {
             return false;

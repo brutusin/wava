@@ -28,7 +28,9 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     private int refreshLoopSleepMillisecs = 10;
     private int pingMillisecs = 1000;
     private long maxTotalRSSBytes = -1;
+    private long maxTotalSwapBytes = -1;
     private long maxJobRSSBytes = -1;
+    private boolean outOfMemoryKillerEnabled = false;
     private int sigKillDelaySecs = 5;
     private float maxBlockedRssStarvationRatio = 0.5f;
 
@@ -50,6 +52,24 @@ public class SchedulerCfgImpl implements SchedulerCfg {
         this.nicenessHandlerClassName = nicenessHandlerClassName;
     }
 
+    @Override
+    public long getMaxTotalSwapBytes() {
+        return maxTotalSwapBytes;
+    }
+
+    public void setMaxTotalSwapBytes(long maxTotalSwapBytes) {
+        this.maxTotalSwapBytes = maxTotalSwapBytes;
+    }
+
+    @Override
+    public boolean isOutOfMemoryKillerEnabled() {
+        return outOfMemoryKillerEnabled;
+    }
+
+    public void setOutOfMemoryKillerEnabled(boolean OutOfMemoryKillerEnabled) {
+        this.outOfMemoryKillerEnabled = OutOfMemoryKillerEnabled;
+    }
+    
     @Override
     public int getRefreshLoopSleepMillisecs() {
         return refreshLoopSleepMillisecs;
