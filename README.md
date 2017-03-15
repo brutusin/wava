@@ -235,6 +235,7 @@ Property                                    | Description
 `schedulerCfg.pingMillisecs`                | Time interval between ping events to peer processes.
 `schedulerCfg.schedulerCapacity`            | Scheduler capacity. Maximum amount of physical memory permitted for all jobs. By default is 3/4 of total memory. Different memory units can be used, for example `4 GB`
 `schedulerCfg.maxJobSize`                   | Maximum value for a job memory claim. By default equal to the scheduler capacity
+`schedulerCfg.outOfMemoryKillerEnabled`     | Enable/disable out of memory killer, triggered when a job is forced to page out and there is no enough swap memory available. If disabled the job is stopped until enough memory is available.
 `schedulerCfg.maxSwap`                      | Maximum swap size to be used by all wava jobs. By default equals to the total amount of swap available in the system
 `schedulerCfg.sigKillDelaySecs`             | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
 `schedulerCfg.maxBlockedRssStarvationRatio` | Maximum ratio between the sum of memory claims of the blocked jobs divided by the scheduler capacity. If exceeded the [starvation prevention mechanism](#deadlock-prevention) is triggered.
