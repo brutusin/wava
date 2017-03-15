@@ -189,18 +189,20 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
 
 ```javascript
 {
-  "tempFolder" : "/dev/shm/wava/$WAVA_HOME",
+  "tempFolder" : "/dev/shm",
   "uICfg" : {
     "ansiColors" : true,
     "sIMemoryUnits" : true
   },
   "schedulerCfg" : {
     "nicenessHandlerClassName" : "org.brutusin.wava.core.plug.impl.niceness.HomogeneusSpreadNicenessHandler",
-    "memoryCgroupBasePath" : "/sys/fs/cgroup/memory/wava/$WAVA_HOME",
+    "memoryCgroupBasePath" : "/sys/fs/cgroup/memory",
     "refreshLoopSleepMillisecs" : 10,
     "pingMillisecs" : 1000,
-    "maxTotalRSSBytes" : -1,
-    "maxJobRSSBytes" : -1,
+    "schedulerCapacity" : "$DEFAULT_CAPACITY",
+    "maxSwap" : "$DEFAULT_SWAP",
+    "maxJobSize" : "$DEFAULT_CAPACITY",
+    "outOfMemoryKillerEnabled" : false,
     "sigKillDelaySecs" : 5,
     "maxBlockedRssStarvationRatio" : 0.5
   },
@@ -231,8 +233,9 @@ Property                                    | Description
 `schedulerCfg.memoryCgroupBasePath`         | Root path to the parent memory cgroup
 `schedulerCfg.refreshLoopSleepMillisecs`    | Sleeping time for the main looping thread.
 `schedulerCfg.pingMillisecs`                | Time interval between ping events to peer processes.
-`schedulerCfg.maxTotalRSSBytes`             | Scheduler capacity. Maximum amount of physical memory permitted for all jobs. If `-1` the total amount of physical memory is considered.
-`schedulerCfg.maxJobRSSBytes`               | Maximum value for a job memory claim. If `-1` there is no limit.
+`schedulerCfg.schedulerCapacity`            | Scheduler capacity. Maximum amount of physical memory permitted for all jobs. By default is 3/4 of total memory. Different memory units can be used, for example `4 GB`
+`schedulerCfg.maxJobSize`                   | Maximum value for a job memory claim. By default equal to the scheduler capacity
+`schedulerCfg.maxSwap`                      | Maximum swap size to be used by all wava jobs. By default equals to the total amount of swap available in the system
 `schedulerCfg.sigKillDelaySecs`             | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
 `schedulerCfg.maxBlockedRssStarvationRatio` | Maximum ratio between the sum of memory claims of the blocked jobs divided by the scheduler capacity. If exceeded the [starvation prevention mechanism](#deadlock-prevention) is triggered.
 `processCfg.nicenessRange`                  | Minimum (most favorable) and maximum (less favorable) niceness to be assigned to a job process tree
