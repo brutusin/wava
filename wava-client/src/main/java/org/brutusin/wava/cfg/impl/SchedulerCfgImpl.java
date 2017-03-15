@@ -27,12 +27,39 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     private String memoryCgroupBasePath;
     private int refreshLoopSleepMillisecs = 10;
     private int pingMillisecs = 1000;
-    private long maxTotalRSSBytes = -1;
-    private long maxTotalSwapBytes = -1;
-    private long maxJobRSSBytes = -1;
+    private String schedulerCapacity = "$DEFAULT_CAPACITY";
+    private String maxSwap = "$DEFAULT_SWAP";
+    private String maxJobSize = "$DEFAULT_CAPACITY";
     private boolean outOfMemoryKillerEnabled = false;
     private int sigKillDelaySecs = 5;
     private float maxBlockedRssStarvationRatio = 0.5f;
+
+    @Override
+    public String getSchedulerCapacity() {
+        return schedulerCapacity;
+    }
+
+    public void setSchedulerCapacity(String schedulerCapacity) {
+        this.schedulerCapacity = schedulerCapacity;
+    }
+
+    @Override
+    public String getMaxSwap() {
+        return maxSwap;
+    }
+
+    public void setMaxSwap(String maxSwap) {
+        this.maxSwap = maxSwap;
+    }
+
+    @Override
+    public String getMaxJobSize() {
+        return maxJobSize;
+    }
+
+    public void setMaxJobSize(String maxJobSize) {
+        this.maxJobSize = maxJobSize;
+    }
 
     @Override
     public String getMemoryCgroupBasePath() {
@@ -53,15 +80,6 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     }
 
     @Override
-    public long getMaxTotalSwapBytes() {
-        return maxTotalSwapBytes;
-    }
-
-    public void setMaxTotalSwapBytes(long maxTotalSwapBytes) {
-        this.maxTotalSwapBytes = maxTotalSwapBytes;
-    }
-
-    @Override
     public boolean isOutOfMemoryKillerEnabled() {
         return outOfMemoryKillerEnabled;
     }
@@ -69,7 +87,7 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     public void setOutOfMemoryKillerEnabled(boolean OutOfMemoryKillerEnabled) {
         this.outOfMemoryKillerEnabled = OutOfMemoryKillerEnabled;
     }
-    
+
     @Override
     public int getRefreshLoopSleepMillisecs() {
         return refreshLoopSleepMillisecs;
@@ -77,24 +95,6 @@ public class SchedulerCfgImpl implements SchedulerCfg {
 
     public void setPollingMillisecs(int refreshLoopSleepMillisecs) {
         this.refreshLoopSleepMillisecs = refreshLoopSleepMillisecs;
-    }
-
-    @Override
-    public long getMaxTotalRSSBytes() {
-        return maxTotalRSSBytes;
-    }
-
-    public void setMaxTotalRSSBytes(long maxTotalRSSBytes) {
-        this.maxTotalRSSBytes = maxTotalRSSBytes;
-    }
-
-    @Override
-    public long getMaxJobRSSBytes() {
-        return maxJobRSSBytes;
-    }
-
-    public void setMaxJobRSSBytes(long maxJobRSSBytes) {
-        this.maxJobRSSBytes = maxJobRSSBytes;
     }
 
     @Override

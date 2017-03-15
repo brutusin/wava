@@ -54,7 +54,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             String[] cmd = {"mkdir", f.getAbsolutePath()};
             ProcessUtils.executeProcess(cmd);
             Miscellaneous.writeStringToFile(new File(f, "memory.limit_in_bytes"), String.valueOf(totalManagedRss), "UTF-8");
-            long maxTotalSwapBytes = Config.getInstance().getSchedulerCfg().getMaxTotalSwapBytes();
+            long maxTotalSwapBytes = Miscellaneous.parseHumanReadableByteCount(Config.getInstance().getSchedulerCfg().getMaxSwap());
             if (maxTotalSwapBytes > 0) {
                 Miscellaneous.writeStringToFile(new File(f, "memory.memsw.limit_in_bytes"), String.valueOf(totalManagedRss + maxTotalSwapBytes), "UTF-8");
             }
@@ -90,7 +90,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             String[] cmd = {"mkdir", f.getAbsolutePath()};
             ProcessUtils.executeProcess(cmd);
             Miscellaneous.writeStringToFile(new File(f, "memory.soft_limit_in_bytes"), String.valueOf(maxJobRSSBytes), "UTF-8");
-            Miscellaneous.writeStringToFile(new File(f, "memory.limit_in_bytes"), String.valueOf(Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes()), "UTF-8");
+            Miscellaneous.writeStringToFile(new File(f, "memory.limit_in_bytes"), String.valueOf(Miscellaneous.parseHumanReadableByteCount(Config.getInstance().getSchedulerCfg().getMaxJobSize())), "UTF-8");
 
         } catch (Exception ex) {
             throw new RuntimeException(ex);

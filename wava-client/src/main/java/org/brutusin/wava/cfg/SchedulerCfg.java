@@ -31,13 +31,13 @@ public interface SchedulerCfg {
 
     public float getMaxBlockedRssStarvationRatio();
 
-    public long getMaxTotalRSSBytes();
+    public String getSchedulerCapacity();
 
-    public long getMaxJobRSSBytes();
+    public String getMaxSwap();
+
+    public String getMaxJobSize();
 
     public int getSigKillDelaySecs();
-
-    public long getMaxTotalSwapBytes();
 
     public boolean isOutOfMemoryKillerEnabled();
 }

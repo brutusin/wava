@@ -54,6 +54,8 @@ public class Scheduler {
     private final String exitToken;
 
     private final long totalManagedRss;
+    private final long maxJobRss;
+    
     private final String runningUser;
 
     private volatile boolean closed;
@@ -67,16 +69,8 @@ public class Scheduler {
         if (!this.runningUser.equals("root")) {
             throw new NonRootUserException();
         }
-
-        if (Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes() > 0) {
-            this.totalManagedRss = Config.getInstance().getSchedulerCfg().getMaxTotalRSSBytes();
-        } else {
-            try {
-                this.totalManagedRss = LinuxCommands.getInstance().getMemInfo()[0];
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        }
+        this.totalManagedRss = Miscellaneous.parseHumanReadableByteCount(Config.getInstance().getSchedulerCfg().getSchedulerCapacity());
+        this.maxJobRss = Miscellaneous.parseHumanReadableByteCount(Config.getInstance().getSchedulerCfg().getMaxJobSize());
         boolean cgroupCreated = LinuxCommands.getInstance().createWavaMemoryCgroup(totalManagedRss);
         if (!cgroupCreated) {
             throw new RuntimeException("Unable to create base cgroup folder");
@@ -472,8 +466,8 @@ public class Scheduler {
             throw new IllegalArgumentException("Request info is required");
         }
 
-        if (Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes() > 0 && submitChannel.getRequest().getMaxRSS() > Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes()) {
-            submitChannel.getRequest().setMaxRSS(Config.getInstance().getSchedulerCfg().getMaxJobRSSBytes());
+        if (maxJobRss > 0 && submitChannel.getRequest().getMaxRSS() > maxJobRss) {
+            submitChannel.getRequest().setMaxRSS(maxJobRss);
         }
         if (totalManagedRss < submitChannel.getRequest().getMaxRSS()) {
             submitChannel.getRequest().setMaxRSS(totalManagedRss);
