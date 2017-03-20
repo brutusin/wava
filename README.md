@@ -252,5 +252,5 @@ https://github.com/brutusin/wava/issues
 
 Contributions are always welcome and greatly appreciated!
 
-##License
+## License
 Apache License, Version 2.0
