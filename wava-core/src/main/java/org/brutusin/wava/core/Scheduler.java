@@ -55,7 +55,7 @@ public class Scheduler {
 
     private final long totalManagedRss;
     private final long maxJobRss;
-    
+
     private final String runningUser;
 
     private volatile boolean closed;
@@ -349,6 +349,9 @@ public class Scheduler {
     private long getAvailableManagedMemory(long allocatedManagedMemory) {
         long availableManagedMemory = totalManagedRss - allocatedManagedMemory;
         long systemAvailableMemory = LinuxCommands.getInstance().getMemInfo()[1];
+        if (systemAvailableMemory < 0) { // Unable to get available memory
+            return availableManagedMemory;
+        }
         if (availableManagedMemory > systemAvailableMemory) {
             availableManagedMemory = systemAvailableMemory;
         }
