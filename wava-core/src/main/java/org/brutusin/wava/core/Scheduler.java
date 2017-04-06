@@ -501,6 +501,7 @@ public class Scheduler {
 
         synchronized (jobSet) {
             JobInfo ji = new JobInfo(jobCounter.incrementAndGet(), submitChannel);
+            LOGGER.fine("Received job " + ji.getId() + ": " + Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
             GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
             if (gi == null) { // dynamic group
                 gi = createGroupInfo(ji.getSubmitChannel().getRequest().getGroupName(), ji.getSubmitChannel().getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds());
@@ -1022,6 +1023,7 @@ public class Scheduler {
                             process = pb.start();
                             isThread = Miscellaneous.pipeAsynchronously(ji.getSubmitChannel().getStdinIs(), (ErrorHandler) null, true, process.getOutputStream());
                             pId = Miscellaneous.getUnixId(process);
+                            LOGGER.fine("Running job " + ji.getId() + " with pId " + pId);
                             pi = new ProcessInfo(ji, pId);
                             ji.getSubmitChannel().sendEvent(Event.running, pId);
                             processMap.put(ji.getId(), pi);
@@ -1104,6 +1106,7 @@ public class Scheduler {
                             if (ji.isRelaunched()) {
                                 submit(ji.getSubmitChannel());
                             } else {
+                                LOGGER.fine("Closing channel of job " + ji.getId());
                                 ji.getSubmitChannel().close();
                             }
                         }

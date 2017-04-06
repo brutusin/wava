@@ -28,6 +28,10 @@
             <outputDirectory>cfg/</outputDirectory>
             <destName>wava.json.default</destName>
         </file>
+        <file>
+            <source>src/main/cfg/logging.properties</source>
+            <outputDirectory>cfg/</outputDirectory>
+        </file>
     </files>
     <fileSets>
         <fileSet>

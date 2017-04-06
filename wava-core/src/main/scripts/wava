@@ -23,4 +23,4 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 export WAVA_HOME="$(dirname "$DIR")"
-$JAVA_HOME/bin/java -Xmx$MAX_HEAP -jar $WAVA_HOME/bin/wava-core-${project.version}.jar "$@" < /dev/stdin 1>&1 2>&2
+$JAVA_HOME/bin/java -Xmx$MAX_HEAP -Djava.util.logging.config.file=$WAVA_HOME/cfg/logging.properties -jar $WAVA_HOME/bin/wava-core-${project.version}.jar "$@" < /dev/stdin 1>&1 2>&2

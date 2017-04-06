@@ -143,6 +143,7 @@ public class RequestHandler {
             OpName opName = OpName.valueOf(matcher.group(2));
             String user = LinuxCommands.getInstance().getFileOwner(requestFile);
             String json = new String(Files.readAllBytes(requestFile.toPath()));
+            requestFile.delete();
             PeerChannel ch = null;
             try {
 
