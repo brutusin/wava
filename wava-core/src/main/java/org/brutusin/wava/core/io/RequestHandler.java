@@ -97,32 +97,10 @@ public class RequestHandler {
                     if (Thread.interrupted()) {
                         break outer;
                     }
-                    WatchKey key = watcher.take();
-                    for (WatchEvent<?> watchEvent : key.pollEvents()) {
-                        if (Thread.interrupted()) {
-                            break outer;
-                        }
-                        WatchEvent.Kind<?> kind = watchEvent.kind();
-
-                        if (kind == StandardWatchEventKinds.OVERFLOW) {
-                            LOGGER.log(Level.SEVERE, null, "Overflow event retrieved from watch service");
-                            continue;
-                        }
-                        final File file = dir.resolve(((WatchEvent<Path>) watchEvent).context()).toFile();
-                        //System.err.println(kind);
-                        //System.err.println(file);
-                        Thread t = new Thread() {
-                            @Override
-                            public void run() {
-                                try {
-                                    handleRequest(file);
-                                } catch (Throwable th) {
-                                    Logger.getLogger(RequestHandler.class.getName()).log(Level.SEVERE, null, th);
-                                }
-                            }
-                        };
-                        t.start();
+                    while (handleRequests()) {
                     }
+                    WatchKey key = watcher.take();
+                    key.pollEvents();
                     if (!key.reset()) {
                         LOGGER.log(Level.SEVERE, null, "Request directory is inaccessible");
                         break;
@@ -136,66 +114,89 @@ public class RequestHandler {
         }
     }
 
-    private void handleRequest(File requestFile) throws IOException, InterruptedException, ParseException {
-        Matcher matcher = OP_FILE_PATTERN.matcher(requestFile.getName());
-        if (matcher.matches()) {
-            Integer id = Integer.valueOf(matcher.group(1));
-            OpName opName = OpName.valueOf(matcher.group(2));
-            String user = LinuxCommands.getInstance().getFileOwner(requestFile);
-            String json = new String(Files.readAllBytes(requestFile.toPath()));
-            requestFile.delete();
-            PeerChannel ch = null;
-            try {
+    private boolean handleRequests() throws IOException, InterruptedException, ParseException {
+        File[] listFiles = requestFolder.listFiles();
+        boolean ret = false;
+        if (listFiles != null) {
+            for (int i = 0; i < listFiles.length; i++) {
+                File requestFile = listFiles[i];
+                Matcher matcher = OP_FILE_PATTERN.matcher(requestFile.getName());
+                if (matcher.matches()) {
+                    ret = true;
+                    final Integer id = Integer.valueOf(matcher.group(1));
+                    final OpName opName = OpName.valueOf(matcher.group(2));
+                    final String user = LinuxCommands.getInstance().getFileOwner(requestFile);
+                    final String json = new String(Files.readAllBytes(requestFile.toPath()));
+                    Thread t = new Thread() {
+                        @Override
+                        public void run() {
+                            try {
+                                handleRequest(id, opName, user, json);
+                            } catch (Throwable th) {
+                                Logger.getLogger(RequestHandler.class.getName()).log(Level.SEVERE, null, th);
+                            }
+                        }
+                    };
+                    t.start();
+                }
+                requestFile.delete();
+            }
+        }
+        return ret;
+    }
 
-                if (opName == OpName.submit) {
-                    ExtendedSubmitInput input = JsonCodec.getInstance().parse(json, ExtendedSubmitInput.class);
-                    PeerChannel<ExtendedSubmitInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
-                    ch = channel;
-                    this.scheduler.submit(channel);
-                } else if (opName == OpName.cancel) {
-                    CancelInput input = JsonCodec.getInstance().parse(json, CancelInput.class);
-                    PeerChannel<CancelInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
-                    ch = channel;
-                    this.scheduler.cancel(channel);
-                } else if (opName == OpName.jobs) {
-                    Boolean noHeaders = JsonCodec.getInstance().parse(json, Boolean.class);
+    private void handleRequest(Integer id, OpName opName, String user, String json) throws IOException, InterruptedException {
+        PeerChannel ch = null;
+        try {
+
+            if (opName == OpName.submit) {
+                ExtendedSubmitInput input = JsonCodec.getInstance().parse(json, ExtendedSubmitInput.class);
+                PeerChannel<ExtendedSubmitInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
+                ch = channel;
+                this.scheduler.submit(channel);
+            } else if (opName == OpName.cancel) {
+                CancelInput input = JsonCodec.getInstance().parse(json, CancelInput.class);
+                PeerChannel<CancelInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
+                ch = channel;
+                this.scheduler.cancel(channel);
+            } else if (opName == OpName.jobs) {
+                Boolean noHeaders = JsonCodec.getInstance().parse(json, Boolean.class);
+                PeerChannel<Void> channel = new PeerChannel(user, null, new File(streamsFolder, String.valueOf(id)));
+                ch = channel;
+                this.scheduler.listJobs(channel, noHeaders);
+            } else if (opName == OpName.group) {
+                GroupInput input = JsonCodec.getInstance().parse(json, GroupInput.class);
+                if (input.isList()) {
                     PeerChannel<Void> channel = new PeerChannel(user, null, new File(streamsFolder, String.valueOf(id)));
                     ch = channel;
-                    this.scheduler.listJobs(channel, noHeaders);
-                } else if (opName == OpName.group) {
-                    GroupInput input = JsonCodec.getInstance().parse(json, GroupInput.class);
-                    if (input.isList()) {
-                        PeerChannel<Void> channel = new PeerChannel(user, null, new File(streamsFolder, String.valueOf(id)));
-                        ch = channel;
-                        this.scheduler.listGroups(channel, input.isNoHeaders());
-                    } else {
-                        PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
-                        ch = channel;
-                        this.scheduler.updateGroup(channel);
-                    }
-                } else if (opName == OpName.exit) {
-                    String input = JsonCodec.getInstance().parse(json, String.class);
-                    PeerChannel<String> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
-                    if (this.scheduler.close(channel)) {
-                        mainThread.interrupt();
-                    }
-                }
-            } catch (Throwable th) {
-                if (th instanceof IllegalArgumentException) {
-                    PeerChannel.println(ch.getStderrOs(), ANSICode.RED + "[wava] " + th.getMessage());
-                    ch.sendEvent(Event.retcode, RetCode.ERROR.getCode());
-                } else if (th instanceof InterruptedException) {
-                    throw (InterruptedException) th;
-                } else if (th instanceof OrphanChannelException) {
-                    LOGGER.log(Level.WARNING, "Error processing request " + id + ": Orphan channel found");
+                    this.scheduler.listGroups(channel, input.isNoHeaders());
                 } else {
-                    LOGGER.log(Level.SEVERE, "Error processing request " + id + ": " + th.getMessage() + "\noperation:" + opName + "\nuser:" + user + "\njson:" + json, th);
-                    PeerChannel.println(ch.getStderrOs(), ANSICode.RED + "[wava] An error has ocurred processing request " + id + ". See core process logs for more details");
-                    ch.sendEvent(Event.retcode, RetCode.ERROR.getCode());
+                    PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
+                    ch = channel;
+                    this.scheduler.updateGroup(channel);
                 }
-                if (ch != null) {
-                    ch.close();
+            } else if (opName == OpName.exit) {
+                String input = JsonCodec.getInstance().parse(json, String.class);
+                PeerChannel<String> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
+                if (this.scheduler.close(channel)) {
+                    mainThread.interrupt();
                 }
+            }
+        } catch (Throwable th) {
+            if (th instanceof IllegalArgumentException) {
+                PeerChannel.println(ch.getStderrOs(), ANSICode.RED + "[wava] " + th.getMessage());
+                ch.sendEvent(Event.retcode, RetCode.ERROR.getCode());
+            } else if (th instanceof InterruptedException) {
+                throw (InterruptedException) th;
+            } else if (th instanceof OrphanChannelException) {
+                LOGGER.log(Level.WARNING, "Error processing request " + id + ": Orphan channel found");
+            } else {
+                LOGGER.log(Level.SEVERE, "Error processing request " + id + ": " + th.getMessage() + "\noperation:" + opName + "\nuser:" + user + "\njson:" + json, th);
+                PeerChannel.println(ch.getStderrOs(), ANSICode.RED + "[wava] An error has ocurred processing request " + id + ". See core process logs for more details");
+                ch.sendEvent(Event.retcode, RetCode.ERROR.getCode());
+            }
+            if (ch != null) {
+                ch.close();
             }
         }
     }
