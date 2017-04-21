@@ -144,7 +144,8 @@ public class WavaMain {
             System.err.println(EnvEntry.WAVA_HOME.name() + " environment variable not set");
             System.exit(RetCode.NOT_WAVA_HOME.getCode());
         } catch (Throwable th) {
-            System.err.println(ANSICode.RED + "Severe error: " + th.getMessage() + ANSICode.RESET);
+            System.err.println(ANSICode.RED + "Severe error: " + th.getMessage());
+            System.err.println(ANSICode.RESET);
             System.exit(RetCode.ERROR.getCode());
         }
     }

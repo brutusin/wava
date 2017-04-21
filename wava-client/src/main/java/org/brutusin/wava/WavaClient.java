@@ -16,6 +16,7 @@
 package org.brutusin.wava;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import org.brutusin.wava.env.EnvEntry;
@@ -34,26 +35,25 @@ import org.brutusin.wava.io.RetCode;
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class WavaClient {
-    
+
     private final RequestExecutor executor = new RequestExecutor();
-    
+
     public void submit(SubmitInput input, final InputStream stdinStream, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws WavaNotRunningException {
-        Integer retCode;
         try {
             ExtendedSubmitInput esi = new ExtendedSubmitInput(input);
             String parentId = System.getenv(EnvEntry.WAVA_JOB_ID.name());
             if (parentId != null) {
                 esi.setParentId(Integer.valueOf(parentId));
             }
-            retCode = executor.executeRequest(OpName.submit, esi, stdinStream, stdoutStream, stderrListener, eventListener);
-        } catch (Exception ex) {
+            Integer retCode = executor.executeRequest(OpName.submit, esi, stdinStream, stdoutStream, stderrListener, eventListener);
+            if (retCode == RetCode.CORE_NOT_RUNNING.getCode()) {
+                throw new WavaNotRunningException();
+            }
+        } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
-        if (retCode == RetCode.CORE_NOT_RUNNING.getCode()) {
-            throw new WavaNotRunningException();
-        }
     }
-    
+
     private static String executeCommand(RequestExecutor executor, OpName opName, Object input) throws WavaNotRunningException {
         ByteArrayOutputStream stdoutOs = new ByteArrayOutputStream();
         final StringBuilder sb = new StringBuilder();
@@ -66,29 +66,29 @@ public class WavaClient {
                 sb.append(line);
             }
         };
-        int retCode;
         try {
-            retCode = executor.executeRequest(opName, input, null, stdoutOs, stderrListener, null);
-        } catch (Exception ex) {
+            Integer retCode = executor.executeRequest(opName, input, null, stdoutOs, stderrListener, null);
+            if (retCode == RetCode.CORE_NOT_RUNNING.getCode()) {
+                throw new WavaNotRunningException();
+            } else if (retCode != 0) {
+                throw new RuntimeException(sb.toString());
+            }
+        } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
-        if (retCode == RetCode.CORE_NOT_RUNNING.getCode()) {
-            throw new WavaNotRunningException();
-        } else if (retCode != 0) {
-            throw new RuntimeException(sb.toString());
-        }
+
         return stdoutOs.toString();
     }
-    
+
     public String executeGroupCommand(GroupInput input) throws WavaNotRunningException {
         return executeCommand(executor, OpName.group, input);
     }
-    
+
     public String cancelJobCommand(CancelInput input) throws WavaNotRunningException {
         return executeCommand(executor, OpName.cancel, input);
     }
-    
-    public boolean isSchedulerRunning() {
+
+    public static boolean isSchedulerRunning() {
         try {
             return Utils.isCoreRunning();
         } catch (Exception ex) {

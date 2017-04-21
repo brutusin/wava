@@ -60,11 +60,11 @@ public class PeerChannel<T> {
         File stderrNamedPipe = new File(namedPipesRoot, NamedPipe.stderr.name());
 
         final Bean<Boolean> initializedBean = new Bean<>();
-        Thread t = new Thread() {
+        Thread timeoutThread = new Thread() {
             @Override
             public void run() {
                 try {
-                    Thread.sleep(5 * 1000);
+                    Thread.sleep(10 * 1000); // If after this time the pipes have not been open for writing (nobody is reading the other side) discard all
                     synchronized (initializedBean) {
                         if (initializedBean.getValue() == null) {
                             initializedBean.setValue(false);
@@ -91,19 +91,22 @@ public class PeerChannel<T> {
                 }
             }
         };
-        t.setDaemon(true);
-        t.start();
+        timeoutThread.setDaemon(true);
+        timeoutThread.start();
         this.eventsOs = new FileOutputStream(eventsNamedPipe);
         this.stdoutOs = new FileOutputStream(stdoutNamedPipe);
         this.stderrOs = new FileOutputStream(stderrNamedPipe);
         this.stdinIs = new FileInputStream(stdinNamedPipe);
-        synchronized (initializedBean) {
-            if (initializedBean.getValue() != null) {
-                throw new OrphanChannelException();
+        try {
+            synchronized (initializedBean) {
+                if (initializedBean.getValue() != null) {
+                    throw new OrphanChannelException();
+                }
+                initializedBean.setValue(true);
             }
-            initializedBean.setValue(true);
+        } finally {
+            Miscellaneous.deleteDirectory(namedPipesRoot);
         }
-        Miscellaneous.deleteDirectory(namedPipesRoot);
     }
 
     public static boolean println(OutputStream os, String message) {

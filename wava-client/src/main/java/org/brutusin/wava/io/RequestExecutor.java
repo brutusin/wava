@@ -44,6 +44,20 @@ public class RequestExecutor {
     private static final File COUNTER_FILE = new File(WavaTemp.getInstance().getTemp(), "state/.seq");
 
     public Integer executeRequest(OpName opName, Object input, final InputStream stdinStream, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws IOException {
+        Integer retCode;
+        while (true) {
+            if (!Utils.isCoreRunning()) {
+                return RetCode.CORE_NOT_RUNNING.getCode();
+            }
+            retCode = executeRequestTry(opName, input, stdinStream, stdoutStream, stderrListener, eventListener);
+            if (retCode != null) { // retCode is null if the scheduler closes the pipes due to a timeout. In that case retry
+                break;
+            }
+        }
+        return retCode;
+    }
+
+    private Integer executeRequestTry(OpName opName, Object input, final InputStream stdinStream, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws IOException {
         long id = Miscellaneous.getGlobalAutoIncremental(COUNTER_FILE);
         String json = JsonCodec.getInstance().transform(input);
         File streamRoot = new File(WavaTemp.getInstance().getTemp(), "streams/" + id);
@@ -63,19 +77,35 @@ public class RequestExecutor {
         final Bean<FileInputStream> stdoutStreamBean = new Bean<>();
         final Bean<FileInputStream> stderrStreamBean = new Bean<>();
 
+        final Bean<Boolean> timeoutBean = new Bean<>();
+
         Thread stdinThread = new Thread() {
             @Override
             public void run() {
+                FileOutputStream os = null;
                 try {
-                    FileOutputStream os = new FileOutputStream(stdinNamedPipe);
+                    os = new FileOutputStream(stdinNamedPipe);
+                    synchronized (timeoutBean) {
+                        if (timeoutBean.getValue() == null) {
+                            timeoutBean.setValue(false);
+                        } else if (timeoutBean.getValue() == true) {
+                            return;
+                        }
+                    }
                     stdinStreamBean.setValue(os);
                     if (stdinStream != null) {
                         Miscellaneous.pipeSynchronously(stdinStream, true, os);
-                    } else {
-                        os.close();
                     }
                 } catch (Throwable th) {
                     LOGGER.log(Level.SEVERE, th.getMessage(), th);
+                } finally {
+                    if (os != null) {
+                        try {
+                            os.close();
+                        } catch (IOException ex) {
+                            LOGGER.log(Level.SEVERE, null, ex);
+                        }
+                    }
                 }
             }
         };
@@ -85,8 +115,16 @@ public class RequestExecutor {
         Thread eventsThread = new Thread() {
             @Override
             public void run() {
+                FileInputStream is = null;
                 try {
-                    FileInputStream is = new FileInputStream(eventsNamedPipe);
+                    is = new FileInputStream(eventsNamedPipe);
+                    synchronized (timeoutBean) {
+                        if (timeoutBean.getValue() == null) {
+                            timeoutBean.setValue(false);
+                        } else if (timeoutBean.getValue() == true) {
+                            return;
+                        }
+                    }
                     eventsStreamBean.setValue(is);
                     BufferedReader br = new BufferedReader(new InputStreamReader(is));
                     String line;
@@ -108,6 +146,14 @@ public class RequestExecutor {
                     }
                 } catch (Throwable th) {
                     LOGGER.log(Level.SEVERE, th.getMessage(), th);
+                } finally {
+                    if (is != null) {
+                        try {
+                            is.close();
+                        } catch (IOException ex) {
+                            LOGGER.log(Level.SEVERE, null, ex);
+                        }
+                    }
                 }
             }
         };
@@ -115,12 +161,28 @@ public class RequestExecutor {
         Thread outThread = new Thread() {
             @Override
             public void run() {
+                FileInputStream is = null;
                 try {
-                    FileInputStream is = new FileInputStream(stdoutNamedPipe);
+                    is = new FileInputStream(stdoutNamedPipe);
+                    synchronized (timeoutBean) {
+                        if (timeoutBean.getValue() == null) {
+                            timeoutBean.setValue(false);
+                        } else if (timeoutBean.getValue() == true) {
+                            return;
+                        }
+                    }
                     stdoutStreamBean.setValue(is);
                     Miscellaneous.pipeSynchronously(is, true, stdoutStream);
                 } catch (Throwable th) {
                     LOGGER.log(Level.SEVERE, th.getMessage(), th);
+                } finally {
+                    if (is != null) {
+                        try {
+                            is.close();
+                        } catch (IOException ex) {
+                            LOGGER.log(Level.SEVERE, null, ex);
+                        }
+                    }
                 }
             }
         };
@@ -128,8 +190,16 @@ public class RequestExecutor {
         Thread errThread = new Thread() {
             @Override
             public void run() {
+                FileInputStream is = null;
                 try {
-                    FileInputStream is = new FileInputStream(stderrNamedPipe);
+                    is = new FileInputStream(stderrNamedPipe);
+                    synchronized (timeoutBean) {
+                        if (timeoutBean.getValue() == null) {
+                            timeoutBean.setValue(false);
+                        } else if (timeoutBean.getValue() == true) {
+                            return;
+                        }
+                    }
                     stderrStreamBean.setValue(is);
                     BufferedReader br = new BufferedReader(new InputStreamReader(is));
                     String line;
@@ -140,10 +210,52 @@ public class RequestExecutor {
                     }
                 } catch (Throwable th) {
                     LOGGER.log(Level.SEVERE, th.getMessage(), th);
+                } finally {
+                    if (is != null) {
+                        try {
+                            is.close();
+                        } catch (IOException ex) {
+                            LOGGER.log(Level.SEVERE, null, ex);
+                        }
+                    }
                 }
             }
         };
         errThread.start();
+
+        Thread timeoutThread = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(10 * 1000); // If after this time the pipes have not been open for reading (nobody is using the other side) discard all
+                    synchronized (timeoutBean) {
+                        if (timeoutBean.getValue() == null) {
+                            timeoutBean.setValue(true);
+                            try {
+                                new FileOutputStream(eventsNamedPipe).close();
+                            } catch (Exception ex) {
+                            }
+                            try {
+                                new FileOutputStream(stdoutNamedPipe).close();
+                            } catch (Exception ex) {
+                            }
+                            try {
+                                new FileOutputStream(stderrNamedPipe).close();
+                            } catch (Exception ex) {
+                            }
+                            try {
+                                new FileInputStream(stdinNamedPipe).close();
+                            } catch (Exception ex) {
+                            }
+                        }
+                    }
+                } catch (InterruptedException ex) {
+                    LOGGER.log(Level.SEVERE, null, ex);
+                }
+            }
+        };
+        timeoutThread.setDaemon(true);
+        timeoutThread.start();
 
         File tempFile = new File(WavaTemp.getInstance().getTemp(), "temp/" + id + "-" + opName);
         File requestFile = new File(WavaTemp.getInstance().getTemp(), "request/" + id + "-" + opName);
