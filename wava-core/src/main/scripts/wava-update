@@ -1,7 +1,19 @@
 #!/bin/bash
+function getWavaHome {
+    SOURCE="${BASH_SOURCE[0]}"
+    while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+        DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+        SOURCE="$(readlink "$SOURCE")"
+        [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+    done
+    DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+    echo "$(dirname "$DIR")"
+}
+
 export USER=`whoami`
 export CURRENT_VERSION=${project.version}
 export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-metadata.xml | grep '<release>' | grep -Eow '[0-9\.]*'` 
+export WAVA_HOME=$(getWavaHome)
 
 if [ "$USER" != "root" ]; then
     echo "root user is required to run this script"
