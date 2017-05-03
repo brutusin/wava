@@ -15,9 +15,11 @@ export DEFAULT_SWAP=$((`awk '/SwapTotal/ {print $2}' /proc/meminfo`*1000))
 export WAVA_HOME=$(getWavaHome)
 
 java -version >/dev/null 2>&1 || { echo >&2 "Java is not installed. Aborting."; exit 1; }
+
 if [ -t 0 ]; then
     export STDIN_TTY=true;
 fi
+
 if [ "$1" == "-s" ]; then
     MAX_HEAP=512M
 else
