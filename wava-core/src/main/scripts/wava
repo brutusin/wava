@@ -14,12 +14,9 @@ export DEFAULT_CAPACITY=$((`awk '/MemTotal/ {print $2}' /proc/meminfo`*1000*3/4)
 export DEFAULT_SWAP=$((`awk '/SwapTotal/ {print $2}' /proc/meminfo`*1000))
 export WAVA_HOME=$(getWavaHome)
 
+java -version >/dev/null 2>&1 || { echo >&2 "Java is not installed. Aborting."; exit 1; }
 if [ -t 0 ]; then
     export STDIN_TTY=true;
-fi
-if [ -z "$JAVA_HOME" ]; then 
-    echo "JAVA_HOME environment variable not set"; 
-    exit 1;
 fi
 if [ "$1" == "-s" ]; then
     MAX_HEAP=512M
@@ -27,4 +24,4 @@ else
     MAX_HEAP=10M
 fi
 
-$JAVA_HOME/bin/java -Xmx$MAX_HEAP -Djava.util.logging.config.file=$WAVA_HOME/cfg/logging.properties -jar $WAVA_HOME/bin/wava-core-${project.version}.jar "$@" < /dev/stdin 1>&1 2>&2
+java -Xmx$MAX_HEAP -Djava.util.logging.config.file=$WAVA_HOME/cfg/logging.properties -jar $WAVA_HOME/bin/wava-core-${project.version}.jar "$@" < /dev/stdin 1>&1 2>&2
