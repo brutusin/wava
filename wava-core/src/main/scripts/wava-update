@@ -12,7 +12,7 @@ function getWavaHome {
 
 export USER=`whoami`
 export CURRENT_VERSION=${project.version}
-export WAVA_VERSION=`wget -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-metadata.xml | grep '<release>' | grep -Eow '[0-9\.]*'` 
+export WAVA_VERSION=`wget --no-check-certificate -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-metadata.xml | grep '<release>' | grep -Eow '[0-9\.]*'` 
 export WAVA_HOME=$(getWavaHome)
 
 if [ "$USER" != "root" ]; then
@@ -26,7 +26,7 @@ if [ "$CURRENT_VERSION" == "$WAVA_VERSION" ]; then
 fi
 
 echo "Downloading latest version ($WAVA_VERSION)..."
-wget -O /tmp/wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava-core&c=dist&e=zip&v=$WAVA_VERSION" &> /dev/null
+wget --no-check-certificate -O /tmp/wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava-core&c=dist&e=zip&v=$WAVA_VERSION" &> /dev/null
 if [ $? != 0 ]; then
     echo "Error downloading distribution file: https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava-core&c=dist&e=zip&v=$WAVA_VERSION"
     exit 1
