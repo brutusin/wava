@@ -4,12 +4,12 @@
     <parent>
         <groupId>org.brutusin</groupId>
         <artifactId>wava-root</artifactId>
-        <version>2.1.6-SNAPSHOT</version>
+        <version>2.1.6</version>
     </parent>
     <groupId>org.brutusin</groupId>
     <artifactId>wava-core</artifactId>
     <packaging>jar</packaging>   
-    <version>2.1.6-SNAPSHOT</version>
+    <version>2.1.6</version>
     <name>${project.groupId}:${project.artifactId}</name>
      
     
@@ -22,7 +22,7 @@
         <dependency>
             <groupId>org.brutusin</groupId>
             <artifactId>wava-client</artifactId>
-            <version>2.1.6-SNAPSHOT</version>
+            <version>2.1.6</version>
         </dependency>
         <dependency>
             <groupId>org.brutusin</groupId>
