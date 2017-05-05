@@ -1,23 +1,20 @@
 #!/bin/bash
-function getWavaHome {
-    SOURCE="${BASH_SOURCE[0]}"
-    while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-        DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-        SOURCE="$(readlink "$SOURCE")"
-        [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-    done
-    DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-    echo "$(dirname "$DIR")"
-}
+if [ -z "$WAVA_HOME" ]; then
+    echo "WAVA_HOME environment variable not set";
+    exit 1;
+fi
 
 export USER=`whoami`
-export CURRENT_VERSION=${project.version}
-export WAVA_VERSION=`wget --no-check-certificate -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-metadata.xml | grep '<release>' | grep -Eow '[0-9\.]*'` 
-export WAVA_HOME=$(getWavaHome)
+export CURRENT_VERSION=`wava -v &>/dev/null`
+export WAVA_VERSION=`wget --no-check-certificate -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-meta$
 
 if [ "$USER" != "root" ]; then
     echo "root user is required to run this script"
     exit 1
+fi
+
+if [ -n "${CURRENT_VERSION}" ]; then
+    echo Found installed version $CURRENT_VERSION
 fi
 
 if [ "$CURRENT_VERSION" == "$WAVA_VERSION" ]; then
@@ -26,9 +23,9 @@ if [ "$CURRENT_VERSION" == "$WAVA_VERSION" ]; then
 fi
 
 echo "Downloading latest version ($WAVA_VERSION)..."
-wget --no-check-certificate -O /tmp/wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava-core&c=dist&e=zip&v=$WAVA_VERSION" &> /dev/null
+wget --no-check-certificate -O /tmp/wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=ce$
 if [ $? != 0 ]; then
-    echo "Error downloading distribution file: https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava-core&c=dist&e=zip&v=$WAVA_VERSION"
+    echo "Error downloading distribution file: https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy$
     exit 1
 fi
 
@@ -37,7 +34,7 @@ unzip -o /tmp/wava-latest-dist.zip -d /tmp &> /dev/null
 
 if [ -d $WAVA_HOME ]; then
     echo "Checking current configuration..."
-    cmp --silent $WAVA_HOME/cfg/wava.json.default /tmp/wava-core-$WAVA_VERSION/cfg/wava.json.default && cp -f $WAVA_HOME/cfg/wava.json /tmp/wava-core-$WAVA_VERSION/cfg/wava.json || echo "Configuration file structure has changed. A manual review of the configuration is required. Old version can be found at $WAVA_HOME/wava-back"
+    cmp --silent $WAVA_HOME/cfg/wava.json.default /tmp/wava-core-$WAVA_VERSION/cfg/wava.json.default && cp -f $WAVA_HOME/cfg/wava.j$
 fi
 
 echo "Setting file permissions..."
@@ -46,10 +43,15 @@ chmod -R 555 /tmp/wava-core-$WAVA_VERSION
 echo "Installing..."
 rm -rf /$WAVA_HOME/wava-back
 rm -rf /temp/wava-back
-mv -f $WAVA_HOME /tmp/wava-back
+if [ -d "$WAVA_HOME" ]; then
+    echo "Saving previous version..."
+    mv -f $WAVA_HOME /tmp/wava-back
+fi
 mkdir -p $WAVA_HOME
 mv /tmp/wava-core-$WAVA_VERSION/* $WAVA_HOME
-mv -f /tmp/wava-back $WAVA_HOME/wava-back
+if [ -d "/tmp/wava-back" ]; then
+    mv -f /tmp/wava-back $WAVA_HOME/wava-back
+fi
 rm -rf /usr/bin/wava
 cp $WAVA_HOME/bin/wava-home-aware /usr/bin/wava
 
