@@ -139,10 +139,6 @@ On each scheduler main-loop iteration:
 `$JAVA_HOME` environment variable set pointing to a JRE 8+
 
 ## Installation
-### 0. Run as `root`
-```sh
-sudo su
-```
 ### 1. Create the `WAVA_HOME` environment variable pointing to the desired installation folder:
 ```sh
 export WAVA_HOME=/opt/wava
@@ -152,36 +148,10 @@ make this variable persistent adding the previous line to the file: `~root/.bash
 > Multiple scheduler instances are supported in a single machine. Just change the current `WAVA_HOME`value to point to one or another
 
 
-### 2. Download latest version:
+### 2. Execute the installation script:
 ```sh
-export WAVA_VERSION=`wget --no-check-certificate -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-metadata.xml | grep '<release>' | grep -Eow '[0-9\.]*'`
-wget --no-check-certificate -O /tmp/wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava-core&c=dist&e=zip&v=$WAVA_VERSION"
+sudo -E bash -c "$(curl -L https://raw.githubusercontent.com/brutusin/wava/master/wava-core/src/main/scripts/wava-update)"
 ```
-*This `$WAVA_VERSION` variable has been created only for installation purposes and doesn't need to be persisted for future sessions*
-### 3. Decompress the distribution zip:
-```sh
-unzip -o /tmp/wava-latest-dist.zip -d /tmp
-```
-### 4. Set appropriate file permissions:
-```sh
-chmod -R 555 /tmp/wava-core-$WAVA_VERSION
-```
-
-### 5. Move and create symbolic links:
-```sh
-mkdir -p $WAVA_HOME
-mv /tmp/wava-core-$WAVA_VERSION/* $WAVA_HOME
-rm -rf /usr/bin/wava
-cp $WAVA_HOME/bin/wava-home-aware /usr/bin/wava
-```
-
-### 6. Run to verify installation and generate default configuration file:
-```sh
-wava
-```
-
-### 7. Run on startup
-Optionally, create a service to run the following command at startup by the "root" user: `wava -s`. Details are not given here since it varies depending on the Linux distribution.
 
 ## Configuration
 Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables can be used in this file.
