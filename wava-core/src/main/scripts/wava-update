@@ -1,12 +1,12 @@
 #!/bin/bash
-if [ -z "$WAVA_HOME" ]; then
-    echo "WAVA_HOME environment variable not set";
+if [ -z "$WAVA_HOME" ]; then 
+    echo "WAVA_HOME environment variable not set"; 
     exit 1;
 fi
 
 export USER=`whoami`
 export CURRENT_VERSION=`wava -v &>/dev/null`
-export WAVA_VERSION=`wget --no-check-certificate -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-meta$
+export WAVA_VERSION=`wget --no-check-certificate -O - -o /dev/null https://repo1.maven.org/maven2/org/brutusin/wava-core/maven-metadata.xml | grep '<release>' | grep -Eow '[0-9\.]*'` 
 
 if [ "$USER" != "root" ]; then
     echo "root user is required to run this script"
@@ -23,9 +23,9 @@ if [ "$CURRENT_VERSION" == "$WAVA_VERSION" ]; then
 fi
 
 echo "Downloading latest version ($WAVA_VERSION)..."
-wget --no-check-certificate -O /tmp/wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=ce$
+wget --no-check-certificate -O /tmp/wava-latest-dist.zip "https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava-core&c=dist&e=zip&v=$WAVA_VERSION" &> /dev/null
 if [ $? != 0 ]; then
-    echo "Error downloading distribution file: https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy$
+    echo "Error downloading distribution file: https://repository.sonatype.org/service/local/artifact/maven/content?r=central-proxy&g=org.brutusin&a=wava-core&c=dist&e=zip&v=$WAVA_VERSION"
     exit 1
 fi
 
@@ -34,7 +34,7 @@ unzip -o /tmp/wava-latest-dist.zip -d /tmp &> /dev/null
 
 if [ -d $WAVA_HOME ]; then
     echo "Checking current configuration..."
-    cmp --silent $WAVA_HOME/cfg/wava.json.default /tmp/wava-core-$WAVA_VERSION/cfg/wava.json.default && cp -f $WAVA_HOME/cfg/wava.j$
+    cmp --silent $WAVA_HOME/cfg/wava.json.default /tmp/wava-core-$WAVA_VERSION/cfg/wava.json.default && cp -f $WAVA_HOME/cfg/wava.json /tmp/wava-core-$WAVA_VERSION/cfg/wava.json || echo "Configuration file structure has changed. A manual review of the configuration is required. Old version can be found at $WAVA_HOME/wava-back"
 fi
 
 echo "Setting file permissions..."
