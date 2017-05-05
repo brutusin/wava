@@ -81,6 +81,10 @@ public class WavaMain {
                 .longOpt("status")
                 .desc(StatusMain.DESCRIPTION)
                 .build();
+        Option vOpt = Option.builder("v")
+                .longOpt("version")
+                .desc("show wava version")
+                .build();
         Option xOpt = Option.builder("x")
                 .longOpt("exit")
                 .desc("stop core process, terminating all jobs")
@@ -96,6 +100,7 @@ public class WavaMain {
         options.addOption(uOpt);
         options.addOption(tOpt);
         options.addOption(xOpt);
+        options.addOption(vOpt);
         try {
             if (args.length > 0) {
                 CommandLineParser parser = new DefaultParser();
@@ -126,6 +131,8 @@ public class WavaMain {
                     StatusMain.main(args);
                 } else if (cl.hasOption(xOpt.getOpt())) {
                     ExitMain.main(subArgs);
+                } else if (cl.hasOption(vOpt.getOpt())) {
+                    System.out.println(CoreUtils.getVersion());
                 }
             } else {
                 showHelp(options);
