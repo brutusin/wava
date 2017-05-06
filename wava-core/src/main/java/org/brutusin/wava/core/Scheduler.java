@@ -1129,10 +1129,12 @@ public class Scheduler {
         }
         if (channel.getRequest() == null || channel.getRequest().isEmpty()) {
             channel.log(ANSICode.CYAN, "Confirm stopping scheduler by running: " + ANSICode.GREEN + "wava -x " + exitToken);
+            channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
             channel.close();
             return false;
         } else if (!channel.getRequest().equals(exitToken)) {
             channel.log(ANSICode.RED, "Invalid token. Confirm stopping scheduler by running: " + ANSICode.GREEN + "wava -x " + exitToken);
+            channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
             channel.close();
             return false;
         }
