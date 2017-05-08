@@ -37,7 +37,5 @@ public interface SchedulerCfg {
 
     public String getMaxJobSize();
 
-    public int getSigKillDelaySecs();
-
     public boolean isOutOfMemoryKillerEnabled();
 }

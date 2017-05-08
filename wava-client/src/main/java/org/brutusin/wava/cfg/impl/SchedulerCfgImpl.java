@@ -31,7 +31,6 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     private String maxSwap = "$DEFAULT_SWAP";
     private String maxJobSize = "$DEFAULT_CAPACITY";
     private boolean outOfMemoryKillerEnabled = false;
-    private int sigKillDelaySecs = 5;
     private float maxBlockedRssStarvationRatio = 0.5f;
 
     @Override
@@ -95,15 +94,6 @@ public class SchedulerCfgImpl implements SchedulerCfg {
 
     public void setPollingMillisecs(int refreshLoopSleepMillisecs) {
         this.refreshLoopSleepMillisecs = refreshLoopSleepMillisecs;
-    }
-
-    @Override
-    public int getSigKillDelaySecs() {
-        return sigKillDelaySecs;
-    }
-
-    public void setSigKillDelaySecs(int sigKillDelaySecs) {
-        this.sigKillDelaySecs = sigKillDelaySecs;
     }
 
     @Override
