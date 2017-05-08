@@ -173,7 +173,6 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
     "maxSwap" : "$DEFAULT_SWAP",
     "maxJobSize" : "$DEFAULT_CAPACITY",
     "outOfMemoryKillerEnabled" : false,
-    "sigKillDelaySecs" : 5,
     "maxBlockedRssStarvationRatio" : 0.5
   },
   "processCfg" : {
@@ -207,7 +206,6 @@ Property                                    | Description
 `schedulerCfg.maxJobSize`                   | Maximum value for a job memory claim. By default equal to the scheduler capacity
 `schedulerCfg.outOfMemoryKillerEnabled`     | Enable/disable the Out Of Memory Killer, triggered when a job is forced to page out and there is no enough swap memory available. If disabled the job is stopped until enough memory is available.
 `schedulerCfg.maxSwap`                      | Maximum swap size to be used by all wava jobs. By default equals to the total amount of swap available in the system
-`schedulerCfg.sigKillDelaySecs`             | Seconds between SIGTERM and SIGKILL signals send in job cancellation.
 `schedulerCfg.maxBlockedRssStarvationRatio` | Maximum ratio between the sum of memory claims of the blocked jobs divided by the scheduler capacity. If exceeded the [starvation prevention mechanism](#deadlock-prevention) is triggered.
 `processCfg.nicenessRange`                  | Minimum (most favorable) and maximum (less favorable) niceness to be assigned to a job process tree
 `processCfg.cpuAfinity`                     | CPU affinity to be set to the job processes. In a format supported by the `-c` parameter of [taskset](http://linuxcommand.org/man_pages/taskset1.html).
