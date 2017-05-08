@@ -19,13 +19,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.Set;
 import java.util.logging.Logger;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.commons.utils.ProcessException;
@@ -39,15 +39,15 @@ import org.brutusin.wava.env.WavaHome;
  * @author Ignacio del Valle Alles idelvall@brutusin.org
  */
 public class POSIXCommandsImpl extends LinuxCommands {
-    
+
     private static final Logger LOGGER = Logger.getLogger(POSIXCommandsImpl.class.getName());
     private static final File FILE_MEMINFO = new File("/proc/meminfo");
-    
+
     private static String executeBashCommand(String command) throws ProcessException, InterruptedException {
         String[] cmd = {"/bin/bash", "-c", command};
         return ProcessUtils.executeProcess(cmd);
     }
-    
+
     @Override
     public boolean createWavaMemoryCgroup(long totalManagedRss) {
         try {
@@ -72,7 +72,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             return false;
         }
     }
-    
+
     private void removeLeafFolder(File folder) throws ProcessException, InterruptedException {
         if (!folder.exists()) {
             return;
@@ -89,7 +89,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
         String[] cmd = {"rmdir", folder.getAbsolutePath()};
         ProcessUtils.executeProcess(cmd);
     }
-    
+
     @Override
     public void createJobMemoryCgroup(int jobId, long maxJobRSSBytes) {
         try {
@@ -98,12 +98,12 @@ public class POSIXCommandsImpl extends LinuxCommands {
             ProcessUtils.executeProcess(cmd);
             Miscellaneous.writeStringToFile(new File(f, "memory.soft_limit_in_bytes"), String.valueOf(maxJobRSSBytes), "UTF-8");
             Miscellaneous.writeStringToFile(new File(f, "memory.limit_in_bytes"), String.valueOf(Miscellaneous.parseHumanReadableByteCount(Config.getInstance().getSchedulerCfg().getMaxJobSize())), "UTF-8");
-            
+
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
     }
-    
+
     @Override
     public CgroupMemoryStats getCgroupMemoryStats(int jobId) {
         File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + WavaHome.getInstance().getId() + "/" + String.valueOf(jobId) + "/memory.stat");
@@ -128,7 +128,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             throw new RuntimeException(ex);
         }
     }
-    
+
     @Override
     public void removeJobMemoryCgroup(int jobId) {
         try {
@@ -138,7 +138,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             throw new RuntimeException(ex);
         }
     }
-    
+
     @Override
     public void setNiceness(int pId, int niceness) {
         try {
@@ -157,37 +157,15 @@ public class POSIXCommandsImpl extends LinuxCommands {
             throw new RuntimeException(ex);
         }
     }
-    
+
     @Override
     public void killTree(int pId) {
-        Thread t1 = new Thread() {
-            @Override
-            public void run() {
-                Set<Integer> visitedIds = new HashSet<>();
-                getTree(visitedIds, pId, false);
-                kill(visitedIds, 15); // SIGTERM
-            }
-        };
-        t1.setName("SIGTERM " + pId);
-        t1.start();
-        Thread t2 = new Thread() {
-            @Override
-            public void run() {
-                try {
-                    Thread.sleep(1000 * Config.getInstance().getSchedulerCfg().getSigKillDelaySecs());
-                    Set<Integer> visitedIds = new HashSet<>();
-                    getTree(visitedIds, pId, true);
-                    kill(visitedIds, 9); // SIGKILL
-                } catch (InterruptedException ex) {
-                }
-            }
-        };
-        t2.setName("SIGKILL " + pId);
-        t2.start();
-        
+        List<Integer> visitedIds = new ArrayList<>();
+        getTree(visitedIds, pId, true);
+        sendSignal(visitedIds, 9); // SIGKILL
     }
-    
-    private void getTree(Set<Integer> visited, int pId, boolean stop) {
+
+    private void getTree(List<Integer> visited, int pId, boolean stop) {
         try {
             if (stop) {
                 // needed to stop quickly forking parent from producing children between child killing and parent killing
@@ -208,8 +186,8 @@ public class POSIXCommandsImpl extends LinuxCommands {
             visited.add(pId);
         }
     }
-    
-    private void kill(Set<Integer> pIds, int signal) {
+
+     private void sendSignal(List<Integer> pIds, int signal) {
         try {
             String[] cmd = new String[3 + pIds.size()];
             cmd[0] = "kill";
@@ -226,7 +204,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             throw new RuntimeException(ex);
         }
     }
-    
+
     @Override
     public TreeStats[] getTreeStats(int[] pIds) {
         TreeStats[] ret = new TreeStats[pIds.length];
@@ -270,7 +248,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         return ret;
     }
-    
+
     @Override
     public String[] decorateWithCPUAffinity(String[] cmd, String affinity) {
         String[] ret = new String[cmd.length + 3];
@@ -282,7 +260,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         return ret;
     }
-    
+
     @Override
     public String[] decorateWithBatchSchedulerPolicy(String[] cmd) {
         String[] ret = new String[cmd.length + 3];
@@ -294,7 +272,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         return ret;
     }
-    
+
     @Override
     public long[] getMemInfo() {
         long[] ret = {-1, -1};
@@ -315,7 +293,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             throw new Error(FILE_MEMINFO.getPath() + " not found");
         }
     }
-    
+
     @Override
     public String[] decorateRunAsCommand(String[] cmd, String user) {
         StringBuilder sb = new StringBuilder("");
@@ -327,7 +305,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         return new String[]{"runuser", "-p", user, "-c", sb.toString()};
     }
-    
+
     @Override
     public String[] decorateRunInCgroup(String[] cmd, int jobId) {
         File f = new File(Config.getInstance().getSchedulerCfg().getMemoryCgroupBasePath() + "/" + WavaHome.getInstance().getId() + "/" + jobId + "/cgroup.procs");
@@ -342,7 +320,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
         }
         return new String[]{"/bin/bash", "-c", sb.toString()};
     }
-    
+
     @Override
     public String getRunningUser() {
         try {
@@ -352,7 +330,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             throw new RuntimeException(ex);
         }
     }
-    
+
     @Override
     public String getFileOwner(File f) {
         try {
@@ -361,7 +339,7 @@ public class POSIXCommandsImpl extends LinuxCommands {
             throw new RuntimeException(ex);
         }
     }
-    
+
     public static void main(String[] args) {
         POSIXCommandsImpl pi = new POSIXCommandsImpl();
         String[] cmd = {"echo", "{\"refVersion\":\"human/19/GRCh37\",\"flankSize\":1000,\"targetSize\":40,\"productSizeRange\":\"175-275\",\"maxPrimerNumber\":5}"};
