@@ -28,11 +28,7 @@ public class ExitMain {
 
     public static void main(String[] args) throws Exception {
         CoreUtils.validateCoreRunning();
-        String token = null;
-        if (args.length > 0) {
-            token = args[0];
-        }
-        Integer retCode = new CommandLineRequestExecutor().executeRequest(OpName.exit, token);
+        Integer retCode = new CommandLineRequestExecutor().executeRequest(OpName.exit, null);
         if (retCode == null) {
             retCode = RetCode.ERROR.getCode();
         }

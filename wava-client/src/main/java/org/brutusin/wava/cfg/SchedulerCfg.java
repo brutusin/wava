@@ -21,7 +21,9 @@ package org.brutusin.wava.cfg;
  */
 public interface SchedulerCfg {
 
-    public String getMemoryCgroupBasePath();
+    public String getCgroupRootPath();
+    
+    public String getStatsFile();
 
     public String getNicenessHandlerClassName();
 
@@ -38,4 +40,6 @@ public interface SchedulerCfg {
     public String getMaxJobSize();
 
     public boolean isOutOfMemoryKillerEnabled();
+    
+    public int getUserHz();
 }

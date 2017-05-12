@@ -1,9 +1,11 @@
 package org.brutusin.wava.core;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import org.brutusin.wava.io.Event;
 import org.brutusin.wava.core.io.PeerChannel;
 import org.brutusin.wava.cfg.Config;
-import org.brutusin.wava.core.plug.LinuxCommands;
+import org.brutusin.wava.utils.LinuxCommands;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -15,14 +17,15 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.brutusin.commons.utils.ErrorHandler;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.cfg.GroupCfg;
-import org.brutusin.wava.core.plug.LinuxCommands.TreeStats;
 import org.brutusin.wava.core.plug.NicenessHandler;
+import org.brutusin.wava.core.stats.CpuStats;
+import org.brutusin.wava.core.stats.IOStats;
+import org.brutusin.wava.core.stats.MemoryStats;
 import org.brutusin.wava.env.EnvEntry;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
@@ -38,6 +41,8 @@ public class Scheduler {
 
     private final static Logger LOGGER = Logger.getLogger(Scheduler.class.getName());
 
+    private final FileOutputStream statsOs;
+
     // next four accessed under synchronized(jobSet)
     private final JobSet jobSet = new JobSet();
     private final Map<Integer, JobInfo> jobMap = new HashMap<>();
@@ -51,8 +56,6 @@ public class Scheduler {
     private final AtomicInteger groupCounter = new AtomicInteger();
     private final Thread processingThread;
 
-    private final String exitToken;
-
     private final long totalManagedRss;
     private final long maxJobRss;
 
@@ -63,17 +66,34 @@ public class Scheduler {
 
     private long lastPingMillis;
     private long refreshMillis;
+    private StatRecord previousStatRecord;
 
     public Scheduler() throws NonRootUserException {
-        this.runningUser = LinuxCommands.getInstance().getRunningUser();
+
+        this.runningUser = LinuxCommands.getRunningUser();
         if (!this.runningUser.equals("root")) {
             throw new NonRootUserException();
         }
+
+        if (Config.getInstance().getSchedulerCfg().getStatsFile() != null && !Config.getInstance().getSchedulerCfg().getStatsFile().isEmpty()) {
+            File statsFile = new File(Config.getInstance().getSchedulerCfg().getStatsFile());
+            try {
+                if (!statsFile.exists()) {
+                    Miscellaneous.createFile(statsFile.getAbsolutePath());
+                }
+                this.statsOs = new FileOutputStream(statsFile);
+                writeStatsFileHeader();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        } else {
+            this.statsOs = null;
+        }
         this.totalManagedRss = Miscellaneous.parseHumanReadableByteCount(Config.getInstance().getSchedulerCfg().getSchedulerCapacity());
         this.maxJobRss = Miscellaneous.parseHumanReadableByteCount(Config.getInstance().getSchedulerCfg().getMaxJobSize());
-        boolean cgroupCreated = LinuxCommands.getInstance().createWavaMemoryCgroup(totalManagedRss);
-        if (!cgroupCreated) {
-            throw new RuntimeException("Unable to create base cgroup folder");
+        boolean cgroupsCreated = LinuxCommands.createWavaCgroups(totalManagedRss);
+        if (!cgroupsCreated) {
+            throw new RuntimeException("Unable to create wava cgroups");
         }
         createGroupInfo(DEFAULT_GROUP_NAME, this.runningUser, 0, EVICTION_ETERNAL);
         GroupCfg.Group[] predefinedGroups = Config.getInstance().getGroupCfg().getPredefinedGroups();
@@ -83,7 +103,6 @@ public class Scheduler {
             }
         }
 
-        this.exitToken = RandomStringUtils.randomAlphabetic(10);
         this.jobList = createJobList(false, getAvailableManagedMemory(0), 0, 0);
 
         this.processingThread = new Thread(this.coreGroup, "processingThread") {
@@ -105,6 +124,20 @@ public class Scheduler {
                 }
             }
         };
+    }
+
+    private boolean isWriteStatRecord() {
+        return true;
+    }
+
+    private void writeStatsFileHeader() throws IOException {
+        this.statsOs.write("# running\t queded\t cpu\t rss(B)\t swap(B)\t io(B/s)".getBytes());
+        this.statsOs.write("\n".getBytes());
+    }
+
+    private void writeStatsRecord(StatRecord rec) throws IOException {
+        this.statsOs.write(String.format("%1$d\t%2$d\t%3$.3f\t%4$d\t%5$d\t%6$d", rec.running, rec.queded, rec.cpu, rec.rss, rec.swap, rec.io).getBytes());
+        this.statsOs.write("\n".getBytes());
     }
 
     public void start() {
@@ -142,32 +175,9 @@ public class Scheduler {
                 LOGGER.log(Level.SEVERE, "Starvation scenario found. Killing non-idempotent job {0} ({1})", new Object[]{pi.getJobInfo().getId(), pi.getJobInfo().getSubmitChannel().getRequest().getGroupName()});
                 pi.getJobInfo().getSubmitChannel().sendEvent(Event.starvation_stop, runningUser);
             }
-            LinuxCommands.getInstance().killTree(pi.getPid());
+            LinuxCommands.killTree(pi.getPid());
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
-        }
-    }
-
-    /**
-     * Returns pIds of jobs in decreasing priority
-     *
-     * @return
-     */
-    private int[] getPIds() {
-        synchronized (jobSet) {
-            int[] ret = new int[jobSet.countRunning()];
-            Iterator<Integer> running = jobSet.getRunning();
-            int i = 0;
-            while (running.hasNext()) {
-                Integer id = running.next();
-                ProcessInfo pi = processMap.get(id);
-                if (pi != null) {
-                    ret[i++] = pi.getPid();
-                } else {
-                    ret[i++] = -1;
-                }
-            }
-            return ret;
         }
     }
 
@@ -212,7 +222,7 @@ public class Scheduler {
                 ProcessInfo pi = processMap.get(id);
                 if (pi != null && !pi.getJobInfo().getSubmitChannel().ping()) {
                     try {
-                        LinuxCommands.getInstance().killTree(pi.getPid());
+                        LinuxCommands.killTree(pi.getPid());
                     } catch (RuntimeException ex) {
                         LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
                     }
@@ -348,7 +358,7 @@ public class Scheduler {
 
     private long getAvailableManagedMemory(long allocatedManagedMemory) {
         long availableManagedMemory = totalManagedRss - allocatedManagedMemory;
-        long systemAvailableMemory = LinuxCommands.getInstance().getMemInfo()[1];
+        long systemAvailableMemory = LinuxCommands.getMemInfo()[1];
         if (systemAvailableMemory < 0) { // Unable to get available memory
             return availableManagedMemory;
         }
@@ -359,13 +369,8 @@ public class Scheduler {
     }
 
     private long getCurrentlyUsedManagedMemory() {
-        int[] pIds = getPIds();
-        TreeStats[] treeStats = LinuxCommands.getInstance().getTreeStats(pIds);
-        long ret = 0;
-        for (int i = 0; i < treeStats.length; i++) {
-            ret += treeStats[i].rssBytes;
-        }
-        return ret;
+        MemoryStats memStats = LinuxCommands.getCgroupMemoryStats(null);
+        return memStats.rssBytes;
     }
 
     private void refresh() throws IOException, InterruptedException {
@@ -378,12 +383,25 @@ public class Scheduler {
             distributeNiceness();
             long allocatedManagedMemory = getAllocatedManagedMemory();
             long availableManagedMemory = getAvailableManagedMemory(allocatedManagedMemory);
-            long currentlyUsedManagedMemory = getStats();
+            GaugeStats stats = getStats();
             dequeueJobs(availableManagedMemory);
             sendQueuePositionEventsToParentJobs();
-            this.jobList = createJobList(false, availableManagedMemory, allocatedManagedMemory, currentlyUsedManagedMemory);
+            this.jobList = createJobList(false, availableManagedMemory, allocatedManagedMemory, stats.memStats.rssBytes);
             checkStarvation();
             this.refreshMillis = System.currentTimeMillis() - start;
+            if (statsOs != null) {
+                StatRecord record = new StatRecord();
+                record.running = jobSet.countRunning();
+                record.queded = jobSet.countQueued();
+                record.cpu = stats.cpuGaugeStats.getCpuPercent();
+                record.rss = stats.memStats.rssBytes;
+                record.swap = stats.memStats.swapBytes;
+                record.io = stats.iOGaugeStats.ioBps;
+                if (isWriteStatRecord()) {
+                    writeStatsRecord(record);
+                    previousStatRecord = record;
+                }
+            }
         }
     }
 
@@ -419,41 +437,36 @@ public class Scheduler {
         }
     }
 
-    private long getStats() throws IOException, InterruptedException {
+    private GaugeStats getStats() throws IOException, InterruptedException {
         synchronized (jobSet) {
-            long totalCurrentRss = 0;
-            int[] pIds = getPIds();
-            if (pIds.length > 0) {
-                TreeStats[] treeStats = LinuxCommands.getInstance().getTreeStats(pIds);
-                if (treeStats != null) {
-                    JobSet.RunningIterator running = jobSet.getRunning();
-                    int i = 0;
-                    while (running.hasNext()) {
-                        Integer id = running.next();
-                        ProcessInfo pi = processMap.get(id);
-                        if (pi == null) {
-                            continue;
-                        }
-                        LinuxCommands.CgroupMemoryStats cgroupMemoryStats = LinuxCommands.getInstance().getCgroupMemoryStats(id);
-                        if (cgroupMemoryStats != null) {
-                            pi.setRss(cgroupMemoryStats.rssBytes);
-                            if (pi.getRss() > pi.getMaxRss()) {
-                                pi.setMaxRss(pi.getRss());
-                            }
-                            pi.setSwap(cgroupMemoryStats.swapBytes);
-                            if (pi.getSwap() > pi.getMaxSwap()) {
-                                pi.setMaxSwap(pi.getSwap());
-                            }
-                            totalCurrentRss += cgroupMemoryStats.rssBytes;
-                        }
-                        TreeStats st = treeStats[i++];
-                        if (st != null) {
-                            pi.setCpuUsage(st.cpuPercentage);
-                        }
-                    }
+            GaugeStats ret = new GaugeStats();
+            Iterator<Integer> running = jobSet.getRunning();
+            while (running.hasNext()) {
+                Integer id = running.next();
+                ProcessInfo pi = processMap.get(id);
+                if (pi == null) {
+                    continue;
                 }
+                MemoryStats memStats = LinuxCommands.getCgroupMemoryStats(id);
+                if (memStats == null) {
+                    continue;
+                }
+                CpuStats cpuStats = LinuxCommands.getCgroupCpuStats(id);
+                if (cpuStats == null) {
+                    continue;
+                }
+                IOStats ioStats = LinuxCommands.getCgroupIOStats(id);
+                if (ioStats == null) {
+                    continue;
+                }
+                pi.setCurrentStats(new Statistics(memStats, cpuStats, ioStats));
+                ret.cpuGaugeStats.systemCpuPercent += pi.getGaugeStats().cpuGaugeStats.systemCpuPercent;
+                ret.cpuGaugeStats.userCpuPercent += pi.getGaugeStats().cpuGaugeStats.userCpuPercent;
+                ret.memStats.rssBytes += pi.getGaugeStats().memStats.rssBytes;
+                ret.memStats.swapBytes += pi.getGaugeStats().memStats.swapBytes;
+                ret.iOGaugeStats.ioBps += pi.getGaugeStats().iOGaugeStats.ioBps;
             }
-            return totalCurrentRss;
+            return ret;
         }
     }
 
@@ -522,16 +535,17 @@ public class Scheduler {
                 sb.append(ANSICode.BLACK.getCode());
                 sb.append(ANSICode.BG_GREEN.getCode());
                 sb.append(ANSICode.BOLD.getCode());
-                sb.append(StringUtils.center("JOB INFO", 46));
+                sb.append(" JOB INFO ");
                 sb.append(ANSICode.BG_BLACK.getCode());
+                sb.append(StringUtils.repeat(" ", 36));
                 sb.append(" ");
                 sb.append(ANSICode.BG_GREEN.getCode());
-                sb.append(StringUtils.center("PROCESS STATS", 64));
+                sb.append(" PROCESS TREE STATS ");
                 sb.append(ANSICode.BG_BLACK.getCode());
+                sb.append(StringUtils.repeat(" ", 61));
                 sb.append(" ");
                 sb.append(ANSICode.BG_GREEN.getCode());
-                sb.append(" COMMAND");
-                sb.append(ANSICode.END_OF_LINE.getCode());
+                sb.append(" COMMAND ");
                 sb.append(ANSICode.RESET.getCode());
                 sb.append(ANSICode.BLACK.getCode());
                 sb.append(ANSICode.BG_GREEN.getCode());
@@ -548,8 +562,6 @@ public class Scheduler {
                 sb.append(ANSICode.BG_BLACK.getCode());
                 sb.append(" ");
                 sb.append(ANSICode.BG_GREEN.getCode());
-                sb.append(StringUtils.leftPad("PID", 8));
-                sb.append(" ");
                 sb.append(StringUtils.leftPad("NICE", 4));
                 sb.append(" ");
                 sb.append(StringUtils.leftPad("MAX_RSS", 10));
@@ -559,6 +571,10 @@ public class Scheduler {
                 sb.append(StringUtils.leftPad("MAX_SWAP", 10));
                 sb.append(" ");
                 sb.append(StringUtils.leftPad("SWAP  ", 10));
+                sb.append(" ");
+                sb.append(StringUtils.leftPad("MAX_IO   ", 12));
+                sb.append(" ");
+                sb.append(StringUtils.leftPad("IO     ", 12));
                 sb.append(" ");
                 sb.append(StringUtils.leftPad("CPU%", 6));
                 sb.append(ANSICode.BG_BLACK.getCode());
@@ -597,52 +613,74 @@ public class Scheduler {
                         }
                         sb.append(StringUtils.leftPad(pId, 8));
                         sb.append(" ");
+
                         sb.append(StringUtils.rightPad(String.valueOf(gi.getGroupName()), 8));
                         sb.append(" ");
+
                         sb.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
                         sb.append(" ");
+
                         String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                         sb.append(StringUtils.leftPad(mem[0], 6));
                         sb.append(" ");
+
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(" ");
-                        sb.append(StringUtils.leftPad(String.valueOf(pi.getPid()), 8));
-                        sb.append(" ");
+
                         sb.append(StringUtils.leftPad(String.valueOf(pi.getNiceness()), 4));
                         sb.append(" ");
-                        mem = Miscellaneous.humanReadableByteCount(pi.getMaxRss(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+
+                        mem = Miscellaneous.humanReadableByteCount(pi.getMaxGaugeStats().memStats.rssBytes, Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                         sb.append(StringUtils.leftPad(mem[0], 6));
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(" ");
-                        mem = Miscellaneous.humanReadableByteCount(pi.getRss(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+
+                        mem = Miscellaneous.humanReadableByteCount(pi.getGaugeStats().memStats.rssBytes, Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                         sb.append(StringUtils.leftPad(mem[0], 6));
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(" ");
-                        if (pi.getMaxSwap() > ji.getSubmitChannel().getRequest().getMaxRSS() / 2) {
+
+                        if (pi.getMaxGaugeStats().memStats.swapBytes > ji.getSubmitChannel().getRequest().getMaxRSS() / 2) {
                             sb.append(ANSICode.RED.getCode());
-                        } else if (pi.getMaxSwap() > 0) {
+                        } else if (pi.getMaxGaugeStats().memStats.swapBytes > 0) {
                             sb.append(ANSICode.YELLOW.getCode());
                         }
-                        mem = Miscellaneous.humanReadableByteCount(pi.getMaxSwap(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        mem = Miscellaneous.humanReadableByteCount(pi.getMaxGaugeStats().memStats.swapBytes, Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                         sb.append(StringUtils.leftPad(mem[0], 6));
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(ANSICode.RESET.getCode());
                         sb.append(" ");
-                        if (pi.getSwap() > ji.getSubmitChannel().getRequest().getMaxRSS() / 2) {
+
+                        if (pi.getGaugeStats().memStats.swapBytes > ji.getSubmitChannel().getRequest().getMaxRSS() / 2) {
                             sb.append(ANSICode.RED.getCode());
-                        } else if (pi.getSwap() > 0) {
+                        } else if (pi.getGaugeStats().memStats.swapBytes > 0) {
                             sb.append(ANSICode.YELLOW.getCode());
                         }
-                        mem = Miscellaneous.humanReadableByteCount(pi.getSwap(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        mem = Miscellaneous.humanReadableByteCount(pi.getGaugeStats().memStats.swapBytes, Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                         sb.append(StringUtils.leftPad(mem[0], 6));
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(ANSICode.RESET.getCode());
                         sb.append(" ");
-                        sb.append(StringUtils.leftPad(String.format("%.1f", pi.getCpuUsage()), 6));
+
+                        mem = Miscellaneous.humanReadableByteCount(pi.getMaxGaugeStats().iOGaugeStats.ioBps, Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        sb.append(StringUtils.leftPad(mem[0], 6));
+                        sb.append(" ");
+                        sb.append(StringUtils.rightPad(mem[1] + "/s", 5));
+                        sb.append(ANSICode.RESET.getCode());
+                        sb.append(" ");
+
+                        mem = Miscellaneous.humanReadableByteCount(pi.getGaugeStats().iOGaugeStats.ioBps, Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        sb.append(StringUtils.leftPad(mem[0], 6));
+                        sb.append(" ");
+                        sb.append(StringUtils.rightPad(mem[1] + "/s", 5));
+                        sb.append(ANSICode.RESET.getCode());
+                        sb.append(" ");
+
+                        sb.append(StringUtils.leftPad(String.format("%.1f", pi.getGaugeStats().cpuGaugeStats.getCpuPercent()), 6));
                         sb.append(" ");
                         sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
                         sb.append(" ");
@@ -666,8 +704,6 @@ public class Scheduler {
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(" ");
-                        sb.append(StringUtils.leftPad("", 8));
-                        sb.append(" ");
                         sb.append(StringUtils.leftPad("", 4));
                         sb.append(" ");
                         sb.append(StringUtils.leftPad("", 10));
@@ -677,6 +713,10 @@ public class Scheduler {
                         sb.append(StringUtils.leftPad("", 10));
                         sb.append(" ");
                         sb.append(StringUtils.leftPad("", 10));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 12));
+                        sb.append(" ");
+                        sb.append(StringUtils.leftPad("", 12));
                         sb.append(" ");
                         sb.append(StringUtils.leftPad("", 6));
                         sb.append(" ");
@@ -711,8 +751,6 @@ public class Scheduler {
                     sb.append(" ");
                     sb.append(StringUtils.rightPad(mem[1], 3));
                     sb.append(" ");
-                    sb.append(StringUtils.leftPad("", 8));
-                    sb.append(" ");
                     sb.append(StringUtils.leftPad("", 4));
                     sb.append(" ");
                     sb.append(StringUtils.leftPad("", 10));
@@ -738,8 +776,6 @@ public class Scheduler {
                 statSb.append("\n");
                 statSb.append(ANSICode.CYAN);
                 statSb.append("  Jobs: ");
-                statSb.append(jobSet.countQueued() + jobSet.countRunning());
-                statSb.append("; ");
                 statSb.append(ANSICode.GREEN);
                 statSb.append(jobSet.countRunning() - blocked);
                 statSb.append(ANSICode.CYAN);
@@ -758,21 +794,6 @@ public class Scheduler {
                 statSb.append(this.refreshMillis);
                 statSb.append(ANSICode.CYAN);
                 statSb.append(" ms");
-                statSb.append("\n");
-                statSb.append("  Memory: managed ");
-                statSb.append(Miscellaneous.humanReadableByteCount(totalManagedRss, Config.getInstance().getuICfg().issIMemoryUnits()));
-                statSb.append(ANSICode.CYAN);
-                statSb.append(" (");
-                statSb.append(ANSICode.GREEN);
-                statSb.append(Miscellaneous.humanReadableByteCount(availableManagedMemory, Config.getInstance().getuICfg().issIMemoryUnits()));
-                statSb.append(ANSICode.CYAN);
-                statSb.append(" / ");
-                statSb.append(ANSICode.YELLOW);
-                statSb.append(Miscellaneous.humanReadableByteCount(allocatedManagedMemory, Config.getInstance().getuICfg().issIMemoryUnits()));
-                statSb.append(ANSICode.CYAN);
-                statSb.append("); using ");
-                statSb.append(ANSICode.RED);
-                statSb.append(Miscellaneous.humanReadableByteCount(currentlyUsedManagedMemory, Config.getInstance().getuICfg().issIMemoryUnits()));
                 statSb.append(ANSICode.RESET);
                 statSb.append("\n");
                 statSb.append("\n");
@@ -888,7 +909,7 @@ public class Scheduler {
                             return;
                         }
                         pi.getJobInfo().getSubmitChannel().sendEvent(Event.cancelled, cancelChannel.getUser());
-                        LinuxCommands.getInstance().killTree(pi.getPid());
+                        LinuxCommands.killTree(pi.getPid());
                         cancelChannel.log(ANSICode.GREEN, "running job sucessfully cancelled");
                         cancelChannel.sendEvent(Event.retcode, 0);
                     }
@@ -992,15 +1013,15 @@ public class Scheduler {
         if (ji == null) {
             throw new IllegalArgumentException("Id is required");
         }
-        LinuxCommands.getInstance().createJobMemoryCgroup(id, ji.getSubmitChannel().getRequest().getMaxRSS());
+        LinuxCommands.createJobCgroups(id, ji.getSubmitChannel().getRequest().getMaxRSS());
         Thread t = new Thread(this.processGroup, "scheduled process " + id) {
             @Override
             public void run() {
                 String[] cmd = ji.getSubmitChannel().getRequest().getCommand();
-                cmd = LinuxCommands.getInstance().decorateRunAsCommand(cmd, ji.getSubmitChannel().getUser());
-                cmd = LinuxCommands.getInstance().decorateWithCPUAffinity(cmd, Config.getInstance().getProcessCfg().getCpuAfinity());
-                cmd = LinuxCommands.getInstance().decorateWithBatchSchedulerPolicy(cmd);
-                cmd = LinuxCommands.getInstance().decorateRunInCgroup(cmd, id);
+                cmd = LinuxCommands.decorateRunAsCommand(cmd, ji.getSubmitChannel().getUser());
+                cmd = LinuxCommands.decorateWithCPUAffinity(cmd, Config.getInstance().getProcessCfg().getCpuAfinity());
+                cmd = LinuxCommands.decorateWithBatchSchedulerPolicy(cmd);
+                cmd = LinuxCommands.decorateRunInCgroup(cmd, id);
                 ProcessBuilder pb = new ProcessBuilder(cmd);
                 pb.environment().clear();
                 pb.directory(ji.getSubmitChannel().getRequest().getWorkingDirectory());
@@ -1050,13 +1071,15 @@ public class Scheduler {
                         int code = process.waitFor();
                         isThread.interrupt();
                         if (!ji.isRelaunched()) {
-                            ji.getSubmitChannel().sendEvent(Event.maxrss, pi.getMaxRss());
-                            ji.getSubmitChannel().sendEvent(Event.maxswap, pi.getMaxSwap());
+                            if (pi.getMaxGaugeStats() != null) {
+                                ji.getSubmitChannel().sendEvent(Event.maxrss, pi.getMaxGaugeStats().memStats.rssBytes);
+                                ji.getSubmitChannel().sendEvent(Event.maxswap, pi.getMaxGaugeStats().memStats.swapBytes);
+                            }
                             ji.getSubmitChannel().sendEvent(Event.retcode, code);
                         }
                     } catch (InterruptedException ex) {
                         try {
-                            LinuxCommands.getInstance().killTree(pId);
+                            LinuxCommands.killTree(pId);
                         } catch (Throwable th) {
                             LOGGER.log(Level.SEVERE, th.getMessage(), th);
                         }
@@ -1111,7 +1134,7 @@ public class Scheduler {
                                 ji.getSubmitChannel().close();
                             }
                         }
-                        LinuxCommands.getInstance().removeJobMemoryCgroup(id);
+                        LinuxCommands.removeJobCgroups(id);
                     } catch (Throwable th) {
                         LOGGER.log(Level.SEVERE, th.getMessage(), th);
                     }
@@ -1124,17 +1147,6 @@ public class Scheduler {
     public boolean close(PeerChannel<String> channel) throws IOException {
         if (!channel.getUser().equals("root") && !channel.getUser().equals(runningUser)) {
             channel.log(ANSICode.RED, "user '" + channel.getUser() + "' is not allowed to stop the core scheduler process");
-            channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
-            channel.close();
-            return false;
-        }
-        if (channel.getRequest() == null || channel.getRequest().isEmpty()) {
-            channel.log(ANSICode.CYAN, "Confirm stopping scheduler by running: " + ANSICode.GREEN + "wava -x " + exitToken);
-            channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
-            channel.close();
-            return false;
-        } else if (!channel.getRequest().equals(exitToken)) {
-            channel.log(ANSICode.RED, "Invalid token. Confirm stopping scheduler by running: " + ANSICode.GREEN + "wava -x " + exitToken);
             channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
             channel.close();
             return false;
@@ -1175,7 +1187,7 @@ public class Scheduler {
                 }
                 pi.getJobInfo().getSubmitChannel().sendEvent(Event.shutdown, runningUser);
                 try {
-                    LinuxCommands.getInstance().killTree(pi.getPid());
+                    LinuxCommands.killTree(pi.getPid());
                 } catch (Exception ex) {
                     LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
                 }
@@ -1308,61 +1320,19 @@ public class Scheduler {
 
         private final JobInfo jobInfo;
         private final int pId;
-        private volatile long rss;
-        private volatile long maxRss;
-        private volatile long swap;
-        private volatile long maxSwap;
-        private volatile double cpuUsage;
         private volatile int niceness = Integer.MAX_VALUE;
-        private boolean allowed;
+        private volatile GaugeStats maxGaugeStats = new GaugeStats();
+        private volatile GaugeStats gaugeStats = new GaugeStats();
+        private volatile Statistics prevStats;
+        private volatile Statistics currentStats;
 
         public ProcessInfo(JobInfo jobInfo, int pId) {
             this.jobInfo = jobInfo;
             this.pId = pId;
         }
 
-        public long getRss() {
-            return rss;
-        }
-
-        public void setRss(long rss) {
-            this.rss = rss;
-        }
-
-        public long getMaxRss() {
-            return maxRss;
-        }
-
-        public void setMaxRss(long maxRss) {
-            this.maxRss = maxRss;
-        }
-
-        public long getMaxSwap() {
-            return maxSwap;
-        }
-
-        public void setMaxSwap(long maxSwap) {
-            this.maxSwap = maxSwap;
-        }
-
-        public double getCpuUsage() {
-            return cpuUsage;
-        }
-
-        public void setCpuUsage(double cpuUsage) {
-            this.cpuUsage = cpuUsage;
-        }
-
         public int getPid() {
             return pId;
-        }
-
-        public long getSwap() {
-            return swap;
-        }
-
-        public void setSwap(long swap) {
-            this.swap = swap;
         }
 
         public int getNiceness() {
@@ -1373,22 +1343,121 @@ public class Scheduler {
             return jobInfo;
         }
 
-        public boolean isAllowed() {
-            return allowed;
-        }
-
-        public void setAllowed(boolean allowed) {
-            this.allowed = allowed;
-        }
-
         public synchronized void setNiceness(int niceness) {
             if (niceness != this.niceness) {
-                LinuxCommands.getInstance().setNiceness(pId, niceness);
+                LinuxCommands.setNiceness(pId, niceness);
                 if (jobInfo.getSubmitChannel().getRequest().getParentId() != null) {
                     jobInfo.getSubmitChannel().sendEvent(Event.niceness, niceness);
                 }
                 this.niceness = niceness;
             }
         }
+
+        public Statistics getPrevStats() {
+            return prevStats;
+        }
+
+        public Statistics getCurrentStats() {
+            return currentStats;
+        }
+
+        public GaugeStats getMaxGaugeStats() {
+            return maxGaugeStats;
+        }
+
+        public GaugeStats getGaugeStats() {
+            return gaugeStats;
+        }
+
+        public void setCurrentStats(Statistics currentStats) {
+            this.prevStats = this.currentStats;
+            this.currentStats = currentStats;
+            if (prevStats != null) {
+                this.gaugeStats = new GaugeStats(prevStats, currentStats);
+                if (this.maxGaugeStats == null) {
+                    this.maxGaugeStats = this.gaugeStats;
+                } else {
+                    if (this.maxGaugeStats.cpuGaugeStats.getCpuPercent() < this.gaugeStats.cpuGaugeStats.getCpuPercent()) {
+                        this.maxGaugeStats.cpuGaugeStats = this.gaugeStats.cpuGaugeStats;
+                    }
+                    if (this.maxGaugeStats.memStats.rssBytes < this.gaugeStats.memStats.rssBytes) {
+                        this.maxGaugeStats.memStats.rssBytes = this.gaugeStats.memStats.rssBytes;
+                    }
+                    if (this.maxGaugeStats.memStats.swapBytes < this.gaugeStats.memStats.swapBytes) {
+                        this.maxGaugeStats.memStats.swapBytes = this.gaugeStats.memStats.swapBytes;
+                    }
+                    if (this.maxGaugeStats.iOGaugeStats.ioBps < this.gaugeStats.iOGaugeStats.ioBps) {
+                        this.maxGaugeStats.iOGaugeStats.ioBps = this.gaugeStats.iOGaugeStats.ioBps;
+                    }
+                }
+            }
+        }
+    }
+
+    public static class Statistics {
+
+        public MemoryStats memStats;
+        public CpuStats cpuStats;
+        public IOStats iOStats;
+
+        public Statistics(MemoryStats memStats, CpuStats cpuStats, IOStats iOStats) {
+            this.memStats = memStats;
+            this.cpuStats = cpuStats;
+            this.iOStats = iOStats;
+        }
+    }
+
+    public static class GaugeStats {
+
+        public MemoryStats memStats;
+        public CpuGaugeStats cpuGaugeStats;
+        public IOGaugeStats iOGaugeStats;
+
+        public GaugeStats() {
+            this.memStats = new MemoryStats();
+            this.cpuGaugeStats = new CpuGaugeStats();
+            this.iOGaugeStats = new IOGaugeStats();
+        }
+
+        public GaugeStats(Statistics prevStats, Statistics currentStats) {
+            this.memStats = currentStats.memStats;
+            this.cpuGaugeStats = new CpuGaugeStats();
+            this.iOGaugeStats = new IOGaugeStats();
+            if (currentStats.cpuStats.nanos > prevStats.cpuStats.nanos && prevStats.cpuStats.nanos > 0) {
+                double denom = (Config.getInstance().getSchedulerCfg().getUserHz() / 100.0) * (currentStats.cpuStats.nanos - prevStats.cpuStats.nanos) / 1e9;
+                this.cpuGaugeStats.userCpuPercent = (currentStats.cpuStats.userJiffies - prevStats.cpuStats.userJiffies) / denom;
+                this.cpuGaugeStats.systemCpuPercent = (currentStats.cpuStats.systemJiffies - prevStats.cpuStats.systemJiffies) / denom;
+            }
+            if (currentStats.iOStats.nanos > prevStats.iOStats.nanos && prevStats.iOStats.nanos > 0) {
+                this.iOGaugeStats = new IOGaugeStats();
+                this.iOGaugeStats.ioBps = (long) ((currentStats.iOStats.ioBytes - prevStats.iOStats.ioBytes) * 1e9 / (currentStats.iOStats.nanos - prevStats.iOStats.nanos));
+            }
+        }
+
+        public static class CpuGaugeStats {
+
+            private double systemCpuPercent;
+            private double userCpuPercent;
+
+            public double getCpuPercent() {
+                return systemCpuPercent + userCpuPercent;
+            }
+
+        }
+
+        public static class IOGaugeStats {
+
+            public long ioBps;
+        }
+    }
+
+    private class StatRecord {
+
+        int running;
+        int queded;
+        double cpu;
+        long rss;
+        long swap;
+        long io;
     }
 }

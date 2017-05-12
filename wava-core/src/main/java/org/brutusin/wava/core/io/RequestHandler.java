@@ -23,9 +23,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardWatchEventKinds;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
-import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.logging.Level;
@@ -37,7 +35,7 @@ import org.brutusin.json.ParseException;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.env.WavaTemp;
 import org.brutusin.wava.core.Scheduler;
-import org.brutusin.wava.core.plug.LinuxCommands;
+import org.brutusin.wava.utils.LinuxCommands;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.input.ExtendedSubmitInput;
@@ -125,7 +123,7 @@ public class RequestHandler {
                     ret = true;
                     final Integer id = Integer.valueOf(matcher.group(1));
                     final OpName opName = OpName.valueOf(matcher.group(2));
-                    final String user = LinuxCommands.getInstance().getFileOwner(requestFile);
+                    final String user = LinuxCommands.getFileOwner(requestFile);
                     final String json = new String(Files.readAllBytes(requestFile.toPath()));
                     Thread t = new Thread() {
                         @Override

@@ -24,7 +24,7 @@ import org.brutusin.wava.cfg.SchedulerCfg;
 public class SchedulerCfgImpl implements SchedulerCfg {
 
     private String nicenessHandlerClassName;
-    private String memoryCgroupBasePath;
+    private String cgroupRootPath;
     private int refreshLoopSleepMillisecs = 10;
     private int pingMillisecs = 1000;
     private String schedulerCapacity = "$DEFAULT_CAPACITY";
@@ -32,6 +32,8 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     private String maxJobSize = "$DEFAULT_CAPACITY";
     private boolean outOfMemoryKillerEnabled = false;
     private float maxBlockedRssStarvationRatio = 0.5f;
+    private String userHz = "$USER_HZ";
+    private String statsFile = "";
 
     @Override
     public String getSchedulerCapacity() {
@@ -61,12 +63,12 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     }
 
     @Override
-    public String getMemoryCgroupBasePath() {
-        return memoryCgroupBasePath;
+    public String getCgroupRootPath() {
+        return cgroupRootPath;
     }
 
-    public void setMemoryCgroupBasePath(String memoryCgroupBasePath) {
-        this.memoryCgroupBasePath = memoryCgroupBasePath;
+    public void setCgroupRootPath(String cgroupRootPath) {
+        this.cgroupRootPath = cgroupRootPath;
     }
 
     @Override
@@ -112,5 +114,23 @@ public class SchedulerCfgImpl implements SchedulerCfg {
 
     public void setPingMillisecs(int pingMillisecs) {
         this.pingMillisecs = pingMillisecs;
+    }
+
+    @Override
+    public int getUserHz() {
+        return Integer.valueOf(userHz);
+    }
+
+    public void setUserHz(String userHz) {
+        this.userHz = userHz;
+    }
+
+    @Override
+    public String getStatsFile() {
+        return statsFile;
+    }
+
+    public void setStatsFile(String statsFile) {
+        this.statsFile = statsFile;
     }
 }

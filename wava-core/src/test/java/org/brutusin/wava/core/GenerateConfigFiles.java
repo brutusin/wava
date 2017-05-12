@@ -31,7 +31,7 @@ public class GenerateConfigFiles {
         File cfgFile = new File("cfg.json");
         ConfigImpl defaultImpl = new ConfigImpl();
         defaultImpl.setTempFolder("/dev/shm");
-        defaultImpl.getSchedulerCfg().setMemoryCgroupBasePath("/sys/fs/cgroup/memory");
+        defaultImpl.getSchedulerCfg().setCgroupRootPath("/sys/fs/cgroup");
         defaultImpl.getSchedulerCfg().setNicenessHandlerClassName(HomogeneusSpreadNicenessHandler.class.getName());
         Miscellaneous.writeStringToFile(cfgFile, JsonCodec.getInstance().prettyPrint(JsonCodec.getInstance().transform(defaultImpl)), "UTF-8");
     }
