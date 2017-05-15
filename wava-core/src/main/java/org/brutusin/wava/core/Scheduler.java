@@ -1,7 +1,6 @@
 package org.brutusin.wava.core;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import org.brutusin.wava.io.Event;
 import org.brutusin.wava.core.io.PeerChannel;
 import org.brutusin.wava.cfg.Config;
@@ -15,8 +14,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.FileHandler;
+import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import org.apache.commons.lang3.StringUtils;
 import org.brutusin.commons.utils.ErrorHandler;
 import org.brutusin.commons.utils.Miscellaneous;
@@ -41,7 +44,7 @@ public class Scheduler {
 
     private final static Logger LOGGER = Logger.getLogger(Scheduler.class.getName());
 
-    private final FileOutputStream statsOs;
+    private final Logger statsLogger;
 
     // next four accessed under synchronized(jobSet)
     private final JobSet jobSet = new JobSet();
@@ -75,19 +78,15 @@ public class Scheduler {
             throw new NonRootUserException();
         }
 
-        if (Config.getInstance().getSchedulerCfg().getStatsFile() != null && !Config.getInstance().getSchedulerCfg().getStatsFile().isEmpty()) {
-            File statsFile = new File(Config.getInstance().getSchedulerCfg().getStatsFile());
+        if (Config.getInstance().getSchedulerCfg().isLogStats()) {
             try {
-                if (!statsFile.exists()) {
-                    Miscellaneous.createFile(statsFile.getAbsolutePath());
-                }
-                this.statsOs = new FileOutputStream(statsFile);
-                writeStatsFileHeader();
+                this.statsLogger = createStatsLogger(new File(Config.getInstance().getSchedulerCfg().getLogFolder(), "stats"));
+                writeGlobalStatsFileHeader();
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
         } else {
-            this.statsOs = null;
+            this.statsLogger = null;
         }
         this.totalManagedRss = Miscellaneous.parseHumanReadableByteCount(Config.getInstance().getSchedulerCfg().getSchedulerCapacity());
         this.maxJobRss = Miscellaneous.parseHumanReadableByteCount(Config.getInstance().getSchedulerCfg().getMaxJobSize());
@@ -126,18 +125,50 @@ public class Scheduler {
         };
     }
 
-    private boolean isWriteStatRecord() {
-        return true;
+    private boolean isWriteStatRecord(StatRecord previous, StatRecord current) {
+        if (previous == null) {
+            return true;
+        }
+        if (previous.running != current.running || previous.queded != current.queded) {
+            return true;
+        }
+        if (Math.abs(previous.cpu - current.cpu) > Config.getInstance().getSchedulerCfg().getStatsCpuStep()
+                || previous.cpu == 0 && current.cpu != 0
+                || previous.cpu != 0 && current.cpu == 0) {
+            return true;
+        }
+        if (Math.abs(previous.rss - current.rss) > Config.getInstance().getSchedulerCfg().getStatsRssStep()
+                || previous.rss == 0 && current.rss != 0
+                || previous.rss != 0 && current.rss == 0) {
+            return true;
+        }
+        if (Math.abs(previous.swap - current.swap) > Config.getInstance().getSchedulerCfg().getStatsSwapStep()
+                || previous.swap == 0 && current.swap != 0
+                || previous.swap != 0 && current.swap == 0) {
+            return true;
+        }
+        if (Math.abs(previous.io - current.io) > Config.getInstance().getSchedulerCfg().getStatsIOStep()
+                || previous.io == 0 && current.io != 0
+                || previous.io != 0 && current.io == 0) {
+            return true;
+        }
+        return false;
     }
 
-    private void writeStatsFileHeader() throws IOException {
-        this.statsOs.write("# running\t queded\t cpu\t rss(B)\t swap(B)\t io(B/s)".getBytes());
-        this.statsOs.write("\n".getBytes());
+    private void writeGlobalStatsFileHeader() throws IOException {
+        this.statsLogger.log(Level.ALL, "#start\tend\trunning\tqueued\tcpu(%)\trss(B)\tswap(B)\tio(B/s)");
     }
 
-    private void writeStatsRecord(StatRecord rec) throws IOException {
-        this.statsOs.write(String.format("%1$d\t%2$d\t%3$.3f\t%4$d\t%5$d\t%6$d", rec.running, rec.queded, rec.cpu, rec.rss, rec.swap, rec.io).getBytes());
-        this.statsOs.write("\n".getBytes());
+    private void writeGlobalStatsRecord(StatRecord rec) throws IOException {
+        this.statsLogger.log(Level.ALL, String.format("%1$d\t%2$d\t%3$d\t%4$d\t%5$.1f\t%6$d\t%7$d\t%8$d", rec.start, rec.end, rec.running, rec.queded, rec.cpu, rec.rss, rec.swap, rec.io));
+    }
+    
+    private void writeJobStatsFileHeader(Logger logger) throws IOException {
+        logger.log(Level.ALL, "#start\tend\tcpu(%)\trss(B)\tswap(B)\tio(B/s)");
+    }
+
+    private void writeJobStatsRecord(Logger logger, StatRecord rec) throws IOException {
+        logger.log(Level.ALL, String.format("%1$d\t%2$d\t%3$.1f\t%4$d\t%5$d\t%6$d", rec.start, rec.end, rec.cpu, rec.rss, rec.swap, rec.io));
     }
 
     public void start() {
@@ -388,8 +419,9 @@ public class Scheduler {
             sendQueuePositionEventsToParentJobs();
             this.jobList = createJobList(false, availableManagedMemory, allocatedManagedMemory, stats.memStats.rssBytes);
             checkStarvation();
-            this.refreshMillis = System.currentTimeMillis() - start;
-            if (statsOs != null) {
+            long end = System.currentTimeMillis();
+            this.refreshMillis = end - start;
+            if (statsLogger != null) {
                 StatRecord record = new StatRecord();
                 record.running = jobSet.countRunning();
                 record.queded = jobSet.countQueued();
@@ -397,8 +429,14 @@ public class Scheduler {
                 record.rss = stats.memStats.rssBytes;
                 record.swap = stats.memStats.swapBytes;
                 record.io = stats.iOGaugeStats.ioBps;
-                if (isWriteStatRecord()) {
-                    writeStatsRecord(record);
+                if (isWriteStatRecord(previousStatRecord, record)) {
+                    if (previousStatRecord != null) {
+                        record.start = previousStatRecord.end;
+                    } else {
+                        record.start = end;
+                    }
+                    record.end = end;
+                    writeGlobalStatsRecord(record);
                     previousStatRecord = record;
                 }
             }
@@ -465,6 +503,25 @@ public class Scheduler {
                 ret.memStats.rssBytes += pi.getGaugeStats().memStats.rssBytes;
                 ret.memStats.swapBytes += pi.getGaugeStats().memStats.swapBytes;
                 ret.iOGaugeStats.ioBps += pi.getGaugeStats().iOGaugeStats.ioBps;
+
+                if (pi.getStatsLogger() != null) {
+                    StatRecord record = new StatRecord();
+                    record.cpu = pi.getGaugeStats().cpuGaugeStats.getCpuPercent();
+                    record.rss = pi.getGaugeStats().memStats.rssBytes;
+                    record.swap = pi.getGaugeStats().memStats.swapBytes;
+                    record.io = pi.getGaugeStats().iOGaugeStats.ioBps;
+                    long time = System.currentTimeMillis();
+                    if (isWriteStatRecord(pi.getPreviousStatRecord(), record)) {
+                        if (pi.getPreviousStatRecord() != null) {
+                            record.start = pi.getPreviousStatRecord().end;
+                        } else {
+                            record.start = time;
+                        }
+                        record.end = time;
+                        writeJobStatsRecord(pi.getStatsLogger(), record);
+                        pi.setPreviousStatRecord(record);
+                    }
+                }
             }
             return ret;
         }
@@ -869,6 +926,49 @@ public class Scheduler {
         }
     }
 
+    private static Logger createStatsLogger(File folder) throws IOException {
+        Logger logger = Logger.getAnonymousLogger();
+        Handler[] handlers = logger.getHandlers();
+        if (handlers != null) {
+            for (int i = 0; i < handlers.length; i++) {
+                Handler handler = handlers[i];
+                logger.removeHandler(handler);
+            }
+        }
+        logger.setUseParentHandlers(false);
+        logger.setLevel(Level.ALL);
+        if (folder.exists()) {
+            Miscellaneous.deleteDirectory(folder);
+        }
+        Miscellaneous.createDirectory(folder);
+        int maxFiles = 10;
+        int maxBytesPerFile = (int) (Config.getInstance().getSchedulerCfg().getMaxStatsLogSize() / maxFiles);
+        FileHandler fh = new FileHandler(folder.getAbsolutePath() + "/stats%g.log", maxBytesPerFile, maxFiles, false);
+        fh.setLevel(Level.ALL);
+        SimpleFormatter formatter = new SimpleFormatter() {
+            @Override
+            public synchronized String format(LogRecord record) {
+                return record.getMessage() + "\n";
+            }
+        };
+        fh.setFormatter(formatter);
+        logger.addHandler(fh);
+        return logger;
+    }
+
+    private static void closeLogger(Logger logger) {
+        if (logger == null) {
+            return;
+        }
+        Handler[] handlers = logger.getHandlers();
+        if (handlers != null) {
+            for (int i = 0; i < handlers.length; i++) {
+                Handler handler = handlers[i];
+                handler.close();
+            }
+        }
+    }
+
     public void cancel(PeerChannel<CancelInput> cancelChannel) throws IOException, InterruptedException {
         try {
             if (closed) {
@@ -897,6 +997,7 @@ public class Scheduler {
                         gi.getJobs().remove(id);
                         jobSet.remove(id);
                         removeFromJobMap(ji);
+                        LOGGER.fine("Cancelled job " + id + " by user '" + cancelChannel.getUser() + "'");
                     } else {
                         throw new AssertionError();
                     }
@@ -912,6 +1013,7 @@ public class Scheduler {
                         LinuxCommands.killTree(pi.getPid());
                         cancelChannel.log(ANSICode.GREEN, "running job sucessfully cancelled");
                         cancelChannel.sendEvent(Event.retcode, 0);
+                        LOGGER.fine("Cancelled job " + id + " by user '" + cancelChannel.getUser() + "'");
                     }
                 }
             }
@@ -931,6 +1033,7 @@ public class Scheduler {
                     createGroupInfo(channel.getRequest().getGroupName(), channel.getUser(), channel.getRequest().getPriority(), channel.getRequest().getTimetoIdleSeconds());
                     channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' created successfully");
                     channel.sendEvent(Event.retcode, 0);
+                    LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' created  by user '" + channel.getUser() + "'");
                     return;
                 } else if (channel.getRequest().isDelete()) {
                     if (!channel.getUser().equals("root") && !channel.getUser().equals(gi.getUser())) {
@@ -946,6 +1049,7 @@ public class Scheduler {
                         channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' deleted successfully");
                         groupMap.remove(channel.getRequest().getGroupName());
                         channel.sendEvent(Event.retcode, 0);
+                        LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' deleted  by user " + channel.getUser() + "'");
                         return;
                     } else {
                         channel.log(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' cannot be deleted, since it contains " + gi.getJobs().size() + " active jobs");
@@ -964,11 +1068,13 @@ public class Scheduler {
                     }
                     gi.setPriority(newPriority);
                     channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' priority updated successfully");
+                    LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' priority updated by user '" + channel.getUser() + "'");
                 }
                 Integer newTimetoIdleSeconds = channel.getRequest().getTimetoIdleSeconds();
                 if (newTimetoIdleSeconds != null && newTimetoIdleSeconds != gi.getTimeToIdelSeconds()) {
                     gi.setTimeToIdelSeconds(newTimetoIdleSeconds);
                     channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' time-to-idle updated successfully");
+                    LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' time-to-idle updated by user '" + channel.getUser() + "'");
                 }
                 channel.sendEvent(Event.retcode, 0);
             }
@@ -1045,7 +1151,15 @@ public class Scheduler {
                             isThread = Miscellaneous.pipeAsynchronously(ji.getSubmitChannel().getStdinIs(), (ErrorHandler) null, true, process.getOutputStream());
                             pId = Miscellaneous.getUnixId(process);
                             LOGGER.fine("Running job " + ji.getId() + " with pId " + pId);
-                            pi = new ProcessInfo(ji, pId);
+
+                            Logger statsLogger;
+                            if (ji.getSubmitChannel().getRequest().getStatsDirectory() != null) {
+                                statsLogger = createStatsLogger(ji.getSubmitChannel().getRequest().getStatsDirectory());
+                                writeJobStatsFileHeader(statsLogger);
+                            } else {
+                                statsLogger = null;
+                            }
+                            pi = new ProcessInfo(ji, pId, statsLogger);
                             ji.getSubmitChannel().sendEvent(Event.running, pId);
                             processMap.put(ji.getId(), pi);
                             int[] positions = getRunningPosition(pi);
@@ -1076,6 +1190,7 @@ public class Scheduler {
                                 ji.getSubmitChannel().sendEvent(Event.maxswap, pi.getMaxGaugeStats().memStats.swapBytes);
                             }
                             ji.getSubmitChannel().sendEvent(Event.retcode, code);
+                            closeLogger(pi.getStatsLogger());
                         }
                     } catch (InterruptedException ex) {
                         try {
@@ -1195,6 +1310,8 @@ public class Scheduler {
         }
         channel.sendEvent(Event.retcode, 0);
         channel.close();
+        LOGGER.severe("Scheduler stopped sucessfully");
+        closeLogger(this.statsLogger);
         return true;
     }
 
@@ -1320,15 +1437,18 @@ public class Scheduler {
 
         private final JobInfo jobInfo;
         private final int pId;
+        private final Logger statsLogger;
+        private StatRecord previousStatRecord;
         private volatile int niceness = Integer.MAX_VALUE;
         private volatile GaugeStats maxGaugeStats = new GaugeStats();
         private volatile GaugeStats gaugeStats = new GaugeStats();
         private volatile Statistics prevStats;
         private volatile Statistics currentStats;
 
-        public ProcessInfo(JobInfo jobInfo, int pId) {
+        public ProcessInfo(JobInfo jobInfo, int pId, Logger statsLogger) {
             this.jobInfo = jobInfo;
             this.pId = pId;
+            this.statsLogger = statsLogger;
         }
 
         public int getPid() {
@@ -1341,6 +1461,18 @@ public class Scheduler {
 
         public JobInfo getJobInfo() {
             return jobInfo;
+        }
+
+        public Logger getStatsLogger() {
+            return statsLogger;
+        }
+
+        public StatRecord getPreviousStatRecord() {
+            return previousStatRecord;
+        }
+
+        public void setPreviousStatRecord(StatRecord previousStatRecord) {
+            this.previousStatRecord = previousStatRecord;
         }
 
         public synchronized void setNiceness(int niceness) {
@@ -1453,6 +1585,8 @@ public class Scheduler {
 
     private class StatRecord {
 
+        long start;
+        long end;
         int running;
         int queded;
         double cpu;

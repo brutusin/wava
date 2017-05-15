@@ -3,8 +3,6 @@ package org.brutusin.wava.cfg;
 import org.brutusin.wava.cfg.impl.ConfigImpl;
 import java.io.File;
 import java.io.FileInputStream;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.env.WavaHome;
@@ -12,7 +10,6 @@ import org.brutusin.wava.env.WavaHome;
 public class Config {
 
     private final File tempFolder;
-    private final static Logger LOGGER = Logger.getLogger(Config.class.getName());
     private static volatile Config instance;
     private final ConfigImpl impl;
 
@@ -30,7 +27,6 @@ public class Config {
                 this.tempFolder = null;
             }
         } catch (Throwable th) {
-            LOGGER.log(Level.SEVERE, th.getMessage(), th);
             throw new Error(th);
         }
     }

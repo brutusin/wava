@@ -10,6 +10,7 @@ public class SubmitInput {
     private long maxRSS;    
     private Map<String,String> environment;    
     private File workingDirectory;
+    private File statsDirectory;
     private boolean idempotent;
 
     public Map<String, String> getEnvironment() {
@@ -26,6 +27,14 @@ public class SubmitInput {
 
     public void setWorkingDirectory(File workingDirectory) {
         this.workingDirectory = workingDirectory;
+    }
+
+    public File getStatsDirectory() {
+        return statsDirectory;
+    }
+
+    public void setStatsDirectory(File statsDirectory) {
+        this.statsDirectory = statsDirectory;
     }
 
     public String getGroupName() {

@@ -80,6 +80,12 @@ public class SubmitMain {
                 .hasArg()
                 .desc("file to send execution events. If null, then stderr will be used")
                 .build();
+        Option sOpt = Option.builder("s")
+                .longOpt("stats-folder")
+                .argName("file")
+                .hasArg()
+                .desc("folder to save job stats logs. If null, no logging is performed")
+                .build();
         Option gOpt = Option.builder("g")
                 .longOpt("group")
                 .argName("group id")
@@ -96,6 +102,7 @@ public class SubmitMain {
         options.addOption(gOpt);
         options.addOption(eOpt);
         options.addOption(iOpt);
+        options.addOption(sOpt);
 
         int commandStart = getCommandStart(options, args);
         if (commandStart == -1) {
@@ -135,6 +142,10 @@ public class SubmitMain {
             if (cl.hasOption(gOpt.getOpt())) {
                 String group = cl.getOptionValue(gOpt.getOpt());
                 ri.setGroupName(group);
+            }
+            if (cl.hasOption(sOpt.getOpt())) {
+                File folder = new File(cl.getOptionValue(sOpt.getOpt()));
+                ri.setStatsDirectory(folder);
             }
             if (cl.hasOption(iOpt.getOpt())) {
                 ri.setIdempotent(true);

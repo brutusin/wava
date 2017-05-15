@@ -15,6 +15,7 @@
  */
 package org.brutusin.wava.cfg.impl;
 
+import org.brutusin.commons.utils.Miscellaneous;
 import org.brutusin.wava.cfg.SchedulerCfg;
 
 /**
@@ -33,7 +34,21 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     private boolean outOfMemoryKillerEnabled = false;
     private float maxBlockedRssStarvationRatio = 0.5f;
     private String userHz = "$USER_HZ";
-    private String statsFile = "";
+    private String logFolder = "/tmp/wava";
+    private String loggingLevel = "FINE";
+    private String maxLogSize = "100MB";
+    private transient long _maxLogSize = -1;
+    private String maxStatsLogSize = "100MB";
+    private transient long _maxStatsLogSize = -1;
+    private int statsCpuStep = 15;
+    private String statsRssStep = "50MB";
+    private transient long _statsRssStep = -1;
+    private String statsSwapStep = "50MB";
+    private transient long _statsSwapStep = -1;
+    private String statsIOStep = "50MB";
+    private transient long _statsIOStep = -1;
+
+    private boolean logStats = false;
 
     @Override
     public String getSchedulerCapacity() {
@@ -126,11 +141,98 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     }
 
     @Override
-    public String getStatsFile() {
-        return statsFile;
+    public String getLogFolder() {
+        return logFolder;
     }
 
-    public void setStatsFile(String statsFile) {
-        this.statsFile = statsFile;
+    public void setLogFolder(String logFolder) {
+        this.logFolder = logFolder;
+    }
+
+    @Override
+    public String getLoggingLevel() {
+        return loggingLevel;
+    }
+
+    public void setLoggingLevel(String loggingLevel) {
+        this.loggingLevel = loggingLevel;
+    }
+
+    @Override
+    public long getMaxLogSize() {
+        if (_maxLogSize < 0) {
+            _maxLogSize = Miscellaneous.parseHumanReadableByteCount(maxLogSize);
+        }
+        return _maxLogSize;
+    }
+
+    public void setMaxLogSize(String maxLogSize) {
+        this.maxLogSize = maxLogSize;
+    }
+
+    @Override
+    public long getMaxStatsLogSize() {
+        if (_maxStatsLogSize < 0) {
+            _maxStatsLogSize = Miscellaneous.parseHumanReadableByteCount(maxStatsLogSize);
+        }
+        return _maxStatsLogSize;
+    }
+
+    public void setMaxStatsLogSize(String maxStatsLogSize) {
+        this.maxStatsLogSize = maxStatsLogSize;
+    }
+
+    @Override
+    public boolean isLogStats() {
+        return logStats;
+    }
+
+    public void setLogStats(boolean logStats) {
+        this.logStats = logStats;
+    }
+
+    @Override
+    public int getStatsCpuStep() {
+        return statsCpuStep;
+    }
+
+    public void setStatsCpuStep(int statsCpuStep) {
+        this.statsCpuStep = statsCpuStep;
+    }
+
+    @Override
+    public long getStatsRssStep() {
+        if (_statsRssStep < 0) {
+            _statsRssStep = Miscellaneous.parseHumanReadableByteCount(statsRssStep);
+        }
+        return _statsRssStep;
+    }
+
+    public void setStatsRssStep(String statsRssStep) {
+        this.statsRssStep = statsRssStep;
+    }
+
+    @Override
+    public long getStatsSwapStep() {
+        if (_statsSwapStep < 0) {
+            _statsSwapStep = Miscellaneous.parseHumanReadableByteCount(statsSwapStep);
+        }
+        return _statsSwapStep;
+    }
+
+    public void setStatsSwapStep(String statsSwapStep) {
+        this.statsSwapStep = statsSwapStep;
+    }
+
+    @Override
+    public long getStatsIOStep() {
+        if (_statsIOStep < 0) {
+            _statsIOStep = Miscellaneous.parseHumanReadableByteCount(statsIOStep);
+        }
+        return _statsIOStep;
+    }
+
+    public void setStatsIOStep(String statsIOStep) {
+        this.statsIOStep = statsIOStep;
     }
 }
