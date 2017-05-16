@@ -12,6 +12,7 @@
   * [Security](#security)
   * [Resource-based scheduling](#resource-based-scheduling)
   * [Priority-based scheduling](#priority-based-scheduling)
+  * [Statistics](#statistics)
 - [Architecture](#architecture)
 - [Priority and groups](#priority-and-groups)
   * [Job order](#job-order)
@@ -23,6 +24,7 @@
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Running](#running)
 - [Support bugs and requests](#support-bugs-and-requests)
 - [Authors](#authors)
 - [License](#license)
@@ -56,6 +58,25 @@ The main **scheduling constraint** is the following: the sum of the running jobs
 This feature allows jobs to be submitted and scheduled with different priorities. 
 
 All jobs belong (implicity or explicity) to a [priority group](#priority-and-groups) that determines their global ordering, used for positioning in the queue and assigning a process niceness when running.
+
+### Statistics
+Both global and per job statistics can be recorded.
+Statistics sensitivity can be tuned with the `statsCpuStep`,`statsRssStep`,`statsSwapStep` and `statsIOStep` configuration parameters.
+
+```
+#start          end             running queued  cpu(%)  rss(B)  swap(B) io(B/s)
+1494930723326   1494930723326   0       0       0.0     0       0       0
+1494930723326   1494930731348   1       0       0.0     0       0       0
+1494930731348   1494930733355   1       0       92.7    696320  0       0
+...
+```
+
+#### Global statistics
+To enable global statistics set the `"logStat"=true"` in the configuration file.
+
+#### Job statistics
+At submit time (`wava -r`) specify an additional parameter `-s` with the folder to store the stats files for this only execution.
+
 
 ## Architecture
 
@@ -211,6 +232,35 @@ Property                                    | Description
 `processCfg.cpuAfinity`                     | CPU affinity to be set to the job processes. In a format supported by the `-c` parameter of [taskset](http://linuxcommand.org/man_pages/taskset1.html).
 `groupCfg.dynamicGroupIdleSeconds`          | Idle time for [dynamic groups](#priority-and-groups) in seconds.
 `groupCfg.predefinedGroups`                 | Set of groups to be available since startup.
+
+## Running
+
+### Starting scheduler (`wava -s`)
+```
+> wava -s&
+Logging to /tmp/wava/logs ...
+```
+
+### Submit a job  (`wava -r`)
+```
+> wava -r -m 100MB -s /tmp/wava/my-job-stats bash -c "while true; do date; done" &> /dev/null &
+```
+
+### List jobs  (`wava -j`)
+
+```
+> wava -j
+Jobs: 1 running; 0 bloqued; 0 queued
+  Available memory: 23.8 GB / 24.7 GB
+
+ JOB INFO                            100.0 MB   PROCESS TREE STATS                      696.3 kB       0 B        0 B       92.7  COMMAND
+  JOB ID   PARENT GROUP    USER        JOB_RSS NICE    MAX_RSS   MAX_SWAP    MAX_IO         RSS       SWAP        IO        CPU%
+       1          default  root      100.0 MB     1  696.3 kB       0 B        0 B/s    696.3 kB       0 B        0 B/s     92.7 [bash, -c, while true; do date;   done]
+
+```
+
+
+
 ## Support bugs and requests
 https://github.com/brutusin/wava/issues
 
