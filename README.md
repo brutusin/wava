@@ -255,11 +255,47 @@ Jobs: 1 running; 0 bloqued; 0 queued
 
  JOB INFO                            100.0 MB   PROCESS TREE STATS                      696.3 kB       0 B        0 B       92.7  COMMAND
   JOB ID   PARENT GROUP    USER        JOB_RSS NICE    MAX_RSS   MAX_SWAP    MAX_IO         RSS       SWAP        IO        CPU%
-       1          default  root      100.0 MB     1  696.3 kB       0 B        0 B/s    696.3 kB       0 B        0 B/s     92.7 [bash, -c, while true; do date;   done]
+       1          default  root      100.0 MB     1  696.3 kB       0 B        0 B/s    696.3 kB       0 B        0 B/s     92.7 [bash, -c, while true; do date; done]
 
 ```
+### Cancel job  (`wava -c`)
+```
+> wava -c 1
+Running job sucessfully cancelled
+```
 
+### Stop scheduler (`wava -x`)
+```
+> wava -x
+Stopping scheduler process ...
+```
 
+### Other commands
+Execute the `wava` command for detailed help
+```
+> wava
+___________________________________________
+__  __ _____ __ __ _____
+/   /  /  _  /  |  /  _  \
+|  /\  |  _  \  |  |  _  |
+\__/\__\__|__/\___/\__|__/
+
+[W]hen [AVA]ilable scheduler 2.3.1-SNAPSHOT
+___________________________________________
+usage: wava [option]
+    -a,--about      information about the program
+    -c,--cancel     cancel a running or enqueued job
+    -g,--group      group management commands
+    -h,--help       print this message
+    -j,--jobs       view jobs
+    -r,--run        enqueue a job to be executed when enough physical memory is available
+    -s,--start      start core scheduler process
+    -t,--status     return core process status
+    -u,--update     update to lastest version
+    -v,--version    show wava version
+    -x,--exit       stop core process, terminating all jobs
+
+```
 
 ## Support bugs and requests
 https://github.com/brutusin/wava/issues
