@@ -1004,20 +1004,20 @@ public class Scheduler {
             synchronized (jobSet) {
                 JobSet.State state = jobSet.getState(id);
                 if (state == null) {
-                    cancelChannel.log(ANSICode.RED, "job not found");
+                    cancelChannel.sendMessage(ANSICode.RED, "Job not found");
                     cancelChannel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
                 } else if (state == JobSet.State.queued) {
                     JobInfo ji = jobMap.get(id);
                     if (ji != null) {
                         if (!cancelChannel.getUser().equals("root") && !cancelChannel.getUser().equals(ji.getSubmitChannel().getUser())) {
-                            cancelChannel.log(ANSICode.RED, "user '" + cancelChannel.getUser() + "' is not allowed to cancel a job from user '" + ji.getSubmitChannel().getUser() + "'");
+                            cancelChannel.sendMessage(ANSICode.RED, "User '" + cancelChannel.getUser() + "' is not allowed to cancel a job from user '" + ji.getSubmitChannel().getUser() + "'");
                             cancelChannel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
                             return;
                         }
                         ji.getSubmitChannel().sendEvent(Event.cancelled, cancelChannel.getUser());
                         ji.getSubmitChannel().sendEvent(Event.retcode, RetCode.CANCELLED.getCode());
                         ji.getSubmitChannel().close();
-                        cancelChannel.log(ANSICode.GREEN, "enqueued job sucessfully cancelled");
+                        cancelChannel.sendMessage(ANSICode.GREEN, "Enqueued job sucessfully cancelled");
                         cancelChannel.sendEvent(Event.retcode, 0);
                         GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
                         gi.getJobs().remove(id);
@@ -1031,13 +1031,13 @@ public class Scheduler {
                     ProcessInfo pi = processMap.get(id);
                     if (pi != null) {
                         if (!cancelChannel.getUser().equals("root") && !cancelChannel.getUser().equals(pi.getJobInfo().getSubmitChannel().getUser())) {
-                            cancelChannel.log(ANSICode.RED, "user '" + cancelChannel.getUser() + "' is not allowed to cancel a job from user '" + pi.getJobInfo().getSubmitChannel().getUser() + "'");
+                            cancelChannel.sendMessage(ANSICode.RED, "User '" + cancelChannel.getUser() + "' is not allowed to cancel a job from user '" + pi.getJobInfo().getSubmitChannel().getUser() + "'");
                             cancelChannel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
                             return;
                         }
                         pi.getJobInfo().getSubmitChannel().sendEvent(Event.cancelled, cancelChannel.getUser());
                         LinuxCommands.killTree(pi.getPid());
-                        cancelChannel.log(ANSICode.GREEN, "running job sucessfully cancelled");
+                        cancelChannel.sendMessage(ANSICode.GREEN, "Running job sucessfully cancelled");
                         cancelChannel.sendEvent(Event.retcode, 0);
                         LOGGER.fine("Cancelled job " + id + " by user '" + cancelChannel.getUser() + "'");
                     }
@@ -1057,28 +1057,28 @@ public class Scheduler {
                 GroupInfo gi = groupMap.get(channel.getRequest().getGroupName());
                 if (gi == null) {
                     createGroupInfo(channel.getRequest().getGroupName(), channel.getUser(), channel.getRequest().getPriority(), channel.getRequest().getTimetoIdleSeconds());
-                    channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' created successfully");
+                    channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' created successfully");
                     channel.sendEvent(Event.retcode, 0);
                     LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' created  by user '" + channel.getUser() + "'");
                     return;
                 } else if (channel.getRequest().isDelete()) {
                     if (!channel.getUser().equals("root") && !channel.getUser().equals(gi.getUser())) {
                         if (gi.getUser().equals("root")) {
-                            channel.log(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' can only be updated by user 'root'");
+                            channel.sendMessage(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' can only be updated by user 'root'");
                         } else {
-                            channel.log(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' can only be updated by users 'root' and '" + gi.getUser() + "'");
+                            channel.sendMessage(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' can only be updated by users 'root' and '" + gi.getUser() + "'");
                         }
                         channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
                         return;
                     }
                     if (gi.getJobs().isEmpty()) {
-                        channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' deleted successfully");
+                        channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' deleted successfully");
                         groupMap.remove(channel.getRequest().getGroupName());
                         channel.sendEvent(Event.retcode, 0);
                         LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' deleted  by user " + channel.getUser() + "'");
                         return;
                     } else {
-                        channel.log(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' cannot be deleted, since it contains " + gi.getJobs().size() + " active jobs");
+                        channel.sendMessage(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' cannot be deleted, since it contains " + gi.getJobs().size() + " active jobs");
                         channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
                         return;
                     }
@@ -1093,13 +1093,13 @@ public class Scheduler {
                         }
                     }
                     gi.setPriority(newPriority);
-                    channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' priority updated successfully");
+                    channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' priority updated successfully");
                     LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' priority updated by user '" + channel.getUser() + "'");
                 }
                 Integer newTimetoIdleSeconds = channel.getRequest().getTimetoIdleSeconds();
                 if (newTimetoIdleSeconds != null && newTimetoIdleSeconds != gi.getTimeToIdelSeconds()) {
                     gi.setTimeToIdelSeconds(newTimetoIdleSeconds);
-                    channel.log(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' time-to-idle updated successfully");
+                    channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' time-to-idle updated successfully");
                     LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' time-to-idle updated by user '" + channel.getUser() + "'");
                 }
                 channel.sendEvent(Event.retcode, 0);
@@ -1287,12 +1287,12 @@ public class Scheduler {
 
     public boolean close(PeerChannel<String> channel) throws IOException {
         if (!channel.getUser().equals("root") && !channel.getUser().equals(runningUser)) {
-            channel.log(ANSICode.RED, "user '" + channel.getUser() + "' is not allowed to stop the core scheduler process");
+            channel.sendMessage(ANSICode.RED, "User '" + channel.getUser() + "' is not allowed to stop the core scheduler process");
             channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
             channel.close();
             return false;
         }
-        channel.log(ANSICode.GREEN, "Stopping scheduler process ...");
+        channel.sendMessage(ANSICode.GREEN, "Stopping scheduler process ...");
 
         synchronized (jobSet) {
             this.closed = true;
@@ -1582,7 +1582,7 @@ public class Scheduler {
             this.cpuGaugeStats = new CpuGaugeStats();
             this.iOGaugeStats = new IOGaugeStats();
             if (currentStats.cpuStats.nanos > prevStats.cpuStats.nanos && prevStats.cpuStats.nanos > 0) {
-                double denom = (Config.getInstance().getSchedulerCfg().getUserHz() / 100.0) * (currentStats.cpuStats.nanos - prevStats.cpuStats.nanos) / 1e9;
+                double denom = (LinuxCommands.getUserHz() / 100.0) * (currentStats.cpuStats.nanos - prevStats.cpuStats.nanos) / 1e9;
                 this.cpuGaugeStats.userCpuPercent = (currentStats.cpuStats.userJiffies - prevStats.cpuStats.userJiffies) / denom;
                 this.cpuGaugeStats.systemCpuPercent = (currentStats.cpuStats.systemJiffies - prevStats.cpuStats.systemJiffies) / denom;
             }

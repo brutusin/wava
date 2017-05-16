@@ -9,7 +9,6 @@ function getWavaHome {
     DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
     echo "$(dirname "$DIR")"
 }
-export USER_HZ=`getconf CLK_TCK`
 export DEFAULT_CPU_AFINITY=`lscpu | awk -F ":" '$1 ~ /list/{ print $2; }' | sed 's/^ *//;s/ *$//'`
 export DEFAULT_CAPACITY=$((`awk '/MemTotal/ {print $2}' /proc/meminfo`*1000*3/4))
 export DEFAULT_SWAP=$((`awk '/SwapTotal/ {print $2}' /proc/meminfo`*1000))

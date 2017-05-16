@@ -146,15 +146,15 @@ public class PeerChannel<T> {
     public InputStream getStdinIs() {
         return stdinIs;
     }
-
-    public synchronized boolean log(ANSICode color, String message) {
+    
+     public synchronized boolean sendMessage(ANSICode color, String message) {
         if (closed) {
             return false;
         }
         if (color == null) {
             color = ANSICode.RESET;
         }
-        return println(stderrOs, color + "[wava] [" + Utils.DATE_FORMAT.format(new Date()) + "] " + message + ANSICode.RESET);
+        return println(stderrOs, color + message + ANSICode.RESET);
     }
 
     public boolean ping() {

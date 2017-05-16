@@ -33,7 +33,6 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     private String maxJobSize = "$DEFAULT_CAPACITY";
     private boolean outOfMemoryKillerEnabled = false;
     private float maxBlockedRssStarvationRatio = 0.5f;
-    private String userHz = "$USER_HZ";
     private String logFolder = "/tmp/wava";
     private String loggingLevel = "FINE";
     private String maxLogSize = "100MB";
@@ -129,15 +128,6 @@ public class SchedulerCfgImpl implements SchedulerCfg {
 
     public void setPingMillisecs(int pingMillisecs) {
         this.pingMillisecs = pingMillisecs;
-    }
-
-    @Override
-    public int getUserHz() {
-        return Integer.valueOf(userHz);
-    }
-
-    public void setUserHz(String userHz) {
-        this.userHz = userHz;
     }
 
     @Override

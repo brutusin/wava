@@ -57,5 +57,4 @@ public interface SchedulerCfg {
 
     public boolean isOutOfMemoryKillerEnabled();
 
-    public int getUserHz();
 }

@@ -183,6 +183,14 @@ public class LinuxCommands {
         }
     }
 
+    public static int getUserHz() {
+        try {
+            return Integer.valueOf(ProcessUtils.executeProcess("getconf", "CLK_TCK"));
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
     public static CpuStats getCgroupCpuStats(Integer jobId) {
         CpuStats ret = new CpuStats();
         File f;
