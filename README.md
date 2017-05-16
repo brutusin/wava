@@ -179,7 +179,7 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
 ### Default configuration
 
 ```javascript
-{
+
   "tempFolder" : "/dev/shm",
   "uICfg" : {
     "ansiColors" : true,
@@ -187,14 +187,24 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
   },
   "schedulerCfg" : {
     "nicenessHandlerClassName" : "org.brutusin.wava.core.plug.impl.niceness.HomogeneusSpreadNicenessHandler",
-    "memoryCgroupBasePath" : "/sys/fs/cgroup/memory",
-    "refreshLoopSleepMillisecs" : 10,
+    "cgroupRootPath" : "/sys/fs/cgroup",
+    "refreshLoopSleepMillisecs" : 1000,
     "pingMillisecs" : 1000,
     "schedulerCapacity" : "$DEFAULT_CAPACITY",
     "maxSwap" : "$DEFAULT_SWAP",
     "maxJobSize" : "$DEFAULT_CAPACITY",
+    "userHz": "$USER_HZ",
     "outOfMemoryKillerEnabled" : false,
-    "maxBlockedRssStarvationRatio" : 0.5
+    "maxBlockedRssStarvationRatio" : 0.5,
+    "logFolder" : "/tmp/wava",
+    "loggingLevel" : "FINE",
+    "maxLogSize" : "100MB",
+    "maxStatsLogSize" : "100MB",
+    "statsCpuStep" : 15,
+    "statsRssStep" : "50MB",
+    "statsSwapStep" : "50MB",
+    "statsIOStep" : "50MB",
+    "logStats" : true
   },
   "processCfg" : {
     "nicenessRange" : [ 1, 19 ],
@@ -213,6 +223,7 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
     } ]
   }
 }
+
 ```
 ### Configuration description
 Property                                    | Description
@@ -224,10 +235,19 @@ Property                                    | Description
 `schedulerCfg.refreshLoopSleepMillisecs`    | Sleeping time for the main looping thread.
 `schedulerCfg.pingMillisecs`                | Time interval between ping events to peer processes.
 `schedulerCfg.schedulerCapacity`            | Scheduler capacity. Maximum amount of physical memory permitted for all jobs. By default is 3/4 of total memory. Different memory units can be used, for example `4 GB`
+`schedulerCfg.maxSwap`                      | Maximum swap size to be used by all wava jobs. By default equals to the total amount of swap available in the system
 `schedulerCfg.maxJobSize`                   | Maximum value for a job memory claim. By default equal to the scheduler capacity
 `schedulerCfg.outOfMemoryKillerEnabled`     | Enable/disable the Out Of Memory Killer, triggered when a job is forced to page out and there is no enough swap memory available. If disabled the job is stopped until enough memory is available.
-`schedulerCfg.maxSwap`                      | Maximum swap size to be used by all wava jobs. By default equals to the total amount of swap available in the system
 `schedulerCfg.maxBlockedRssStarvationRatio` | Maximum ratio between the sum of memory claims of the blocked jobs divided by the scheduler capacity. If exceeded the [starvation prevention mechanism](#deadlock-prevention) is triggered.
+`schedulerCfg.logFolder`                    | Folder to store logs and global stats (if enabled).
+`schedulerCfg.loggingLevel`                 | Logging level (According to the [Java logging levels](https://docs.oracle.com/javase/7/docs/api/java/util/logging/Level.html))
+`schedulerCfg.maxLogSize`                   | Maximum size allowed overall logging files
+`schedulerCfg.maxStatsLogSize`              | Maximum size allowed overall stats files for global stats, and per job stats if enabled
+`schedulerCfg.statsCpuStep`                 | Stats cpu percentage precission
+`schedulerCfg.statsRssStep`                 | Stats rss memory precission
+`schedulerCfg.statsSwapStep`                | Stats swap memory precission
+`schedulerCfg.statsIOStep`                  | Stats io bandwidth precission (per second)
+`schedulerCfg.logStats`                     | `true` to enable global stats logging
 `processCfg.nicenessRange`                  | Minimum (most favorable) and maximum (less favorable) niceness to be assigned to a job process tree
 `processCfg.cpuAfinity`                     | CPU affinity to be set to the job processes. In a format supported by the `-c` parameter of [taskset](http://linuxcommand.org/man_pages/taskset1.html).
 `groupCfg.dynamicGroupIdleSeconds`          | Idle time for [dynamic groups](#priority-and-groups) in seconds.
