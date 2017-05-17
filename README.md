@@ -193,7 +193,6 @@ Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables 
     "schedulerCapacity" : "$DEFAULT_CAPACITY",
     "maxSwap" : "$DEFAULT_SWAP",
     "maxJobSize" : "$DEFAULT_CAPACITY",
-    "userHz": "$USER_HZ",
     "outOfMemoryKillerEnabled" : false,
     "maxBlockedRssStarvationRatio" : 0.5,
     "logFolder" : "/tmp/wava",
