@@ -174,6 +174,45 @@ make this variable persistent adding the previous line to the file: `~root/.bash
 sudo -E bash -c "$(curl -L https://raw.githubusercontent.com/brutusin/wava/master/wava-core/src/main/scripts/wava-update)"
 ```
 
+
+### 3. Service registration (systemd):
+
+1. Create service file `/etc/systemd/system/wava.service` with the following contents:
+
+```
+[Unit]
+#@author Ignacio del Valle Alles
+Description=WAVA scheduler
+
+[Service]
+Type=forking
+ExecStart=/opt/wava/bin/wava -s &
+ExecStop=/opt/wava/bin/wava -x
+# set delegate yes so that systemd does not reset the cgroups
+Delegate=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+2. Reload `systemd` configuration:
+```
+sudo systemctl daemon-reload
+```
+
+3. Enable for running at startup:
+```
+sudo systemctl enable wava.service
+```
+
+4. Init service:
+```
+sudo systemctl start wava.service
+```
+
+#### systemd known issues:
+In version 219 it is neccessary to set `JoinControllers=` at `/etc/systemd/system.conf` to have different controllers for cpuacct and cpu cgroup subsystems, otherwise the cgroup of the jobs cannot be changed at runtime. Maybe this configuration change requires to rebuild the initial ramdisk image to take effect.
+
 ## Configuration
 Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables can be used in this file.
 ### Default configuration
