@@ -211,7 +211,7 @@ sudo systemctl start wava.service
 ```
 
 #### systemd known issues:
-In version 219 it is neccessary to set `JoinControllers=` at `/etc/systemd/system.conf` to have different controllers for cpuacct and cpu cgroup subsystems, otherwise the cgroup of the jobs cannot be changed at runtime. Maybe this configuration change requires to rebuild the initial ramdisk image to take effect.
+In version 219 it is neccessary to set `JoinControllers=` at `/etc/systemd/system.conf` to have different controllers for `cpuacct` and `cpu` cgroup subsystems, otherwise the cgroup of the jobs cannot be changed at runtime. Maybe this configuration change requires to rebuild the initial ramdisk image to take effect.
 
 ## Configuration
 Configuration is set in file: `$WAVA_HOME/cfg/wava.json`. Environment variables can be used in this file.
