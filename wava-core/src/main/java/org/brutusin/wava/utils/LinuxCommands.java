@@ -457,11 +457,4 @@ public class LinuxCommands {
             throw new RuntimeException(ex);
         }
     }
-
-    public static void main(String[] args) {
-        LinuxCommands commands = new LinuxCommands();
-        String[] cmd = {"echo", "{\"refVersion\":\"human/19/GRCh37\",\"flankSize\":1000,\"targetSize\":40,\"productSizeRange\":\"175-275\",\"maxPrimerNumber\":5}"};
-        String[] decorateRunAsCommand = commands.decorateRunAsCommand(cmd, "nacho");
-        System.out.println(Arrays.toString(decorateRunAsCommand));
-    }
 }
