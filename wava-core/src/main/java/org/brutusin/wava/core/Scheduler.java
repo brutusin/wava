@@ -616,7 +616,7 @@ public class Scheduler {
                 mem = Miscellaneous.humanReadableByteCount(stats.iOGaugeStats.ioBps, Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                 sb.append(StringUtils.leftPad(mem[0], 6));
                 sb.append(" ");
-                sb.append(StringUtils.rightPad(mem[1], 5));
+                sb.append(StringUtils.rightPad(mem[1] + "/s", 5));
                 sb.append(" ");
                 sb.append(StringUtils.leftPad(String.format("%.1f", stats.cpuGaugeStats.getCpuPercent()), 6));
                 sb.append(" ");
