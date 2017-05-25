@@ -253,7 +253,9 @@ public class LinuxCommands {
 
     public static void removeJobCgroups(int jobId) {
         try {
-            removeLeafFolder(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/memory/" + WavaHome.getInstance().getId() + "/" + String.valueOf(jobId)));
+            File memCgroup = new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/memory/" + WavaHome.getInstance().getId() + "/" + String.valueOf(jobId));
+            executeBashCommand("echo 0 > " + new File(memCgroup, "memory.force_empty").getAbsolutePath());
+            removeLeafFolder(memCgroup);
             removeLeafFolder(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/cpuacct/" + WavaHome.getInstance().getId() + "/" + String.valueOf(jobId)));
             removeLeafFolder(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/blkio/" + WavaHome.getInstance().getId() + "/" + String.valueOf(jobId)));
         } catch (Exception ex) {
