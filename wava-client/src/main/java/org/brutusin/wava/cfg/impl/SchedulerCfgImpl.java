@@ -26,8 +26,8 @@ public class SchedulerCfgImpl implements SchedulerCfg {
 
     private String nicenessHandlerClassName;
     private String cgroupRootPath;
-    private int refreshLoopSleepMillisecs = 10;
-    private int pingMillisecs = 1000;
+    private int cleaningMillisecs = 100;
+    private int statsMillisecs = 1000;
     private String schedulerCapacity = "$DEFAULT_CAPACITY";
     private String maxSwap = "$DEFAULT_SWAP";
     private String maxJobSize = "$DEFAULT_CAPACITY";
@@ -104,15 +104,6 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     }
 
     @Override
-    public int getRefreshLoopSleepMillisecs() {
-        return refreshLoopSleepMillisecs;
-    }
-
-    public void setPollingMillisecs(int refreshLoopSleepMillisecs) {
-        this.refreshLoopSleepMillisecs = refreshLoopSleepMillisecs;
-    }
-
-    @Override
     public float getMaxBlockedRssStarvationRatio() {
         return maxBlockedRssStarvationRatio;
     }
@@ -122,12 +113,21 @@ public class SchedulerCfgImpl implements SchedulerCfg {
     }
 
     @Override
-    public int getPingMillisecs() {
-        return pingMillisecs;
+    public int getCleaningMillisecs() {
+        return cleaningMillisecs;
     }
 
-    public void setPingMillisecs(int pingMillisecs) {
-        this.pingMillisecs = pingMillisecs;
+    public void setCleaningMillisecs(int cleaningMillisecs) {
+        this.cleaningMillisecs = cleaningMillisecs;
+    }
+
+    @Override
+    public int getStatsMillisecs() {
+        return statsMillisecs;
+    }
+
+    public void setStatsMillisecs(int statsMillisecs) {
+        this.statsMillisecs = statsMillisecs;
     }
 
     @Override

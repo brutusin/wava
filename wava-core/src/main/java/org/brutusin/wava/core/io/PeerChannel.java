@@ -22,26 +22,26 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.brutusin.commons.Bean;
 import org.brutusin.commons.utils.Miscellaneous;
-import org.brutusin.wava.Utils;
+import org.brutusin.wava.input.Input;
 import org.brutusin.wava.io.NamedPipe;
 import org.brutusin.wava.utils.ANSICode;
 
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
- * @param <T>
+ * @param <I extends Input>
  */
-public class PeerChannel<T> {
+public class PeerChannel<I extends Input> {
 
     private static final Logger LOGGER = Logger.getLogger(PeerChannel.class.getName());
 
     private final String user;
-    private final T request;
+    private final I input;
+    private final File procFile;
     private boolean closed = false;
 
     private final FileInputStream stdinIs;
@@ -50,9 +50,10 @@ public class PeerChannel<T> {
     private final FileOutputStream stdoutOs;
     private final FileOutputStream stderrOs;
 
-    public PeerChannel(String user, T input, File namedPipesRoot) throws OrphanChannelException, IOException {
+    public PeerChannel(String user, I input, File namedPipesRoot) throws OrphanChannelException, IOException {
         this.user = user;
-        this.request = input;
+        this.input = input;
+        this.procFile = new File("/proc/" + input.getClientPid());
 
         File stdinNamedPipe = new File(namedPipesRoot, NamedPipe.stdin.name());
         File eventsNamedPipe = new File(namedPipesRoot, NamedPipe.events.name());
@@ -64,25 +65,32 @@ public class PeerChannel<T> {
             @Override
             public void run() {
                 try {
-                    Thread.sleep(10 * 1000); // If after this time the pipes have not been open for writing (nobody is reading the other side) discard all
-                    synchronized (initializedBean) {
-                        if (initializedBean.getValue() == null) {
-                            initializedBean.setValue(false);
-                            try {
-                                new FileInputStream(eventsNamedPipe).close();
-                            } catch (Exception ex) {
-                            }
-                            try {
-                                new FileInputStream(stdoutNamedPipe).close();
-                            } catch (Exception ex) {
-                            }
-                            try {
-                                new FileInputStream(stderrNamedPipe).close();
-                            } catch (Exception ex) {
-                            }
-                            try {
-                                new FileOutputStream(stdinNamedPipe).close();
-                            } catch (Exception ex) {
+                    while (true) {
+                        Thread.sleep(10 * 1000);
+                        synchronized (initializedBean) {
+                            if (initializedBean.getValue() == null) { // peer not read all pipes already
+                                if (isPeerAlive()) { // peer still running
+                                    continue;
+                                } else { // peer not running -> no process reading pipe
+                                    try {
+                                        new FileInputStream(eventsNamedPipe).close();
+                                    } catch (Exception ex) {
+                                    }
+                                    try {
+                                        new FileInputStream(stdoutNamedPipe).close();
+                                    } catch (Exception ex) {
+                                    }
+                                    try {
+                                        new FileInputStream(stderrNamedPipe).close();
+                                    } catch (Exception ex) {
+                                    }
+                                    try {
+                                        new FileOutputStream(stdinNamedPipe).close();
+                                    } catch (Exception ex) {
+                                    }
+                                }
+                            } else {
+                                return;
                             }
                         }
                     }
@@ -146,8 +154,8 @@ public class PeerChannel<T> {
     public InputStream getStdinIs() {
         return stdinIs;
     }
-    
-     public synchronized boolean sendMessage(ANSICode color, String message) {
+
+    public synchronized boolean sendMessage(ANSICode color, String message) {
         if (closed) {
             return false;
         }
@@ -157,8 +165,8 @@ public class PeerChannel<T> {
         return println(stderrOs, color + message + ANSICode.RESET);
     }
 
-    public boolean ping() {
-        return sendEvent(Event.ping, null);
+    public boolean isPeerAlive() {
+        return procFile.exists();
     }
 
     public synchronized boolean sendEvent(Event event, Object value) {
@@ -172,8 +180,8 @@ public class PeerChannel<T> {
         }
     }
 
-    public T getRequest() {
-        return request;
+    public I getInput() {
+        return input;
     }
 
     public synchronized void close() throws IOException {

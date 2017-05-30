@@ -1,6 +1,6 @@
 package org.brutusin.wava.input;
 
-public class GroupInput {
+public class GroupInput extends Input {
 
     private String groupName;
     private Integer priority;

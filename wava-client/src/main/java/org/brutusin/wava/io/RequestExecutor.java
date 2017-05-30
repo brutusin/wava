@@ -25,6 +25,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.List;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.brutusin.commons.Bean;
@@ -33,6 +34,7 @@ import org.brutusin.commons.utils.ProcessUtils;
 import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.wava.env.WavaTemp;
 import org.brutusin.wava.Utils;
+import org.brutusin.wava.input.Input;
 
 /**
  *
@@ -43,21 +45,8 @@ public class RequestExecutor {
     private static final Logger LOGGER = Logger.getLogger(RequestExecutor.class.getName());
     private static final File COUNTER_FILE = new File(WavaTemp.getInstance().getTemp(), "state/.seq");
 
-    public Integer executeRequest(OpName opName, Object input, final InputStream stdinStream, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws IOException {
-        Integer retCode;
-        while (true) {
-            if (!Utils.isCoreRunning()) {
-                return RetCode.CORE_NOT_RUNNING.getCode();
-            }
-            retCode = executeRequestTry(opName, input, stdinStream, stdoutStream, stderrListener, eventListener);
-            if (retCode != null) { // retCode is null if the scheduler closes the pipes due to a timeout. In that case retry
-                break;
-            }
-        }
-        return retCode;
-    }
 
-    private Integer executeRequestTry(OpName opName, Object input, final InputStream stdinStream, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws IOException {
+    public Integer executeRequest(OpName opName, Input input, final InputStream stdinStream, final OutputStream stdoutStream, final LineListener stderrListener, final EventListener eventListener) throws IOException {
         long id = Miscellaneous.getGlobalAutoIncremental(COUNTER_FILE);
         String json = JsonCodec.getInstance().transform(input);
         File streamRoot = new File(WavaTemp.getInstance().getTemp(), "streams/" + id);

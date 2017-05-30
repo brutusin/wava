@@ -3,8 +3,9 @@ package org.brutusin.wava.input;
 import java.io.File;
 import java.util.Map;
 
-public class SubmitInput {
+public class SubmitInput extends Input {
 
+    
     private String groupName;
     private String[] command;
     private long maxRSS;    

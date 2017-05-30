@@ -10,6 +10,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import org.brutusin.commons.utils.Miscellaneous;
+import org.brutusin.commons.utils.ProcessException;
+import org.brutusin.commons.utils.ProcessUtils;
 
 /*
  * Copyright 2016 Ignacio del Valle Alles idelvall@brutusin.org.
@@ -75,6 +77,15 @@ public class Utils {
                 lock.release();
             }
             return lock == null;
+        }
+    }
+
+    public static int getJVMPid() {
+        try {
+            String[] cmd = {"/bin/bash", "-c", "echo $PPID"};
+            return Integer.valueOf(ProcessUtils.executeProcess(cmd));
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
         }
     }
 }

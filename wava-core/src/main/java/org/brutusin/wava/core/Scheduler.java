@@ -33,6 +33,7 @@ import org.brutusin.wava.env.EnvEntry;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.input.ExtendedSubmitInput;
+import org.brutusin.wava.input.ListJobsInput;
 import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.utils.NonRootUserException;
 import org.brutusin.wava.io.RetCode;
@@ -57,7 +58,8 @@ public class Scheduler {
 
     private final AtomicInteger jobCounter = new AtomicInteger();
     private final AtomicInteger groupCounter = new AtomicInteger();
-    private final Thread processingThread;
+    private final Thread cleaningThread;
+    private final Thread statsThread;
 
     private final long totalManagedRss;
     private final long maxJobRss;
@@ -67,8 +69,6 @@ public class Scheduler {
     private volatile boolean closed;
     private volatile String jobList;
 
-    private long lastPingMillis;
-    private long refreshMillis;
     private StatRecord previousStatRecord;
 
     public Scheduler() throws NonRootUserException {
@@ -104,7 +104,7 @@ public class Scheduler {
 
         this.jobList = createJobList(false, getAvailableManagedMemory(0), 0, new GaugeStats());
 
-        this.processingThread = new Thread(this.coreGroup, "processingThread") {
+        this.cleaningThread = new Thread(this.coreGroup, "cleaningThread") {
             @Override
             public void run() {
                 while (true) {
@@ -112,8 +112,8 @@ public class Scheduler {
                         break;
                     }
                     try {
-                        Thread.sleep(Config.getInstance().getSchedulerCfg().getRefreshLoopSleepMillisecs());
-                        refresh();
+                        Thread.sleep(Config.getInstance().getSchedulerCfg().getCleaningMillisecs());
+                        cleanStalePeers();
                     } catch (Throwable th) {
                         if (th instanceof InterruptedException) {
                             break;
@@ -123,6 +123,27 @@ public class Scheduler {
                 }
             }
         };
+
+        this.statsThread = new Thread(this.coreGroup, "statsThread") {
+            @Override
+            public void run() {
+                while (true) {
+                    if (Thread.interrupted()) {
+                        break;
+                    }
+                    try {
+                        Thread.sleep(Config.getInstance().getSchedulerCfg().getStatsMillisecs());
+                        takeStats();
+                    } catch (Throwable th) {
+                        if (th instanceof InterruptedException) {
+                            break;
+                        }
+                        LOGGER.log(Level.SEVERE, th.getMessage(), th);
+                    }
+                }
+            }
+        };
+
     }
 
     private boolean isWriteStatRecord(StatRecord previous, StatRecord current) {
@@ -175,7 +196,8 @@ public class Scheduler {
         if (closed) {
             throw new IllegalStateException("Instance is closed");
         }
-        this.processingThread.start();
+        this.cleaningThread.start();
+        this.statsThread.start();
     }
 
     private GroupInfo createGroupInfo(String name, String user, Integer priority, Integer timetoIdleSeconds) {
@@ -198,12 +220,12 @@ public class Scheduler {
 
     private void killForStarvationProtection(ProcessInfo pi) {
         try {
-            if (pi.getJobInfo().getSubmitChannel().getRequest().isIdempotent()) {
-                LOGGER.log(Level.WARNING, "Starvation scenario found. Ralaunching idempotent job {0} ({1})", new Object[]{pi.getJobInfo().getId(), pi.getJobInfo().getSubmitChannel().getRequest().getGroupName()});
+            if (pi.getJobInfo().getSubmitChannel().getInput().isIdempotent()) {
+                LOGGER.log(Level.WARNING, "Starvation scenario found. Ralaunching idempotent job {0} ({1})", new Object[]{pi.getJobInfo().getId(), pi.getJobInfo().getSubmitChannel().getInput().getGroupName()});
                 pi.getJobInfo().getSubmitChannel().sendEvent(Event.starvation_relaunch, runningUser);
                 pi.getJobInfo().setRelaunched(true);
             } else {
-                LOGGER.log(Level.SEVERE, "Starvation scenario found. Killing non-idempotent job {0} ({1})", new Object[]{pi.getJobInfo().getId(), pi.getJobInfo().getSubmitChannel().getRequest().getGroupName()});
+                LOGGER.log(Level.SEVERE, "Starvation scenario found. Killing non-idempotent job {0} ({1})", new Object[]{pi.getJobInfo().getId(), pi.getJobInfo().getSubmitChannel().getInput().getGroupName()});
                 pi.getJobInfo().getSubmitChannel().sendEvent(Event.starvation_stop, runningUser);
             }
             LinuxCommands.killTree(pi.getPid());
@@ -219,31 +241,29 @@ public class Scheduler {
             while (it.hasNext()) {
                 Integer id = it.next();
                 JobInfo ji = jobMap.get(id);
-                sum += ji.getSubmitChannel().getRequest().getMaxRSS();
+                sum += ji.getSubmitChannel().getInput().getMaxRSS();
             }
             return sum;
         }
     }
 
-    private void cleanStalePeers() throws InterruptedException {
-        if (System.currentTimeMillis() - lastPingMillis < Config.getInstance().getSchedulerCfg().getPingMillisecs()) {
-            return;
-        }
+    private void cleanStalePeers() throws IOException, InterruptedException {
         synchronized (jobSet) {
             Iterator<Integer> it = jobSet.getQueue();
             while (it.hasNext()) {
                 Integer id = it.next();
                 JobInfo ji = jobMap.get(id);
-                if (!ji.getSubmitChannel().ping()) {
+                if (!ji.getSubmitChannel().isPeerAlive()) {
                     it.remove();
                     removeFromJobMap(ji);
-                    GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
+                    GroupInfo gi = groupMap.get(ji.getSubmitChannel().getInput().getGroupName());
                     gi.getJobs().remove(id);
                     try {
                         ji.getSubmitChannel().close();
                     } catch (IOException ex) {
                         LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
                     }
+                    onStateChanged();
                 }
             }
 
@@ -251,7 +271,7 @@ public class Scheduler {
             while (it.hasNext()) {
                 Integer id = it.next();
                 ProcessInfo pi = processMap.get(id);
-                if (pi != null && !pi.getJobInfo().getSubmitChannel().ping()) {
+                if (pi != null && !pi.getJobInfo().getSubmitChannel().isPeerAlive()) {
                     try {
                         LinuxCommands.killTree(pi.getPid());
                     } catch (RuntimeException ex) {
@@ -260,7 +280,6 @@ public class Scheduler {
                 }
             }
         }
-        lastPingMillis = System.currentTimeMillis();
     }
 
     private void sendQueuePositionEventsToParentJobs() {
@@ -271,7 +290,7 @@ public class Scheduler {
                 position++;
                 Integer id = it.next();
                 JobInfo ji = jobMap.get(id);
-                if (ji.getSubmitChannel().getRequest().getParentId() == null && position != ji.getPreviousQueuePosition()) {
+                if (ji.getSubmitChannel().getInput().getParentId() == null && position != ji.getPreviousQueuePosition()) {
                     ji.getSubmitChannel().sendEvent(Event.queued, position);
                     ji.setPreviousQueuePosition(position);
                 }
@@ -288,7 +307,7 @@ public class Scheduler {
                 Integer id = it.next();
                 ProcessInfo pi = processMap.get(id);
                 if (pi != null) {
-                    if (prev == null || !prev.getJobInfo().getSubmitChannel().getRequest().getGroupName().equals(pi.getJobInfo().getSubmitChannel().getRequest().getGroupName())) {
+                    if (prev == null || !prev.getJobInfo().getSubmitChannel().getInput().getGroupName().equals(pi.getJobInfo().getSubmitChannel().getInput().getGroupName())) {
                         ret++;
                     }
                 }
@@ -310,7 +329,7 @@ public class Scheduler {
                 Integer id = it.next();
                 ProcessInfo pi = processMap.get(id);
                 if (pi != null) {
-                    if (prev != null && !prev.getJobInfo().getSubmitChannel().getRequest().getGroupName().equals(pi.getJobInfo().getSubmitChannel().getRequest().getGroupName())) {
+                    if (prev != null && !prev.getJobInfo().getSubmitChannel().getInput().getGroupName().equals(pi.getJobInfo().getSubmitChannel().getInput().getGroupName())) {
                         gpos++;
                         if (groupsRunning <= gpos) {
                             groupsRunning = gpos + 1;
@@ -339,14 +358,14 @@ public class Scheduler {
                 Integer id = it.next();
                 JobInfo ji = jobMap.get(id);
                 if (ji.getQueuedChildCount() > 0 && ji.getRunningChildCount() == 0) {
-                    maxRSsSumOfBlockedJobs += ji.getSubmitChannel().getRequest().getMaxRSS();
+                    maxRSsSumOfBlockedJobs += ji.getSubmitChannel().getInput().getMaxRSS();
                     ProcessInfo pi = processMap.get(id);
                     if (pi != null) {
                         if (pi.getJobInfo().isRelaunched()) {
-                            maxRSsSumOfBlockedJobs -= ji.getSubmitChannel().getRequest().getMaxRSS();
+                            maxRSsSumOfBlockedJobs -= ji.getSubmitChannel().getInput().getMaxRSS();
                             continue;
                         }
-                        if (candidateToKill == null || !candidateToKill.getJobInfo().getSubmitChannel().getRequest().isIdempotent() || ji.getSubmitChannel().getRequest().isIdempotent()) {
+                        if (candidateToKill == null || !candidateToKill.getJobInfo().getSubmitChannel().getInput().isIdempotent() || ji.getSubmitChannel().getInput().isIdempotent()) {
                             candidateToKill = pi;
                         }
                     } else {
@@ -361,7 +380,7 @@ public class Scheduler {
                     killForStarvationProtection(candidateToKill);
                 } else if (allJobsBlocked) {
                     JobInfo firstQueued = jobMap.get(jobSet.getQueue().next());
-                    if (maxRSsSumOfBlockedJobs + firstQueued.getSubmitChannel().getRequest().getMaxRSS() > this.totalManagedRss) {
+                    if (maxRSsSumOfBlockedJobs + firstQueued.getSubmitChannel().getInput().getMaxRSS() > this.totalManagedRss) {
                         killForStarvationProtection(candidateToKill);
                     }
                 }
@@ -369,20 +388,21 @@ public class Scheduler {
         }
     }
 
-    private void dequeueJobs(long availableMemory) {
+    private void dequeueJobs() {
+        long availableMemory = getAvailableManagedMemory(getAllocatedManagedMemory());
         synchronized (jobSet) {
             JobSet.QueueIterator queuedIt = jobSet.getQueue();
             while (queuedIt.hasNext()) {
                 Integer id = queuedIt.next();
                 JobInfo ji = jobMap.get(id);
-                if (ji.getSubmitChannel().getRequest().getMaxRSS() > availableMemory) {
+                if (ji.getSubmitChannel().getInput().getMaxRSS() > availableMemory) {
                     return;
                 }
                 queuedIt.moveToRunning();
-                changeQueuedChildren(ji.getSubmitChannel().getRequest().getParentId(), false);
-                changeRunningChildren(ji.getSubmitChannel().getRequest().getParentId(), true);
+                changeQueuedChildren(ji.getSubmitChannel().getInput().getParentId(), false);
+                changeRunningChildren(ji.getSubmitChannel().getInput().getParentId(), true);
                 execute(id, ji);
-                availableMemory -= ji.getSubmitChannel().getRequest().getMaxRSS();
+                availableMemory -= ji.getSubmitChannel().getInput().getMaxRSS();
             }
         }
     }
@@ -399,23 +419,21 @@ public class Scheduler {
         return availableManagedMemory;
     }
 
-    private void refresh() throws IOException, InterruptedException {
+    private void onStateChanged() throws IOException, InterruptedException {
+        distributeNiceness();
+        checkStarvation();
+        dequeueJobs();
+        sendQueuePositionEventsToParentJobs();
+        takeStats();
+    }
+
+    private void takeStats() throws IOException, InterruptedException {
         synchronized (jobSet) {
-            if (closed) {
-                return;
-            }
-            long start = System.currentTimeMillis();
-            cleanStalePeers();
-            distributeNiceness();
             long allocatedManagedMemory = getAllocatedManagedMemory();
             long availableManagedMemory = getAvailableManagedMemory(allocatedManagedMemory);
             GaugeStats stats = getStats();
-            dequeueJobs(availableManagedMemory);
-            sendQueuePositionEventsToParentJobs();
             this.jobList = createJobList(false, availableManagedMemory, allocatedManagedMemory, stats);
-            checkStarvation();
             long end = System.currentTimeMillis();
-            this.refreshMillis = end - start;
             if (statsLogger != null) {
                 StatRecord record = new StatRecord();
                 record.running = jobSet.countRunning();
@@ -457,7 +475,7 @@ public class Scheduler {
                 if (p == null) {
                     continue;
                 }
-                if (prev != null && !prev.getJobInfo().getSubmitChannel().getRequest().getGroupName().equals(p.getJobInfo().getSubmitChannel().getRequest().getGroupName())) {
+                if (prev != null && !prev.getJobInfo().getSubmitChannel().getInput().getGroupName().equals(p.getJobInfo().getSubmitChannel().getInput().getGroupName())) {
                     gpos++;
                 }
                 if (pi.getJobInfo().getId() == p.getJobInfo().getId()) {
@@ -534,23 +552,23 @@ public class Scheduler {
             throw new IllegalArgumentException("Request info is required");
         }
 
-        if (maxJobRss > 0 && submitChannel.getRequest().getMaxRSS() > maxJobRss) {
-            submitChannel.getRequest().setMaxRSS(maxJobRss);
+        if (maxJobRss > 0 && submitChannel.getInput().getMaxRSS() > maxJobRss) {
+            submitChannel.getInput().setMaxRSS(maxJobRss);
         }
-        if (totalManagedRss < submitChannel.getRequest().getMaxRSS()) {
-            submitChannel.getRequest().setMaxRSS(totalManagedRss);
+        if (totalManagedRss < submitChannel.getInput().getMaxRSS()) {
+            submitChannel.getInput().setMaxRSS(totalManagedRss);
         }
 
-        long treeRSS = submitChannel.getRequest().getMaxRSS();
-        Integer parentId = submitChannel.getRequest().getParentId();
+        long treeRSS = submitChannel.getInput().getMaxRSS();
+        Integer parentId = submitChannel.getInput().getParentId();
 
         while (parentId != null) {
             JobInfo ji = jobMap.get(parentId);
             if (ji == null) {
                 break;
             }
-            treeRSS += ji.getSubmitChannel().getRequest().getMaxRSS();
-            parentId = ji.getSubmitChannel().getRequest().getParentId();
+            treeRSS += ji.getSubmitChannel().getInput().getMaxRSS();
+            parentId = ji.getSubmitChannel().getInput().getParentId();
         }
 
         if (treeRSS > totalManagedRss) {
@@ -560,23 +578,24 @@ public class Scheduler {
             return;
         }
 
-        if (submitChannel.getRequest().getGroupName() == null) {
-            submitChannel.getRequest().setGroupName(DEFAULT_GROUP_NAME);
+        if (submitChannel.getInput().getGroupName() == null) {
+            submitChannel.getInput().setGroupName(DEFAULT_GROUP_NAME);
         }
 
         synchronized (jobSet) {
             JobInfo ji = new JobInfo(jobCounter.incrementAndGet(), submitChannel);
-            LOGGER.fine("Received job " + ji.getId() + ": " + Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
-            GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
+            LOGGER.fine("Received job " + ji.getId() + ": " + Arrays.toString(ji.getSubmitChannel().getInput().getCommand()));
+            GroupInfo gi = groupMap.get(ji.getSubmitChannel().getInput().getGroupName());
             if (gi == null) { // dynamic group
-                gi = createGroupInfo(ji.getSubmitChannel().getRequest().getGroupName(), ji.getSubmitChannel().getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds());
+                gi = createGroupInfo(ji.getSubmitChannel().getInput().getGroupName(), ji.getSubmitChannel().getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds());
             }
             gi.getJobs().add(ji.getId());
-            changeQueuedChildren(ji.getSubmitChannel().getRequest().getParentId(), true);
+            changeQueuedChildren(ji.getSubmitChannel().getInput().getParentId(), true);
             jobMap.put(ji.getId(), ji);
             ji.getSubmitChannel().sendEvent(Event.id, ji.getId());
             jobSet.queue(ji.getId(), gi.getPriority(), gi.getGroupId());
             ji.getSubmitChannel().sendEvent(Event.priority, gi.getPriority());
+            onStateChanged();
         }
     }
 
@@ -670,7 +689,7 @@ public class Scheduler {
                     Integer id = runningIterator.next();
                     JobInfo ji = jobMap.get(id);
                     ProcessInfo pi = processMap.get(id);
-                    GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
+                    GroupInfo gi = groupMap.get(ji.getSubmitChannel().getInput().getGroupName());
                     sb.append("\n");
                     sb.append(ANSICode.NO_WRAP.getCode());
                     if (pi != null) {
@@ -684,8 +703,8 @@ public class Scheduler {
                         sb.append(ANSICode.RESET.getCode());
                         sb.append(" ");
                         String pId;
-                        if (ji.getSubmitChannel().getRequest().getParentId() != null) {
-                            pId = String.valueOf(ji.getSubmitChannel().getRequest().getParentId());
+                        if (ji.getSubmitChannel().getInput().getParentId() != null) {
+                            pId = String.valueOf(ji.getSubmitChannel().getInput().getParentId());
                         } else {
                             pId = "";
                         }
@@ -698,7 +717,7 @@ public class Scheduler {
                         sb.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
                         sb.append(" ");
 
-                        String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getInput().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                         sb.append(StringUtils.leftPad(mem[0], 6));
                         sb.append(" ");
 
@@ -714,7 +733,7 @@ public class Scheduler {
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(" ");
 
-                        if (pi.getMaxGaugeStats().memStats.swapBytes > ji.getSubmitChannel().getRequest().getMaxRSS() / 2) {
+                        if (pi.getMaxGaugeStats().memStats.swapBytes > ji.getSubmitChannel().getInput().getMaxRSS() / 2) {
                             sb.append(ANSICode.RED.getCode());
                         } else if (pi.getMaxGaugeStats().memStats.swapBytes > 0) {
                             sb.append(ANSICode.YELLOW.getCode());
@@ -739,7 +758,7 @@ public class Scheduler {
                         sb.append(StringUtils.rightPad(mem[1], 3));
                         sb.append(" ");
 
-                        if (pi.getGaugeStats().memStats.swapBytes > ji.getSubmitChannel().getRequest().getMaxRSS() / 2) {
+                        if (pi.getGaugeStats().memStats.swapBytes > ji.getSubmitChannel().getInput().getMaxRSS() / 2) {
                             sb.append(ANSICode.RED.getCode());
                         } else if (pi.getGaugeStats().memStats.swapBytes > 0) {
                             sb.append(ANSICode.YELLOW.getCode());
@@ -760,14 +779,14 @@ public class Scheduler {
 
                         sb.append(StringUtils.leftPad(String.format("%.1f", pi.getGaugeStats().cpuGaugeStats.getCpuPercent()), 6));
                         sb.append(" ");
-                        sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
+                        sb.append(Arrays.toString(ji.getSubmitChannel().getInput().getCommand()));
                         sb.append(" ");
                     } else { // process not stated yet
                         sb.append(StringUtils.leftPad(String.valueOf(id), 8));
                         sb.append(" ");
                         String pId;
-                        if (ji.getSubmitChannel().getRequest().getParentId() != null) {
-                            pId = String.valueOf(ji.getSubmitChannel().getRequest().getParentId());
+                        if (ji.getSubmitChannel().getInput().getParentId() != null) {
+                            pId = String.valueOf(ji.getSubmitChannel().getInput().getParentId());
                         } else {
                             pId = "";
                         }
@@ -777,7 +796,7 @@ public class Scheduler {
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
                         sb.append(" ");
-                        String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                        String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getInput().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                         sb.append(StringUtils.leftPad(mem[0], 6));
                         sb.append(" ");
                         sb.append(StringUtils.rightPad(mem[1], 3));
@@ -798,7 +817,7 @@ public class Scheduler {
                         sb.append(" ");
                         sb.append(StringUtils.leftPad("", 6));
                         sb.append(" ");
-                        sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
+                        sb.append(Arrays.toString(ji.getSubmitChannel().getInput().getCommand()));
                         sb.append(" ");
                     }
                     sb.append(ANSICode.WRAP.getCode());
@@ -813,18 +832,18 @@ public class Scheduler {
                     sb.append(StringUtils.leftPad(String.valueOf(id), 8));
                     sb.append(" ");
                     String pId;
-                    if (ji.getSubmitChannel().getRequest().getParentId() != null) {
-                        pId = String.valueOf(ji.getSubmitChannel().getRequest().getParentId());
+                    if (ji.getSubmitChannel().getInput().getParentId() != null) {
+                        pId = String.valueOf(ji.getSubmitChannel().getInput().getParentId());
                     } else {
                         pId = "";
                     }
                     sb.append(StringUtils.leftPad(pId, 8));
                     sb.append(" ");
-                    sb.append(StringUtils.rightPad(String.valueOf(ji.getSubmitChannel().getRequest().getGroupName()), 8));
+                    sb.append(StringUtils.rightPad(String.valueOf(ji.getSubmitChannel().getInput().getGroupName()), 8));
                     sb.append(" ");
                     sb.append(StringUtils.rightPad(ji.getSubmitChannel().getUser(), 8));
                     sb.append(" ");
-                    String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getRequest().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
+                    String[] mem = Miscellaneous.humanReadableByteCount(ji.getSubmitChannel().getInput().getMaxRSS(), Config.getInstance().getuICfg().issIMemoryUnits()).split(" ");
                     sb.append(StringUtils.leftPad(mem[0], 6));
                     sb.append(" ");
                     sb.append(StringUtils.rightPad(mem[1], 3));
@@ -845,7 +864,7 @@ public class Scheduler {
                     sb.append(" ");
                     sb.append(StringUtils.leftPad("", 6));
                     sb.append(" ");
-                    sb.append(Arrays.toString(ji.getSubmitChannel().getRequest().getCommand()));
+                    sb.append(Arrays.toString(ji.getSubmitChannel().getInput().getCommand()));
                     sb.append(" ");
                     sb.append(ANSICode.RESET.getCode());
                     sb.append(ANSICode.WRAP.getCode());
@@ -888,9 +907,9 @@ public class Scheduler {
         return sb.toString();
     }
 
-    public void listGroups(PeerChannel<Void> channel, boolean noHeaders) throws IOException, InterruptedException {
+    public void listGroups(PeerChannel<GroupInput> channel) throws IOException, InterruptedException {
         try {
-            if (!noHeaders) {
+            if (!channel.getInput().isNoHeaders()) {
                 StringBuilder header = new StringBuilder(ANSICode.CLEAR.getCode());
                 header.append(ANSICode.MOVE_TO_TOP.getCode());
                 header.append(ANSICode.BLACK.getCode());
@@ -933,9 +952,9 @@ public class Scheduler {
         }
     }
 
-    public void listJobs(PeerChannel<Void> channel, boolean noHeaders) throws IOException, InterruptedException {
+    public void listJobs(PeerChannel<ListJobsInput> channel) throws IOException, InterruptedException {
         try {
-            if (noHeaders) {
+            if (channel.getInput().isNoHeaders()) {
                 long allocatedManagedMemory = getAllocatedManagedMemory();
                 long availableManagedMemory = getAvailableManagedMemory(allocatedManagedMemory);
                 PeerChannel.println(channel.getStdoutOs(), createJobList(true, availableManagedMemory, allocatedManagedMemory, getStats()));
@@ -1000,7 +1019,7 @@ public class Scheduler {
             if (closed) {
                 throw new IllegalStateException("Instance is closed");
             }
-            int id = cancelChannel.getRequest().getId();
+            int id = cancelChannel.getInput().getId();
             synchronized (jobSet) {
                 JobSet.State state = jobSet.getState(id);
                 if (state == null) {
@@ -1019,7 +1038,7 @@ public class Scheduler {
                         ji.getSubmitChannel().close();
                         cancelChannel.sendMessage(ANSICode.GREEN, "Enqueued job sucessfully cancelled");
                         cancelChannel.sendEvent(Event.retcode, 0);
-                        GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
+                        GroupInfo gi = groupMap.get(ji.getSubmitChannel().getInput().getGroupName());
                         gi.getJobs().remove(id);
                         jobSet.remove(id);
                         removeFromJobMap(ji);
@@ -1027,6 +1046,7 @@ public class Scheduler {
                     } else {
                         throw new AssertionError();
                     }
+                    onStateChanged();
                 } else if (state == JobSet.State.running) {
                     ProcessInfo pi = processMap.get(id);
                     if (pi != null) {
@@ -1054,36 +1074,36 @@ public class Scheduler {
                 throw new IllegalStateException("Instance is closed");
             }
             synchronized (jobSet) {
-                GroupInfo gi = groupMap.get(channel.getRequest().getGroupName());
+                GroupInfo gi = groupMap.get(channel.getInput().getGroupName());
                 if (gi == null) {
-                    createGroupInfo(channel.getRequest().getGroupName(), channel.getUser(), channel.getRequest().getPriority(), channel.getRequest().getTimetoIdleSeconds());
-                    channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' created successfully");
+                    createGroupInfo(channel.getInput().getGroupName(), channel.getUser(), channel.getInput().getPriority(), channel.getInput().getTimetoIdleSeconds());
+                    channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getInput().getGroupName() + "' created successfully");
                     channel.sendEvent(Event.retcode, 0);
-                    LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' created  by user '" + channel.getUser() + "'");
+                    LOGGER.fine("Group '" + channel.getInput().getGroupName() + "' created  by user '" + channel.getUser() + "'");
                     return;
-                } else if (channel.getRequest().isDelete()) {
+                } else if (channel.getInput().isDelete()) {
                     if (!channel.getUser().equals("root") && !channel.getUser().equals(gi.getUser())) {
                         if (gi.getUser().equals("root")) {
-                            channel.sendMessage(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' can only be updated by user 'root'");
+                            channel.sendMessage(ANSICode.RED, "Group '" + channel.getInput().getGroupName() + "' can only be updated by user 'root'");
                         } else {
-                            channel.sendMessage(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' can only be updated by users 'root' and '" + gi.getUser() + "'");
+                            channel.sendMessage(ANSICode.RED, "Group '" + channel.getInput().getGroupName() + "' can only be updated by users 'root' and '" + gi.getUser() + "'");
                         }
                         channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
                         return;
                     }
                     if (gi.getJobs().isEmpty()) {
-                        channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' deleted successfully");
-                        groupMap.remove(channel.getRequest().getGroupName());
+                        channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getInput().getGroupName() + "' deleted successfully");
+                        groupMap.remove(channel.getInput().getGroupName());
                         channel.sendEvent(Event.retcode, 0);
-                        LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' deleted  by user " + channel.getUser() + "'");
+                        LOGGER.fine("Group '" + channel.getInput().getGroupName() + "' deleted  by user " + channel.getUser() + "'");
                         return;
                     } else {
-                        channel.sendMessage(ANSICode.RED, "Group '" + channel.getRequest().getGroupName() + "' cannot be deleted, since it contains " + gi.getJobs().size() + " active jobs");
+                        channel.sendMessage(ANSICode.RED, "Group '" + channel.getInput().getGroupName() + "' cannot be deleted, since it contains " + gi.getJobs().size() + " active jobs");
                         channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
                         return;
                     }
                 }
-                Integer newPriority = channel.getRequest().getPriority();
+                Integer newPriority = channel.getInput().getPriority();
                 if (newPriority != null && newPriority != gi.getPriority()) {
                     synchronized (gi.getJobs()) {
                         for (Integer id : gi.getJobs()) {
@@ -1093,14 +1113,14 @@ public class Scheduler {
                         }
                     }
                     gi.setPriority(newPriority);
-                    channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' priority updated successfully");
-                    LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' priority updated by user '" + channel.getUser() + "'");
+                    channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getInput().getGroupName() + "' priority updated successfully");
+                    LOGGER.fine("Group '" + channel.getInput().getGroupName() + "' priority updated by user '" + channel.getUser() + "'");
                 }
-                Integer newTimetoIdleSeconds = channel.getRequest().getTimetoIdleSeconds();
+                Integer newTimetoIdleSeconds = channel.getInput().getTimetoIdleSeconds();
                 if (newTimetoIdleSeconds != null && newTimetoIdleSeconds != gi.getTimeToIdelSeconds()) {
                     gi.setTimeToIdelSeconds(newTimetoIdleSeconds);
-                    channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getRequest().getGroupName() + "' time-to-idle updated successfully");
-                    LOGGER.fine("Group '" + channel.getRequest().getGroupName() + "' time-to-idle updated by user '" + channel.getUser() + "'");
+                    channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getInput().getGroupName() + "' time-to-idle updated successfully");
+                    LOGGER.fine("Group '" + channel.getInput().getGroupName() + "' time-to-idle updated by user '" + channel.getUser() + "'");
                 }
                 channel.sendEvent(Event.retcode, 0);
             }
@@ -1113,9 +1133,9 @@ public class Scheduler {
         jobMap.remove(jobInfo.getId());
         JobSet.State state = jobSet.getState(jobInfo.getId());
         if (state == JobSet.State.queued) {
-            changeQueuedChildren(jobInfo.getSubmitChannel().getRequest().getParentId(), false);
+            changeQueuedChildren(jobInfo.getSubmitChannel().getInput().getParentId(), false);
         } else {
-            changeRunningChildren(jobInfo.getSubmitChannel().getRequest().getParentId(), false);
+            changeRunningChildren(jobInfo.getSubmitChannel().getInput().getParentId(), false);
         }
     }
 
@@ -1145,20 +1165,20 @@ public class Scheduler {
         if (ji == null) {
             throw new IllegalArgumentException("Id is required");
         }
-        LinuxCommands.createJobCgroups(id, ji.getSubmitChannel().getRequest().getMaxRSS());
+        LinuxCommands.createJobCgroups(id, ji.getSubmitChannel().getInput().getMaxRSS());
         Thread t = new Thread(this.processGroup, "scheduled process " + id) {
             @Override
             public void run() {
-                String[] cmd = ji.getSubmitChannel().getRequest().getCommand();
+                String[] cmd = ji.getSubmitChannel().getInput().getCommand();
                 cmd = LinuxCommands.decorateRunAsCommand(cmd, ji.getSubmitChannel().getUser());
                 cmd = LinuxCommands.decorateWithCPUAffinity(cmd, Config.getInstance().getProcessCfg().getCpuAfinity());
                 cmd = LinuxCommands.decorateWithBatchSchedulerPolicy(cmd);
                 cmd = LinuxCommands.decorateRunInCgroup(cmd, id);
                 ProcessBuilder pb = new ProcessBuilder(cmd);
                 pb.environment().clear();
-                pb.directory(ji.getSubmitChannel().getRequest().getWorkingDirectory());
-                if (ji.getSubmitChannel().getRequest().getEnvironment() != null) {
-                    pb.environment().putAll(ji.getSubmitChannel().getRequest().getEnvironment());
+                pb.directory(ji.getSubmitChannel().getInput().getWorkingDirectory());
+                if (ji.getSubmitChannel().getInput().getEnvironment() != null) {
+                    pb.environment().putAll(ji.getSubmitChannel().getInput().getEnvironment());
                 }
                 pb.environment().put(EnvEntry.WAVA_JOB_ID.name(), String.valueOf(id));
                 ProcessInfo pi = null;
@@ -1179,8 +1199,8 @@ public class Scheduler {
                             LOGGER.fine("Running job " + ji.getId() + " with pId " + pId);
 
                             Logger statsLogger;
-                            if (ji.getSubmitChannel().getRequest().getStatsDirectory() != null) {
-                                statsLogger = createStatsLogger(ji.getSubmitChannel().getRequest().getStatsDirectory());
+                            if (ji.getSubmitChannel().getInput().getStatsDirectory() != null) {
+                                statsLogger = createStatsLogger(ji.getSubmitChannel().getInput().getStatsDirectory());
                                 writeJobStatsFileHeader(statsLogger);
                             } else {
                                 statsLogger = null;
@@ -1239,7 +1259,7 @@ public class Scheduler {
                             removeFromJobMap(ji);
                             jobSet.remove(id);
                             processMap.remove(id);
-                            final GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
+                            final GroupInfo gi = groupMap.get(ji.getSubmitChannel().getInput().getGroupName());
                             gi.getJobs().remove(id);
                             if (gi.getJobs().isEmpty()) {
                                 if (gi.getTimeToIdelSeconds() == 0) {
@@ -1274,6 +1294,7 @@ public class Scheduler {
                                 LOGGER.fine("Closing channel of job " + ji.getId());
                                 ji.getSubmitChannel().close();
                             }
+                            onStateChanged();
                         }
                         LinuxCommands.removeJobCgroups(id);
                     } catch (Throwable th) {
@@ -1285,14 +1306,18 @@ public class Scheduler {
         t.start();
     }
 
-    public boolean close(PeerChannel<String> channel) throws IOException {
+    public boolean close(PeerChannel<?> channel) throws IOException {
         if (!channel.getUser().equals("root") && !channel.getUser().equals(runningUser)) {
             channel.sendMessage(ANSICode.RED, "User '" + channel.getUser() + "' is not allowed to stop the core scheduler process");
             channel.sendEvent(Event.retcode, RetCode.ERROR.getCode());
             channel.close();
             return false;
         }
+        
         channel.sendMessage(ANSICode.GREEN, "Stopping scheduler process ...");
+        
+        this.cleaningThread.interrupt();
+        this.statsThread.interrupt();
 
         synchronized (jobSet) {
             this.closed = true;
@@ -1304,7 +1329,7 @@ public class Scheduler {
                 JobInfo ji = jobMap.get(id);
                 it.remove();
                 removeFromJobMap(ji);
-                GroupInfo gi = groupMap.get(ji.getSubmitChannel().getRequest().getGroupName());
+                GroupInfo gi = groupMap.get(ji.getSubmitChannel().getInput().getGroupName());
                 gi.getJobs().remove(id);
                 try {
                     ji.getSubmitChannel().sendEvent(Event.shutdown, runningUser);
@@ -1504,7 +1529,7 @@ public class Scheduler {
         public synchronized void setNiceness(int niceness) {
             if (niceness != this.niceness) {
                 LinuxCommands.setNiceness(pId, niceness);
-                if (jobInfo.getSubmitChannel().getRequest().getParentId() != null) {
+                if (jobInfo.getSubmitChannel().getInput().getParentId() != null) {
                     jobInfo.getSubmitChannel().sendEvent(Event.niceness, niceness);
                 }
                 this.niceness = niceness;

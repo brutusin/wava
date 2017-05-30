@@ -16,6 +16,7 @@
 package org.brutusin.wava.main.peer;
 
 import org.brutusin.wava.core.io.CommandLineRequestExecutor;
+import org.brutusin.wava.input.ListJobsInput;
 import org.brutusin.wava.utils.CoreUtils;
 import org.brutusin.wava.io.OpName;
 import org.brutusin.wava.io.RetCode;
@@ -28,8 +29,9 @@ public class ListJobsMain {
 
     public static void main(String[] args) throws Exception {
         CoreUtils.validateCoreRunning();
-        boolean noHeaders = args.length > 0 && (args[0].equals("-h") || args[0].equals("--no-headers"));
-        Integer retCode = new CommandLineRequestExecutor().executeRequest(OpName.jobs, noHeaders);
+        ListJobsInput input = new ListJobsInput();
+        input.setNoHeaders(args.length > 0 && (args[0].equals("-h") || args[0].equals("--no-headers")));
+        Integer retCode = new CommandLineRequestExecutor().executeRequest(OpName.jobs, input);
         if (retCode == null) {
             retCode = RetCode.ERROR.getCode();
         }

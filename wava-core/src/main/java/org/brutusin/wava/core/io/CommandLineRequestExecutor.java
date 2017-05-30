@@ -28,6 +28,7 @@ import org.brutusin.json.spi.JsonCodec;
 import org.brutusin.json.spi.JsonNode;
 import org.brutusin.wava.Utils;
 import org.brutusin.wava.env.EnvEntry;
+import org.brutusin.wava.input.Input;
 import org.brutusin.wava.io.EventListener;
 import org.brutusin.wava.io.LineListener;
 import org.brutusin.wava.io.RequestExecutor;
@@ -39,11 +40,11 @@ import org.brutusin.wava.utils.ANSICode;
  */
 public class CommandLineRequestExecutor extends RequestExecutor {
 
-    public Integer executeRequest(OpName opName, Object input) throws IOException, InterruptedException {
+    public Integer executeRequest(OpName opName, Input input) throws IOException, InterruptedException {
         return executeRequest(opName, input, null, false);
     }
 
-    public Integer executeRequest(OpName opName, Object input, final OutputStream eventStream, boolean prettyEvents) throws IOException, InterruptedException {
+    public Integer executeRequest(OpName opName, Input input, final OutputStream eventStream, boolean prettyEvents) throws IOException, InterruptedException {
 
         EventListener evtListener = null;
         if (eventStream != null) {

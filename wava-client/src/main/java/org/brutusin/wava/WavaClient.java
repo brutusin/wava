@@ -23,6 +23,7 @@ import org.brutusin.wava.env.EnvEntry;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.ExtendedSubmitInput;
 import org.brutusin.wava.input.GroupInput;
+import org.brutusin.wava.input.Input;
 import org.brutusin.wava.input.SubmitInput;
 import org.brutusin.wava.io.EventListener;
 import org.brutusin.wava.io.LineListener;
@@ -54,7 +55,7 @@ public class WavaClient {
         }
     }
 
-    private static String executeCommand(RequestExecutor executor, OpName opName, Object input) throws WavaNotRunningException {
+    private static String executeCommand(RequestExecutor executor, OpName opName, Input input) throws WavaNotRunningException {
         ByteArrayOutputStream stdoutOs = new ByteArrayOutputStream();
         final StringBuilder sb = new StringBuilder();
         LineListener stderrListener = new LineListener() {

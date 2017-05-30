@@ -39,6 +39,8 @@ import org.brutusin.wava.utils.LinuxCommands;
 import org.brutusin.wava.input.CancelInput;
 import org.brutusin.wava.input.GroupInput;
 import org.brutusin.wava.input.ExtendedSubmitInput;
+import org.brutusin.wava.input.Input;
+import org.brutusin.wava.input.ListJobsInput;
 import org.brutusin.wava.utils.ANSICode;
 import org.brutusin.wava.io.RetCode;
 
@@ -158,24 +160,24 @@ public class RequestHandler {
                 ch = channel;
                 this.scheduler.cancel(channel);
             } else if (opName == OpName.jobs) {
-                Boolean noHeaders = JsonCodec.getInstance().parse(json, Boolean.class);
-                PeerChannel<Void> channel = new PeerChannel(user, null, new File(streamsFolder, String.valueOf(id)));
+                ListJobsInput input = JsonCodec.getInstance().parse(json, ListJobsInput.class);
+                PeerChannel<ListJobsInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
                 ch = channel;
-                this.scheduler.listJobs(channel, noHeaders);
+                this.scheduler.listJobs(channel);
             } else if (opName == OpName.group) {
                 GroupInput input = JsonCodec.getInstance().parse(json, GroupInput.class);
                 if (input.isList()) {
-                    PeerChannel<Void> channel = new PeerChannel(user, null, new File(streamsFolder, String.valueOf(id)));
+                    PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
                     ch = channel;
-                    this.scheduler.listGroups(channel, input.isNoHeaders());
+                    this.scheduler.listGroups(channel);
                 } else {
                     PeerChannel<GroupInput> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
                     ch = channel;
                     this.scheduler.updateGroup(channel);
                 }
             } else if (opName == OpName.exit) {
-                String input = JsonCodec.getInstance().parse(json, String.class);
-                PeerChannel<String> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
+                Input input = JsonCodec.getInstance().parse(json, Input.class);
+                PeerChannel<Input> channel = new PeerChannel(user, input, new File(streamsFolder, String.valueOf(id)));
                 if (this.scheduler.close(channel)) {
                     mainThread.interrupt();
                 }

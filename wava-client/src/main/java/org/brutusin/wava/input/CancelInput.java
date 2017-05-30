@@ -1,6 +1,6 @@
 package org.brutusin.wava.input;
 
-public class CancelInput {
+public class CancelInput extends Input {
 
     private int id;
 
