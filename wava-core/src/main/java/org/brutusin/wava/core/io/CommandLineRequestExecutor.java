@@ -41,6 +41,9 @@ import org.brutusin.wava.utils.ANSICode;
 public class CommandLineRequestExecutor extends RequestExecutor {
 
     public Integer executeRequest(OpName opName, Input input) throws IOException, InterruptedException {
+        if (input == null) {
+            input = new Input();
+        }
         return executeRequest(opName, input, null, false);
     }
 
