@@ -94,11 +94,11 @@ public class Scheduler {
         if (!cgroupsCreated) {
             throw new RuntimeException("Unable to create wava cgroups");
         }
-        createGroupInfo(DEFAULT_GROUP_NAME, this.runningUser, 0, EVICTION_ETERNAL);
+        createGroup(DEFAULT_GROUP_NAME, this.runningUser, 0, EVICTION_ETERNAL);
         GroupCfg.Group[] predefinedGroups = Config.getInstance().getGroupCfg().getPredefinedGroups();
         if (predefinedGroups != null) {
             for (GroupCfg.Group group : predefinedGroups) {
-                createGroupInfo(group.getName(), this.runningUser, group.getPriority(), group.getTimeToIdleSeconds());
+                createGroup(group.getName(), this.runningUser, group.getPriority(), group.getTimeToIdleSeconds());
             }
         }
 
@@ -200,7 +200,8 @@ public class Scheduler {
         this.statsThread.start();
     }
 
-    private GroupInfo createGroupInfo(String name, String user, Integer priority, Integer timetoIdleSeconds) {
+    private GroupInfo createGroup(String name, String user, Integer priority, Integer timetoIdleSeconds) {
+        LinuxCommands.createGroupCgroups(name);
         synchronized (jobSet) {
             if (!groupMap.containsKey(name)) {
                 if (priority == null) {
@@ -216,6 +217,14 @@ public class Scheduler {
             }
         }
         return null;
+    }
+
+    private void deleteGroup(String name) {
+        synchronized (jobSet) {
+            LinuxCommands.removeGroupCgroups(name);
+            GroupInfo gi = groupMap.get(name);
+            groupMap.remove(name);
+        }
     }
 
     private void killForStarvationProtection(ProcessInfo pi) {
@@ -498,15 +507,15 @@ public class Scheduler {
                 if (pi == null) {
                     continue;
                 }
-                MemoryStats memStats = LinuxCommands.getCgroupMemoryStats(id);
+                MemoryStats memStats = LinuxCommands.getCgroupMemoryStats(pi.getJobInfo().getSubmitChannel().getInput().getGroupName(), id);
                 if (memStats == null) {
                     continue;
                 }
-                CpuStats cpuStats = LinuxCommands.getCgroupCpuStats(id);
+                CpuStats cpuStats = LinuxCommands.getCgroupCpuStats(pi.getJobInfo().getSubmitChannel().getInput().getGroupName(),id);
                 if (cpuStats == null) {
                     continue;
                 }
-                IOStats ioStats = LinuxCommands.getCgroupIOStats(id);
+                IOStats ioStats = LinuxCommands.getCgroupIOStats(pi.getJobInfo().getSubmitChannel().getInput().getGroupName(), id);
                 if (ioStats == null) {
                     continue;
                 }
@@ -587,7 +596,7 @@ public class Scheduler {
             LOGGER.fine("Received job " + ji.getId() + ": " + Arrays.toString(ji.getSubmitChannel().getInput().getCommand()));
             GroupInfo gi = groupMap.get(ji.getSubmitChannel().getInput().getGroupName());
             if (gi == null) { // dynamic group
-                gi = createGroupInfo(ji.getSubmitChannel().getInput().getGroupName(), ji.getSubmitChannel().getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds());
+                gi = createGroup(ji.getSubmitChannel().getInput().getGroupName(), ji.getSubmitChannel().getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds());
             }
             gi.getJobs().add(ji.getId());
             changeQueuedChildren(ji.getSubmitChannel().getInput().getParentId(), true);
@@ -1076,7 +1085,7 @@ public class Scheduler {
             synchronized (jobSet) {
                 GroupInfo gi = groupMap.get(channel.getInput().getGroupName());
                 if (gi == null) {
-                    createGroupInfo(channel.getInput().getGroupName(), channel.getUser(), channel.getInput().getPriority(), channel.getInput().getTimetoIdleSeconds());
+                    createGroup(channel.getInput().getGroupName(), channel.getUser(), channel.getInput().getPriority(), channel.getInput().getTimetoIdleSeconds());
                     channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getInput().getGroupName() + "' created successfully");
                     channel.sendEvent(Event.retcode, 0);
                     LOGGER.fine("Group '" + channel.getInput().getGroupName() + "' created  by user '" + channel.getUser() + "'");
@@ -1093,7 +1102,7 @@ public class Scheduler {
                     }
                     if (gi.getJobs().isEmpty()) {
                         channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getInput().getGroupName() + "' deleted successfully");
-                        groupMap.remove(channel.getInput().getGroupName());
+                        deleteGroup(channel.getInput().getGroupName());
                         channel.sendEvent(Event.retcode, 0);
                         LOGGER.fine("Group '" + channel.getInput().getGroupName() + "' deleted  by user " + channel.getUser() + "'");
                         return;
@@ -1165,7 +1174,7 @@ public class Scheduler {
         if (ji == null) {
             throw new IllegalArgumentException("Id is required");
         }
-        LinuxCommands.createJobCgroups(id, ji.getSubmitChannel().getInput().getMaxRSS());
+        LinuxCommands.createJobCgroups(ji.getSubmitChannel().getInput().getGroupName(), id, ji.getSubmitChannel().getInput().getMaxRSS());
         Thread t = new Thread(this.processGroup, "scheduled process " + id) {
             @Override
             public void run() {
@@ -1173,7 +1182,7 @@ public class Scheduler {
                 cmd = LinuxCommands.decorateRunAsCommand(cmd, ji.getSubmitChannel().getUser());
                 cmd = LinuxCommands.decorateWithCPUAffinity(cmd, Config.getInstance().getProcessCfg().getCpuAfinity());
                 cmd = LinuxCommands.decorateWithBatchSchedulerPolicy(cmd);
-                cmd = LinuxCommands.decorateRunInCgroup(cmd, id);
+                cmd = LinuxCommands.decorateRunInCgroup(cmd, ji.getSubmitChannel().getInput().getGroupName(), id);
                 ProcessBuilder pb = new ProcessBuilder(cmd);
                 pb.environment().clear();
                 pb.directory(ji.getSubmitChannel().getInput().getWorkingDirectory());
@@ -1263,7 +1272,7 @@ public class Scheduler {
                             gi.getJobs().remove(id);
                             if (gi.getJobs().isEmpty()) {
                                 if (gi.getTimeToIdelSeconds() == 0) {
-                                    groupMap.remove(gi.getGroupName());
+                                    deleteGroup(gi.getGroupName());
                                 } else if (gi.getTimeToIdelSeconds() > 0 && !ji.isRelaunched()) {
                                     Thread t = new Thread(coreGroup, "group-" + gi.getGroupName() + " idle thread") {
                                         @Override
@@ -1272,7 +1281,7 @@ public class Scheduler {
                                                 Thread.sleep(1000 * gi.getTimeToIdelSeconds());
                                                 synchronized (jobSet) {
                                                     if (gi.getJobs().isEmpty()) {
-                                                        groupMap.remove(gi.getGroupName());
+                                                        deleteGroup(gi.getGroupName());
 
                                                     }
                                                 }
@@ -1296,7 +1305,7 @@ public class Scheduler {
                             }
                             onStateChanged();
                         }
-                        LinuxCommands.removeJobCgroups(id);
+                        LinuxCommands.removeJobCgroups(ji.getSubmitChannel().getInput().getGroupName(), id);
                     } catch (Throwable th) {
                         LOGGER.log(Level.SEVERE, th.getMessage(), th);
                     }
@@ -1313,9 +1322,9 @@ public class Scheduler {
             channel.close();
             return false;
         }
-        
+
         channel.sendMessage(ANSICode.GREEN, "Stopping scheduler process ...");
-        
+
         this.cleaningThread.interrupt();
         this.statsThread.interrupt();
 
@@ -1359,9 +1368,11 @@ public class Scheduler {
                 }
             }
         }
+        String msg = "Scheduler stopped sucessfully";
+        LOGGER.severe(msg);
+        channel.sendMessage(ANSICode.GREEN, msg);
         channel.sendEvent(Event.retcode, 0);
         channel.close();
-        LOGGER.severe("Scheduler stopped sucessfully");
         closeLogger(this.statsLogger);
         return true;
     }

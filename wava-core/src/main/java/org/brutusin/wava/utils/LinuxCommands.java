@@ -20,7 +20,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
@@ -109,15 +108,51 @@ public class LinuxCommands {
         ProcessUtils.executeProcess(cmd);
     }
 
-    public static void createJobCgroups(int jobId, long maxJobRSSBytes) {
-        createJobMemoryCgroup(jobId, maxJobRSSBytes);
-        createJobCpuCgroup(jobId);
-        createJobIOCgroup(jobId);
+    public static void createJobCgroups(String groupName, int jobId, long maxJobRSSBytes) {
+        createJobMemoryCgroup(groupName, jobId, maxJobRSSBytes);
+        createJobCpuCgroup(groupName, jobId);
+        createJobIOCgroup(groupName, jobId);
     }
 
-    private static void createJobMemoryCgroup(int jobId, long maxJobRSSBytes) {
+    public static void createGroupCgroups(String groupName) {
+        createGroupMemoryCgroup(groupName);
+        createGroupCpuCgroup(groupName);
+        createGroupIOCgroup(groupName);
+    }
+
+    private static void createGroupMemoryCgroup(String groupName) {
         try {
-            File f = new File(MEMORY_CGROUP_ROOT, String.valueOf(jobId));
+            File f = new File(MEMORY_CGROUP_ROOT, groupName);
+            String[] cmd = {"mkdir", f.getAbsolutePath()};
+            ProcessUtils.executeProcess(cmd);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private static void createGroupCpuCgroup(String groupName) {
+        try {
+            File f = new File(CPUACCT_CGROUP_ROOT, groupName);
+            String[] cmd = {"mkdir", f.getAbsolutePath()};
+            ProcessUtils.executeProcess(cmd);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private static void createGroupIOCgroup(String groupName) {
+        try {
+            File f = new File(BLKIO_CGROUP_ROOT, groupName);
+            String[] cmd = {"mkdir", f.getAbsolutePath()};
+            ProcessUtils.executeProcess(cmd);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private static void createJobMemoryCgroup(String groupName, int jobId, long maxJobRSSBytes) {
+        try {
+            File f = new File(MEMORY_CGROUP_ROOT, groupName + "/" + jobId);
             String[] cmd = {"mkdir", f.getAbsolutePath()};
             ProcessUtils.executeProcess(cmd);
             Miscellaneous.writeStringToFile(new File(f, "memory.soft_limit_in_bytes"), String.valueOf(maxJobRSSBytes), "UTF-8");
@@ -128,9 +163,9 @@ public class LinuxCommands {
         }
     }
 
-    private static void createJobCpuCgroup(int jobId) {
+    private static void createJobCpuCgroup(String groupName, int jobId) {
         try {
-            File f = new File(CPUACCT_CGROUP_ROOT, String.valueOf(jobId));
+            File f = new File(CPUACCT_CGROUP_ROOT, groupName + "/" + jobId);
             String[] cmd = {"mkdir", f.getAbsolutePath()};
             ProcessUtils.executeProcess(cmd);
         } catch (Exception ex) {
@@ -138,22 +173,30 @@ public class LinuxCommands {
         }
     }
 
-    private static void createJobIOCgroup(int jobId) {
+    private static void createJobIOCgroup(String groupName, int jobId) {
         try {
-            File f = new File(BLKIO_CGROUP_ROOT, String.valueOf(jobId));
+            File f = new File(BLKIO_CGROUP_ROOT, groupName + "/" + jobId);
             String[] cmd = {"mkdir", f.getAbsolutePath()};
             ProcessUtils.executeProcess(cmd);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
     }
+    
+    public static int getUserHz() {
+        try {
+            return Integer.valueOf(ProcessUtils.executeProcess("getconf", "CLK_TCK"));
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
 
-    public static MemoryStats getCgroupMemoryStats(Integer jobId) {
+    public static MemoryStats getCgroupMemoryStats(String groupName, Integer jobId) {
         File f;
         if (jobId == null) {
             f = new File(MEMORY_CGROUP_ROOT, "/memory.stat");
         } else {
-            f = new File(MEMORY_CGROUP_ROOT, String.valueOf(jobId) + "/memory.stat");
+            f = new File(MEMORY_CGROUP_ROOT, groupName + "/" + jobId + "/memory.stat");
         }
         try {
             long nanos1 = System.nanoTime();
@@ -183,21 +226,13 @@ public class LinuxCommands {
         }
     }
 
-    public static int getUserHz() {
-        try {
-            return Integer.valueOf(ProcessUtils.executeProcess("getconf", "CLK_TCK"));
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
-    public static CpuStats getCgroupCpuStats(Integer jobId) {
+    public static CpuStats getCgroupCpuStats(String groupName, Integer jobId) {
         CpuStats ret = new CpuStats();
         File f;
         if (jobId == null) {
             f = new File(CPUACCT_CGROUP_ROOT, "/cpuacct.stat");
         } else {
-            f = new File(CPUACCT_CGROUP_ROOT, String.valueOf(jobId) + "/cpuacct.stat");
+            f = new File(CPUACCT_CGROUP_ROOT, groupName + "/" + jobId + "/cpuacct.stat");
         }
         try {
             long nanos1 = System.nanoTime();
@@ -220,13 +255,13 @@ public class LinuxCommands {
         }
     }
 
-    public static IOStats getCgroupIOStats(Integer jobId) {
+    public static IOStats getCgroupIOStats(String groupName, Integer jobId) {
 
         File f;
         if (jobId == null) {
             f = new File(BLKIO_CGROUP_ROOT, "/blkio.throttle.io_service_bytes");
         } else {
-            f = new File(BLKIO_CGROUP_ROOT, String.valueOf(jobId) + "/blkio.throttle.io_service_bytes");
+            f = new File(BLKIO_CGROUP_ROOT, groupName + "/" + jobId + "/blkio.throttle.io_service_bytes");
         }
         try {
             long nanos1 = System.nanoTime();
@@ -251,13 +286,25 @@ public class LinuxCommands {
         }
     }
 
-    public static void removeJobCgroups(int jobId) {
+    public static void removeGroupCgroups(String groupName) {
         try {
-            File memCgroup = new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/memory/" + WavaHome.getInstance().getId() + "/" + String.valueOf(jobId));
+            File memCgroup = new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/memory/" + WavaHome.getInstance().getId() + "/" + groupName);
             executeBashCommand("echo 0 > " + new File(memCgroup, "memory.force_empty").getAbsolutePath());
             removeLeafFolder(memCgroup);
-            removeLeafFolder(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/cpuacct/" + WavaHome.getInstance().getId() + "/" + String.valueOf(jobId)));
-            removeLeafFolder(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/blkio/" + WavaHome.getInstance().getId() + "/" + String.valueOf(jobId)));
+            removeLeafFolder(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/cpuacct/" + WavaHome.getInstance().getId() + "/" + groupName));
+            removeLeafFolder(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/blkio/" + WavaHome.getInstance().getId() + "/" + groupName));
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    public static void removeJobCgroups(String groupName, int jobId) {
+        try {
+            File memCgroup = new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/memory/" + WavaHome.getInstance().getId() + "/" + groupName + "/" + jobId);
+            executeBashCommand("echo 0 > " + new File(memCgroup, "memory.force_empty").getAbsolutePath());
+            removeLeafFolder(memCgroup);
+            removeLeafFolder(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/cpuacct/" + WavaHome.getInstance().getId() + "/" + groupName + "/" + jobId));
+            removeLeafFolder(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/blkio/" + WavaHome.getInstance().getId() + "/" + groupName + "/" + jobId));
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
@@ -422,15 +469,15 @@ public class LinuxCommands {
         return new String[]{"runuser", "-p", user, "-c", sb.toString()};
     }
 
-    public static String[] decorateRunInCgroup(String[] cmd, int jobId) {
+    public static String[] decorateRunInCgroup(String[] cmd, String groupName, int jobId) {
         StringBuilder sb = new StringBuilder("echo $$ >");
-        sb.append(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/memory/" + WavaHome.getInstance().getId() + "/" + jobId + "/cgroup.procs").getAbsolutePath());
+        sb.append(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/memory/" + WavaHome.getInstance().getId() + "/" + groupName + "/" + jobId + "/cgroup.procs").getAbsolutePath());
         sb.append(" && ");
         sb.append("echo $$ >");
-        sb.append(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/cpuacct/" + WavaHome.getInstance().getId() + "/" + jobId + "/cgroup.procs").getAbsolutePath());
+        sb.append(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/cpuacct/" + WavaHome.getInstance().getId() + "/" + groupName + "/" + jobId + "/cgroup.procs").getAbsolutePath());
         sb.append(" && ");
         sb.append("echo $$ >");
-        sb.append(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/blkio/" + WavaHome.getInstance().getId() + "/" + jobId + "/cgroup.procs").getAbsolutePath());
+        sb.append(new File(Config.getInstance().getSchedulerCfg().getCgroupRootPath() + "/blkio/" + WavaHome.getInstance().getId() + "/" + groupName + "/" + jobId + "/cgroup.procs").getAbsolutePath());
         sb.append(" && ");
         for (int i = 0; i < cmd.length; i++) {
             if (i > 0) {
