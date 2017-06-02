@@ -70,6 +70,7 @@ public class Scheduler {
     private volatile String jobList;
 
     private StatRecord previousStatRecord;
+    private StatRecord currentStatRecord;
 
     public Scheduler() throws NonRootUserException {
 
@@ -81,24 +82,29 @@ public class Scheduler {
         if (Config.getInstance().getSchedulerCfg().isLogStats()) {
             try {
                 this.statsLogger = createStatsLogger(new File(Config.getInstance().getSchedulerCfg().getLogFolder(), "stats"));
-                writeGlobalStatsFileHeader();
+                writeGlobalStatsFileHeader(this.statsLogger);
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
+            this.previousStatRecord = new StatRecord();
+            this.currentStatRecord = new StatRecord();
         } else {
             this.statsLogger = null;
+            this.previousStatRecord = null;
+            this.currentStatRecord = null;
         }
+
         this.totalManagedRss = Miscellaneous.parseHumanReadableByteCount(Config.getInstance().getSchedulerCfg().getSchedulerCapacity());
         this.maxJobRss = Miscellaneous.parseHumanReadableByteCount(Config.getInstance().getSchedulerCfg().getMaxJobSize());
         boolean cgroupsCreated = LinuxCommands.createWavaCgroups(totalManagedRss);
         if (!cgroupsCreated) {
             throw new RuntimeException("Unable to create wava cgroups");
         }
-        createGroup(DEFAULT_GROUP_NAME, this.runningUser, 0, EVICTION_ETERNAL);
+        createGroup(DEFAULT_GROUP_NAME, this.runningUser, 0, EVICTION_ETERNAL, null);
         GroupCfg.Group[] predefinedGroups = Config.getInstance().getGroupCfg().getPredefinedGroups();
         if (predefinedGroups != null) {
             for (GroupCfg.Group group : predefinedGroups) {
-                createGroup(group.getName(), this.runningUser, group.getPriority(), group.getTimeToIdleSeconds());
+                createGroup(group.getName(), this.runningUser, group.getPriority(), group.getTimeToIdleSeconds(), group.getStatsDirectory());
             }
         }
 
@@ -176,12 +182,12 @@ public class Scheduler {
         return false;
     }
 
-    private void writeGlobalStatsFileHeader() throws IOException {
-        this.statsLogger.log(Level.ALL, "#start       \tend          \trunning\tqueued\tcpu(%)\trss(B)\tswap(B)\tio(B/s)");
+    private void writeGlobalStatsFileHeader(Logger logger) throws IOException {
+        logger.log(Level.ALL, "#start       \tend          \trunning\tqueued\tcpu(%)\trss(B)\tswap(B)\tio(B/s)");
     }
 
-    private void writeGlobalStatsRecord(StatRecord rec) throws IOException {
-        this.statsLogger.log(Level.ALL, String.format("%1$d\t%2$d\t%3$d\t%4$d\t%5$.1f\t%6$d\t%7$d\t%8$d", rec.start, rec.end, rec.running, rec.queded, rec.cpu, rec.rss, rec.swap, rec.io));
+    private void writeGlobalStatsRecord(Logger logger, StatRecord rec) throws IOException {
+        logger.log(Level.ALL, String.format("%1$d\t%2$d\t%3$d\t%4$d\t%5$.1f\t%6$d\t%7$d\t%8$d", rec.start, rec.end, rec.running, rec.queded, rec.cpu, rec.rss, rec.swap, rec.io));
     }
 
     private void writeJobStatsFileHeader(Logger logger) throws IOException {
@@ -200,7 +206,7 @@ public class Scheduler {
         this.statsThread.start();
     }
 
-    private GroupInfo createGroup(String name, String user, Integer priority, Integer timetoIdleSeconds) {
+    private GroupInfo createGroup(String name, String user, Integer priority, Integer timetoIdleSeconds, File statsDirectory) {
         LinuxCommands.createGroupCgroups(name);
         synchronized (jobSet) {
             if (!groupMap.containsKey(name)) {
@@ -210,7 +216,7 @@ public class Scheduler {
                 if (timetoIdleSeconds == null) {
                     timetoIdleSeconds = -1;
                 }
-                GroupInfo gi = new GroupInfo(name, user, timetoIdleSeconds);
+                GroupInfo gi = new GroupInfo(name, user, timetoIdleSeconds, statsDirectory);
                 gi.setPriority(priority);
                 groupMap.put(gi.getGroupName(), gi);
                 return gi;
@@ -221,9 +227,11 @@ public class Scheduler {
 
     private void deleteGroup(String name) {
         synchronized (jobSet) {
-            LinuxCommands.removeGroupCgroups(name);
             GroupInfo gi = groupMap.get(name);
-            groupMap.remove(name);
+            if (gi.getJobs().isEmpty()) {
+                LinuxCommands.removeGroupCgroups(name);
+                groupMap.remove(name);
+            }
         }
     }
 
@@ -265,7 +273,7 @@ public class Scheduler {
                 if (!ji.getSubmitChannel().isPeerAlive()) {
                     it.remove();
                     removeFromJobMap(ji);
-                    GroupInfo gi = groupMap.get(ji.getSubmitChannel().getInput().getGroupName());
+                    GroupInfo gi = ji.getGroupInfo();
                     gi.getJobs().remove(id);
                     try {
                         ji.getSubmitChannel().close();
@@ -442,24 +450,20 @@ public class Scheduler {
             long availableManagedMemory = getAvailableManagedMemory(allocatedManagedMemory);
             GaugeStats stats = getStats();
             this.jobList = createJobList(false, availableManagedMemory, allocatedManagedMemory, stats);
-            long end = System.currentTimeMillis();
             if (statsLogger != null) {
-                StatRecord record = new StatRecord();
-                record.running = jobSet.countRunning();
-                record.queded = jobSet.countQueued();
-                record.cpu = stats.cpuGaugeStats.getCpuPercent();
-                record.rss = stats.memStats.rssBytes;
-                record.swap = stats.memStats.swapBytes;
-                record.io = stats.iOGaugeStats.ioBps;
-                if (isWriteStatRecord(previousStatRecord, record)) {
-                    if (previousStatRecord != null) {
-                        record.start = previousStatRecord.end;
-                    } else {
-                        record.start = end;
-                    }
-                    record.end = end;
-                    writeGlobalStatsRecord(record);
-                    previousStatRecord = record;
+                currentStatRecord.running = jobSet.countRunning();
+                currentStatRecord.queded = jobSet.countQueued();
+                currentStatRecord.cpu = stats.cpuGaugeStats.getCpuPercent();
+                currentStatRecord.rss = stats.memStats.rssBytes;
+                currentStatRecord.swap = stats.memStats.swapBytes;
+                currentStatRecord.io = stats.iOGaugeStats.ioBps;
+                if (isWriteStatRecord(previousStatRecord, currentStatRecord)) {
+                    currentStatRecord.start = previousStatRecord.end;
+                    currentStatRecord.end = System.currentTimeMillis();
+                    writeGlobalStatsRecord(this.statsLogger, currentStatRecord);
+                    StatRecord tmp = previousStatRecord;
+                    previousStatRecord = currentStatRecord;
+                    currentStatRecord = tmp;
                 }
             }
         }
@@ -501,6 +505,19 @@ public class Scheduler {
         synchronized (jobSet) {
             GaugeStats ret = new GaugeStats();
             Iterator<Integer> running = jobSet.getRunning();
+            for (GroupInfo gi : groupMap.values()) {
+                if (gi.getStatsLogger() != null) {
+                    gi.getCurrentStatRecord().start = 0;
+                    gi.getCurrentStatRecord().end = 0;
+                    gi.getCurrentStatRecord().cpu = 0;
+                    gi.getCurrentStatRecord().swap = 0;
+                    gi.getCurrentStatRecord().io = 0;
+                    gi.getCurrentStatRecord().rss = 0;
+                    gi.getCurrentStatRecord().queded = 0;
+                    gi.getCurrentStatRecord().running = 0;
+                    gi.getCurrentStatRecord().io = 0;
+                }
+            }
             while (running.hasNext()) {
                 Integer id = running.next();
                 ProcessInfo pi = processMap.get(id);
@@ -511,7 +528,7 @@ public class Scheduler {
                 if (memStats == null) {
                     continue;
                 }
-                CpuStats cpuStats = LinuxCommands.getCgroupCpuStats(pi.getJobInfo().getSubmitChannel().getInput().getGroupName(),id);
+                CpuStats cpuStats = LinuxCommands.getCgroupCpuStats(pi.getJobInfo().getSubmitChannel().getInput().getGroupName(), id);
                 if (cpuStats == null) {
                     continue;
                 }
@@ -526,22 +543,41 @@ public class Scheduler {
                 ret.memStats.swapBytes += pi.getGaugeStats().memStats.swapBytes;
                 ret.iOGaugeStats.ioBps += pi.getGaugeStats().iOGaugeStats.ioBps;
 
+                long time = System.currentTimeMillis();
+
                 if (pi.getStatsLogger() != null) {
-                    StatRecord record = new StatRecord();
-                    record.cpu = pi.getGaugeStats().cpuGaugeStats.getCpuPercent();
-                    record.rss = pi.getGaugeStats().memStats.rssBytes;
-                    record.swap = pi.getGaugeStats().memStats.swapBytes;
-                    record.io = pi.getGaugeStats().iOGaugeStats.ioBps;
-                    long time = System.currentTimeMillis();
-                    if (isWriteStatRecord(pi.getPreviousStatRecord(), record)) {
-                        if (pi.getPreviousStatRecord() != null) {
-                            record.start = pi.getPreviousStatRecord().end;
-                        } else {
-                            record.start = time;
-                        }
-                        record.end = time;
-                        writeJobStatsRecord(pi.getStatsLogger(), record);
-                        pi.setPreviousStatRecord(record);
+                    pi.getCurrentStatRecord().cpu = pi.getGaugeStats().cpuGaugeStats.getCpuPercent();
+                    pi.getCurrentStatRecord().rss = pi.getGaugeStats().memStats.rssBytes;
+                    pi.getCurrentStatRecord().swap = pi.getGaugeStats().memStats.swapBytes;
+                    pi.getCurrentStatRecord().io = pi.getGaugeStats().iOGaugeStats.ioBps;
+                    if (isWriteStatRecord(pi.getPreviousStatRecord(), pi.getCurrentStatRecord())) {
+                        pi.getCurrentStatRecord().start = pi.getPreviousStatRecord().end;
+                        pi.getCurrentStatRecord().end = time;
+                        writeJobStatsRecord(pi.getStatsLogger(), pi.getCurrentStatRecord());
+                        StatRecord tmp = pi.getPreviousStatRecord();
+                        pi.setPreviousStatRecord(pi.getCurrentStatRecord());
+                        pi.setCurrentStatRecord(tmp);
+                    }
+                }
+                if (pi.getJobInfo().getGroupInfo().getStatsLogger() != null) {
+                    pi.getJobInfo().getGroupInfo().getCurrentStatRecord().running++;
+                    pi.getJobInfo().getGroupInfo().getCurrentStatRecord().cpu += pi.getGaugeStats().cpuGaugeStats.getCpuPercent();
+                    pi.getJobInfo().getGroupInfo().getCurrentStatRecord().io += pi.getGaugeStats().iOGaugeStats.ioBps;
+                    pi.getJobInfo().getGroupInfo().getCurrentStatRecord().rss += pi.getGaugeStats().memStats.rssBytes;
+                    pi.getJobInfo().getGroupInfo().getCurrentStatRecord().swap += pi.getGaugeStats().memStats.swapBytes;
+                }
+            }
+            long time = System.currentTimeMillis();
+            for (GroupInfo gi : groupMap.values()) {
+                if (gi.getStatsLogger() != null) {
+                    gi.getCurrentStatRecord().queded = gi.getJobs().size() - gi.getCurrentStatRecord().running;
+                    if (isWriteStatRecord(gi.getPreviousStatRecord(), gi.getCurrentStatRecord())) {
+                        gi.getCurrentStatRecord().start = gi.getPreviousStatRecord().end;
+                        gi.getCurrentStatRecord().end = time;
+                        writeGlobalStatsRecord(gi.getStatsLogger(), gi.getCurrentStatRecord());
+                        StatRecord tmp = gi.getPreviousStatRecord();
+                        gi.setPreviousStatRecord(gi.getCurrentStatRecord());
+                        gi.setCurrentStatRecord(tmp);
                     }
                 }
             }
@@ -592,12 +628,12 @@ public class Scheduler {
         }
 
         synchronized (jobSet) {
-            JobInfo ji = new JobInfo(jobCounter.incrementAndGet(), submitChannel);
-            LOGGER.fine("Received job " + ji.getId() + ": " + Arrays.toString(ji.getSubmitChannel().getInput().getCommand()));
-            GroupInfo gi = groupMap.get(ji.getSubmitChannel().getInput().getGroupName());
+            GroupInfo gi = groupMap.get(submitChannel.getInput().getGroupName());
             if (gi == null) { // dynamic group
-                gi = createGroup(ji.getSubmitChannel().getInput().getGroupName(), ji.getSubmitChannel().getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds());
+                gi = createGroup(submitChannel.getInput().getGroupName(), submitChannel.getUser(), 0, Config.getInstance().getGroupCfg().getDynamicGroupIdleSeconds(), null);
             }
+            JobInfo ji = new JobInfo(jobCounter.incrementAndGet(), gi, submitChannel);
+            LOGGER.fine("Received job " + ji.getId() + ": " + Arrays.toString(ji.getSubmitChannel().getInput().getCommand()));
             gi.getJobs().add(ji.getId());
             changeQueuedChildren(ji.getSubmitChannel().getInput().getParentId(), true);
             jobMap.put(ji.getId(), ji);
@@ -932,6 +968,7 @@ public class Scheduler {
                 header.append(StringUtils.leftPad("IDLE_TIME", 9));
                 header.append(" ");
                 header.append(StringUtils.leftPad("JOBS", 5));
+                header.append(" STATS");
                 header.append(ANSICode.END_OF_LINE.getCode());
                 header.append(ANSICode.RESET.getCode());
                 PeerChannel.println(channel.getStdoutOs(), header.toString());
@@ -951,6 +988,10 @@ public class Scheduler {
                     line.append(StringUtils.leftPad(String.valueOf(gi.getTimeToIdelSeconds()), 9));
                     line.append(" ");
                     line.append(StringUtils.leftPad(String.valueOf(gi.getJobs().size()), 5));
+                    line.append(" ");
+                    if (gi.getStatsLogger() != null) {
+                        line.append(gi.getStatsDirectory().getAbsolutePath());
+                    }
                     PeerChannel.println(channel.getStdoutOs(), line.toString());
                 }
             }
@@ -980,34 +1021,38 @@ public class Scheduler {
         }
     }
 
-    private static Logger createStatsLogger(File folder) throws IOException {
-        Logger logger = Logger.getAnonymousLogger();
-        Handler[] handlers = logger.getHandlers();
-        if (handlers != null) {
-            for (int i = 0; i < handlers.length; i++) {
-                Handler handler = handlers[i];
-                logger.removeHandler(handler);
+    private static Logger createStatsLogger(File folder) {
+        try {
+            Logger logger = Logger.getAnonymousLogger();
+            Handler[] handlers = logger.getHandlers();
+            if (handlers != null) {
+                for (int i = 0; i < handlers.length; i++) {
+                    Handler handler = handlers[i];
+                    logger.removeHandler(handler);
+                }
             }
-        }
-        logger.setUseParentHandlers(false);
-        logger.setLevel(Level.ALL);
-        if (folder.exists()) {
-            Miscellaneous.deleteDirectory(folder);
-        }
-        Miscellaneous.createDirectory(folder);
-        int maxFiles = 10;
-        int maxBytesPerFile = (int) (Config.getInstance().getSchedulerCfg().getMaxStatsLogSize() / maxFiles);
-        FileHandler fh = new FileHandler(folder.getAbsolutePath() + "/stats%g.log", maxBytesPerFile, maxFiles, false);
-        fh.setLevel(Level.ALL);
-        SimpleFormatter formatter = new SimpleFormatter() {
-            @Override
-            public synchronized String format(LogRecord record) {
-                return record.getMessage() + "\n";
+            logger.setUseParentHandlers(false);
+            logger.setLevel(Level.ALL);
+            if (folder.exists()) {
+                Miscellaneous.deleteDirectory(folder);
             }
-        };
-        fh.setFormatter(formatter);
-        logger.addHandler(fh);
-        return logger;
+            Miscellaneous.createDirectory(folder);
+            int maxFiles = 10;
+            int maxBytesPerFile = (int) (Config.getInstance().getSchedulerCfg().getMaxStatsLogSize() / maxFiles);
+            FileHandler fh = new FileHandler(folder.getAbsolutePath() + "/stats%g.log", maxBytesPerFile, maxFiles, false);
+            fh.setLevel(Level.ALL);
+            SimpleFormatter formatter = new SimpleFormatter() {
+                @Override
+                public synchronized String format(LogRecord record) {
+                    return record.getMessage() + "\n";
+                }
+            };
+            fh.setFormatter(formatter);
+            logger.addHandler(fh);
+            return logger;
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     private static void closeLogger(Logger logger) {
@@ -1085,7 +1130,7 @@ public class Scheduler {
             synchronized (jobSet) {
                 GroupInfo gi = groupMap.get(channel.getInput().getGroupName());
                 if (gi == null) {
-                    createGroup(channel.getInput().getGroupName(), channel.getUser(), channel.getInput().getPriority(), channel.getInput().getTimetoIdleSeconds());
+                    createGroup(channel.getInput().getGroupName(), channel.getUser(), channel.getInput().getPriority(), channel.getInput().getTimetoIdleSeconds(), channel.getInput().getStatsDirectory());
                     channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getInput().getGroupName() + "' created successfully");
                     channel.sendEvent(Event.retcode, 0);
                     LOGGER.fine("Group '" + channel.getInput().getGroupName() + "' created  by user '" + channel.getUser() + "'");
@@ -1131,6 +1176,7 @@ public class Scheduler {
                     channel.sendMessage(ANSICode.GREEN, "Group '" + channel.getInput().getGroupName() + "' time-to-idle updated successfully");
                     LOGGER.fine("Group '" + channel.getInput().getGroupName() + "' time-to-idle updated by user '" + channel.getUser() + "'");
                 }
+
                 channel.sendEvent(Event.retcode, 0);
             }
         } finally {
@@ -1268,7 +1314,7 @@ public class Scheduler {
                             removeFromJobMap(ji);
                             jobSet.remove(id);
                             processMap.remove(id);
-                            final GroupInfo gi = groupMap.get(ji.getSubmitChannel().getInput().getGroupName());
+                            final GroupInfo gi = ji.getGroupInfo();
                             gi.getJobs().remove(id);
                             if (gi.getJobs().isEmpty()) {
                                 if (gi.getTimeToIdelSeconds() == 0) {
@@ -1338,7 +1384,7 @@ public class Scheduler {
                 JobInfo ji = jobMap.get(id);
                 it.remove();
                 removeFromJobMap(ji);
-                GroupInfo gi = groupMap.get(ji.getSubmitChannel().getInput().getGroupName());
+                GroupInfo gi = ji.getGroupInfo();
                 gi.getJobs().remove(id);
                 try {
                     ji.getSubmitChannel().sendEvent(Event.shutdown, runningUser);
@@ -1383,15 +1429,35 @@ public class Scheduler {
         private final int groupId;
         private final String user;
         private final Set<Integer> jobs = Collections.synchronizedNavigableSet(new TreeSet<Integer>());
+        private final File statsDirectory;
+        private final Logger statsLogger;
+        private StatRecord previousStatRecord;
+        private StatRecord currentStatRecord;
+
         private int timeToIdelSeconds;
 
         private int priority;
 
-        public GroupInfo(String groupName, String user, int timeToIdelSeconds) {
+        public GroupInfo(String groupName, String user, int timeToIdelSeconds, File statsDirectory) {
             this.groupName = groupName;
             this.groupId = groupCounter.incrementAndGet();
             this.user = user;
             this.timeToIdelSeconds = timeToIdelSeconds;
+            this.statsDirectory = statsDirectory;
+            if (statsDirectory != null) {
+                this.statsLogger = createStatsLogger(statsDirectory);
+                this.previousStatRecord = new StatRecord();
+                this.currentStatRecord = new StatRecord();
+                try {
+                    writeGlobalStatsFileHeader(statsLogger);
+                } catch (IOException ex) {
+                    Logger.getLogger(Scheduler.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            } else {
+                this.statsLogger = null;
+                this.previousStatRecord = null;
+                this.currentStatRecord = null;
+            }
         }
 
         public String getGroupName() {
@@ -1426,6 +1492,30 @@ public class Scheduler {
             return timeToIdelSeconds;
         }
 
+        public StatRecord getPreviousStatRecord() {
+            return previousStatRecord;
+        }
+
+        public StatRecord getCurrentStatRecord() {
+            return currentStatRecord;
+        }
+
+        public void setPreviousStatRecord(StatRecord previousStatRecord) {
+            this.previousStatRecord = previousStatRecord;
+        }
+
+        public void setCurrentStatRecord(StatRecord currentStatRecord) {
+            this.currentStatRecord = currentStatRecord;
+        }
+
+        public Logger getStatsLogger() {
+            return statsLogger;
+        }
+
+        public File getStatsDirectory() {
+            return statsDirectory;
+        }
+
         @Override
         public int compareTo(GroupInfo o) {
             if (o == null) {
@@ -1443,14 +1533,16 @@ public class Scheduler {
 
         private final int id;
         private final PeerChannel<ExtendedSubmitInput> submitChannel;
+        private final GroupInfo groupInfo;
 
         private int previousQueuePosition;
         private volatile int queuedChildCount;
         private volatile int runningChildCount;
         private volatile boolean relaunched;
 
-        public JobInfo(int id, PeerChannel<ExtendedSubmitInput> submitChannel) throws IOException, InterruptedException {
+        public JobInfo(int id, GroupInfo groupInfo, PeerChannel<ExtendedSubmitInput> submitChannel) throws IOException, InterruptedException {
             this.id = id;
+            this.groupInfo = groupInfo;
             this.submitChannel = submitChannel;
         }
 
@@ -1493,6 +1585,10 @@ public class Scheduler {
         public void setRunningChildCount(int runningChildCount) {
             this.runningChildCount = runningChildCount;
         }
+
+        public GroupInfo getGroupInfo() {
+            return groupInfo;
+        }
     }
 
     public class ProcessInfo {
@@ -1500,17 +1596,29 @@ public class Scheduler {
         private final JobInfo jobInfo;
         private final int pId;
         private final Logger statsLogger;
-        private StatRecord previousStatRecord;
+
         private volatile int niceness = Integer.MAX_VALUE;
+
         private volatile GaugeStats maxGaugeStats = new GaugeStats();
         private volatile GaugeStats gaugeStats = new GaugeStats();
+
         private volatile Statistics prevStats;
         private volatile Statistics currentStats;
+
+        private StatRecord previousStatRecord;
+        private StatRecord currentStatRecord;
 
         public ProcessInfo(JobInfo jobInfo, int pId, Logger statsLogger) {
             this.jobInfo = jobInfo;
             this.pId = pId;
             this.statsLogger = statsLogger;
+            if (statsLogger != null) {
+                this.previousStatRecord = new StatRecord();
+                this.currentStatRecord = new StatRecord();
+            } else {
+                this.previousStatRecord = null;
+                this.currentStatRecord = null;
+            }
         }
 
         public int getPid() {
@@ -1535,6 +1643,14 @@ public class Scheduler {
 
         public void setPreviousStatRecord(StatRecord previousStatRecord) {
             this.previousStatRecord = previousStatRecord;
+        }
+
+        public StatRecord getCurrentStatRecord() {
+            return currentStatRecord;
+        }
+
+        public void setCurrentStatRecord(StatRecord currentStatRecord) {
+            this.currentStatRecord = currentStatRecord;
         }
 
         public synchronized void setNiceness(int niceness) {
@@ -1647,8 +1763,8 @@ public class Scheduler {
 
     private class StatRecord {
 
-        long start;
-        long end;
+        long start = System.currentTimeMillis();
+        long end = start;
         int running;
         int queded;
         double cpu;

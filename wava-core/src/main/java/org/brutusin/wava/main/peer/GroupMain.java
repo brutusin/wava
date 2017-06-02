@@ -15,6 +15,7 @@
  */
 package org.brutusin.wava.main.peer;
 
+import java.io.File;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -71,6 +72,12 @@ public class GroupMain {
                 .desc("time to idle. Elapsed time since the last executing job of the group finishes and the group is deleted. Default is -1, meaning that the group to be created is eternal")
                 .hasArg()
                 .build();
+        Option sOpt = Option.builder("s")
+                .longOpt("stats-folder")
+                .argName("file")
+                .hasArg()
+                .desc("folder to save group stats logs. If null, no logging is performed")
+                .build();
 
         options.addOption(dOpt);
         options.addOption(nOpt);
@@ -78,6 +85,7 @@ public class GroupMain {
         options.addOption(tOpt);
         options.addOption(lOpt);
         options.addOption(hOpt);
+        options.addOption(sOpt);
 
         try {
             CommandLineParser parser = new DefaultParser();
@@ -101,6 +109,9 @@ public class GroupMain {
                         } catch (NumberFormatException ex) {
                             throw new ParseException("Invalid " + tOpt.getOpt() + " value");
                         }
+                    }
+                    if (cl.hasOption(sOpt.getOpt())) {
+                        gi.setStatsDirectory(new File(cl.getOptionValue(sOpt.getOpt())));
                     }
                 }
             } else if (cl.hasOption(lOpt.getOpt())) {
