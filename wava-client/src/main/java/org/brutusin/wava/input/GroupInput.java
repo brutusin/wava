@@ -1,5 +1,7 @@
 package org.brutusin.wava.input;
 
+import java.io.File;
+
 public class GroupInput extends Input {
 
     private String groupName;
@@ -8,6 +10,7 @@ public class GroupInput extends Input {
     private boolean delete;
     private boolean list;
     private boolean noHeaders;
+    private File statsDirectory;
 
     public String getGroupName() {
         return groupName;
@@ -55,5 +58,13 @@ public class GroupInput extends Input {
 
     public void setList(boolean list) {
         this.list = list;
+    }
+
+    public File getStatsDirectory() {
+        return statsDirectory;
+    }
+
+    public void setStatsDirectory(File statsDirectory) {
+        this.statsDirectory = statsDirectory;
     }
 }

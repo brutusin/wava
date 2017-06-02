@@ -15,6 +15,8 @@
  */
 package org.brutusin.wava.cfg;
 
+import java.io.File;
+
 /**
  *
  * @author Ignacio del Valle Alles idelvall@brutusin.org
@@ -32,5 +34,7 @@ public interface GroupCfg {
         public int getPriority();
 
         public int getTimeToIdleSeconds();
+        
+        public File getStatsDirectory();
     }
 }

@@ -15,6 +15,7 @@
  */
 package org.brutusin.wava.cfg.impl;
 
+import java.io.File;
 import org.brutusin.wava.cfg.GroupCfg;
 
 /**
@@ -24,7 +25,7 @@ import org.brutusin.wava.cfg.GroupCfg;
 public class GroupCfgImpl implements GroupCfg {
 
     private int dynamicGroupIdleSeconds = 10;
-    public GroupImpl[] predefinedGroups = {new GroupImpl("high", -10, -1), new GroupImpl("low", 10, -1)};
+    public GroupImpl[] predefinedGroups = {new GroupImpl("high", -10, -1, null), new GroupImpl("low", 10, -1, null)};
 
     @Override
     public int getDynamicGroupIdleSeconds() {
@@ -49,14 +50,16 @@ public class GroupCfgImpl implements GroupCfg {
         private String name;
         private int priority;
         private int timeToIdleSeconds;
+        private File statsDirectory;
 
         public GroupImpl() {
         }
 
-        public GroupImpl(String name, int priority, int timeToIdleSeconds) {
+        public GroupImpl(String name, int priority, int timeToIdleSeconds, File statsDirectory) {
             this.name = name;
             this.priority = priority;
             this.timeToIdleSeconds = timeToIdleSeconds;
+            this.statsDirectory = statsDirectory;
         }
 
         @Override
@@ -84,6 +87,15 @@ public class GroupCfgImpl implements GroupCfg {
 
         public void setTimeToIdleSeconds(int timeToIdleSeconds) {
             this.timeToIdleSeconds = timeToIdleSeconds;
+        }
+
+        @Override
+        public File getStatsDirectory() {
+            return statsDirectory;
+        }
+
+        public void setStatsDirectory(File statsDirectory) {
+            this.statsDirectory = statsDirectory;
         }
     }
 }
